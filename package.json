@@ -1,0 +1,27 @@
+{
+  "name": "real-proyect-abyss-game",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   <a href=\"#español\">Español</a> | <a href=\"#english\">English</a> </p>",
+  "main": "index.js",
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
+  },
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
+    "build": "echo 'No build step required for vanilla JS project'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imc89/ABYSSEA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/imc89/ABYSSEA/issues"
+  },
+  "homepage": "https://imc89.github.io/ABYSSEA"
+}
