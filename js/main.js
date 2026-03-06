@@ -26,6 +26,15 @@ let isMenuOpen = false;
  * Inicialización del juego
  */
 function init() {
+    // Detección de dispositivo (Desktop vs Mobile/Tablet)
+    // Comprobamos si tiene capacidad táctil Y si el puntero es grueso (típico de móviles/tablets)
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.matchMedia("(pointer: coarse)").matches);
+
+    if (isMobile) {
+        document.getElementById('mobile-warning').style.display = 'flex';
+        console.warn("ABYSSEA: Dispositivo no compatible detectado (se requiere teclado).");
+        return; // Detener inicialización
+    }
     canvas = document.getElementById('gameCanvas');
     ctx = canvas.getContext('2d');
 
