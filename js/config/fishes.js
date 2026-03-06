@@ -18,10 +18,11 @@
 const FISH_CATALOG = [
     // ZONA EPIPELÁGICA (0-200m) - Aguas superficiales con luz
     {
-        id: 'ballesta',
-        nombre: 'Pez Ballesta',
-        cientifico: 'Balistidae',
+        id: 'pez_linterna',
+        nombre: 'Pez Linterna',
+        cientifico: 'Myctophidae',
         imagen: './img/fishes/fish.gif',
+        descripcion: 'El pez linterna es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
         esCardumen: true,
         huyeDelJugador: true,
         distanciaCardumen: 90,
@@ -35,10 +36,11 @@ const FISH_CATALOG = [
 
     },
     {
-        id: 'pez_payaso',
-        nombre: 'Pez Payaso',
-        cientifico: 'Amphiprioninae',
+        id: 'Anoplogaster',
+        nombre: 'Anoplogaster',
+        cientifico: 'Anoplogaster',
         imagen: './img/fishes/ANOPLOGASTER/ANOPLOGASTER.gif',
+        descripcion: 'el Anoplogaster es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
         esCardumen: false,
         huyeDelJugador: false,
         distanciaCardumen: 500,
@@ -53,10 +55,11 @@ const FISH_CATALOG = [
 
     // ZONA MESOPELÁGICA (200-500m) - Zona de penumbra
     {
-        id: 'atun',
-        nombre: 'Atún de Aleta Azul',
-        cientifico: 'Thunnus thynnus',
+        id: 'beroe',
+        nombre: 'Beroe',
+        cientifico: 'Beroe',
         imagen: './img/fishes/beroe.gif',
+        descripcion: 'El Beroe es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
         esCardumen: false,
         huyeDelJugador: false,
         distanciaCardumen: 500,
@@ -87,8 +90,9 @@ const FISH_CATALOG = [
     {
         id: 'melanocetus',
         nombre: 'Melanocetus jhonsonii',
-        cientifico: 'Thunnus thynnus',
+        cientifico: 'Melanocetus jhonsonii',
         imagen: './img/fishes/MELANOCETUS/MELANOCETUS.gif',
+        descripcion: 'El Melanocetus jhonsonii es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
         esCardumen: false,
         huyeDelJugador: false,
         distanciaCardumen: 500,
@@ -99,6 +103,7 @@ const FISH_CATALOG = [
         ancho: 55,
         alto: 40,
         velocidadBase: 0.5,
+
         // --- Ejemplo de configuración de bioluminiscencia ---
         numLuces: 1,
         // Las posiciones (x, y) son relativas al centro del pez (0, 0). 
@@ -113,6 +118,38 @@ const FISH_CATALOG = [
         sleepluz1: 1000,  // Parpadea cada 1000ms (1 segundo)
         // Colores en formato RGBA (Red, Green, Blue, Alpha/Opacidad)
         colorluz: "rgba(0, 150, 255, 0.8)",  // Azul más intenso para el foco central
+    },
+    {
+        id: 'malacosteus',
+        nombre: 'Malacosteus Niger',
+        cientifico: 'Thunnus thynnus',
+        imagen: './img/fishes/MALACOSTEUS/MALACOSTEUS.gif',
+        descripcion: 'Conocido como el pez mandíbula suelta, el Malacosteus posee la capacidad única de producir luz roja, invisible para la mayoría de sus presas.',
+        esCardumen: false,
+        huyeDelJugador: false,
+        distanciaCardumen: 500,
+        minProf: 800,    // 500 metros
+        maxProf: 1000,    // 700 metros
+        cantidadGrupos: 1,
+        pecesPorGrupo: 3,
+        ancho: 95,
+        alto: 40,
+        velocidadBase: 0.5,
+        // --- Ejemplo de configuración de bioluminiscencia ---
+        numLuces: 1,
+        // Las posiciones (x, y) son relativas al centro del pez (0, 0). 
+        // X positivo es hacia la cabeza, X negativo es hacia la cola.
+        posluz1: { x: 36, y: -5 },  // Foco cerca de la cola
+        // Potencia/Radio del brillo en píxeles
+        powerluz1: 15,
+        // Control de parpadeo (ON/OFF)
+        // Si no se especifica, la luz está siempre encendida.
+        // Si se especifica, la luz se apaga y enciende cada 'sleep' milisegundos.
+        onofluz1: true,   // Luz 1 parpadea
+        sleepluz1: 2000,  // Parpadea cada 1000ms (1 segundo)
+        capaluz1: 'front', // Luz por delante de la imagen
+        // Colores en formato RGBA (Red, Green, Blue, Alpha/Opacidad)
+        colorluz: "rgba(255, 0, 0, 0.94)",  // Azul más intenso para el foco central
     }
     // {
     //     id: 'pez_espada',
