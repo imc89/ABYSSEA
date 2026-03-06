@@ -58,6 +58,23 @@ class Fish {
             const container = document.getElementById('fish-layer');
             if (container) {
                 container.appendChild(this.domElement);
+
+                // Inicializar elementos DOM para luces frontales
+                this.lightElements = [];
+                if (config.numLuces > 0) {
+                    for (let i = 1; i <= config.numLuces; i++) {
+                        const capa = config[`capaluz${i}`] || 'back';
+                        if (capa === 'front') {
+                            const lightPulse = document.createElement('div');
+                            lightPulse.style.position = 'absolute';
+                            lightPulse.style.pointerEvents = 'none';
+                            lightPulse.style.borderRadius = '50%';
+                            lightPulse.style.zIndex = '5'; // Por delante de la imagen del pez
+                            container.appendChild(lightPulse);
+                            this.lightElements[i] = lightPulse;
+                        }
+                    }
+                }
             }
         }
     }
@@ -273,50 +290,74 @@ class Fish {
 
         // Solo dibujar si hay suficiente luz o si tiene luz el propio pez
         if (ambientAlpha > 0.1 || isLit || hasOwnLight) {
-            // Dibujar las luces bioluminiscentes en el canvas
+            // Dibujar las luces bioluminiscentes
             if (hasOwnLight) {
-                ctx.save();
                 const angleRad = Math.atan2(this.vy, this.vx);
-                ctx.translate(sx, sy);
-                ctx.rotate(angleRad);
-                if (this.vx < 0) ctx.scale(1, -1);
+                const isFlipped = this.vx < 0;
 
                 for (let i = 1; i <= this.config.numLuces; i++) {
                     const pos = this.config[`posluz${i}`];
                     const power = this.config[`powerluz${i}`];
-                    // El primer color a veces se nombra 'colorluz' en vez de 'colorluz1'
                     const colorAttr = i === 1 ? (this.config.colorluz1 || this.config.colorluz) : this.config[`colorluz${i}`];
-                    const color = colorAttr || this.config.colorluz; // Fallback
+                    const color = colorAttr || this.config.colorluz;
+                    const capa = this.config[`capaluz${i}`] || 'back';
 
                     if (pos && power && color) {
-                        // Comprobar si la luz debe parpadear (onofluz)
                         let isLightOn = true;
                         const onof = this.config[`onofluz${i}`];
 
                         if (onof) {
                             const sleep = this.config[`sleepluz${i}`] || 1000;
-                            // Usamos el ciclo de tiempo + el offset del pez para desincronizarlos
                             const timeCycle = Math.floor((Date.now() + this.timeOffset) / sleep) % 2;
                             isLightOn = (timeCycle === 0);
                         }
 
                         if (isLightOn) {
-                            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, power);
-                            gradient.addColorStop(0, color);
-                            gradient.addColorStop(1, 'transparent');
-                            ctx.fillStyle = gradient;
+                            const pulse = 0.8 + Math.sin(Date.now() * 0.005 + i) * 0.2;
 
-                            // Añadir "pulso" ligero a la luz para hacerlo más vivo 
-                            ctx.globalAlpha = 0.8 + Math.sin(Date.now() * 0.005 + i) * 0.2;
+                            if (capa === 'back') {
+                                // Dibujar en Canvas (Capa trasera)
+                                ctx.save();
+                                ctx.translate(sx, sy);
+                                ctx.rotate(angleRad);
+                                if (isFlipped) ctx.scale(1, -1);
 
-                            ctx.beginPath();
-                            ctx.arc(pos.x, pos.y, power, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.globalAlpha = 1.0; // Reset
+                                const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, power);
+                                gradient.addColorStop(0, color);
+                                gradient.addColorStop(1, 'transparent');
+                                ctx.fillStyle = gradient;
+                                ctx.globalAlpha = pulse;
+
+                                ctx.beginPath();
+                                ctx.arc(pos.x, pos.y, power, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.restore();
+                            } else if (capa === 'front' && this.lightElements[i]) {
+                                // Dibujar en DOM (Capa delantera)
+                                const el = this.lightElements[i];
+                                el.style.display = 'block';
+                                el.style.width = `${power * 2}px`;
+                                el.style.height = `${power * 2}px`;
+                                el.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
+                                el.style.opacity = pulse;
+
+                                // Calcular posición relativa rotada
+                                let lx = pos.x;
+                                let ly = isFlipped ? -pos.y : pos.y;
+
+                                const cos = Math.cos(angleRad);
+                                const sin = Math.sin(angleRad);
+
+                                const rx = lx * cos - ly * sin;
+                                const ry = lx * sin + ly * cos;
+
+                                el.style.transform = `translate(${sx + rx - power}px, ${sy + ry - power}px)`;
+                            }
+                        } else {
+                            if (this.lightElements[i]) this.lightElements[i].style.display = 'none';
                         }
                     }
                 }
-                ctx.restore();
             }
 
             if (this.domElement) {
