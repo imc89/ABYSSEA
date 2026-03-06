@@ -453,8 +453,7 @@ function toggleFullscreen() {
 function toggleMusicMute() {
     isMusicMuted = !isMusicMuted;
     if (bgMusic) bgMusic.muted = isMusicMuted;
-    if (bubblesAudio) bubblesAudio.muted = isMusicMuted;
-    if (lowBatteryAudio) lowBatteryAudio.muted = isMusicMuted;
+
     updateSettingsUI();
 }
 
