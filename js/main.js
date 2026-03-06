@@ -208,6 +208,10 @@ function update() {
                 // Iniciar música en la primera interacción (política de navegadores)
                 bgMusic.play().catch(err => console.warn("Audio playback blocked", err));
             }
+            if (bubblesAudio && bubblesAudio.paused) {
+                // Iniciar sonido de motor/burbujas
+                bubblesAudio.play().catch(err => console.warn("Audio playback blocked", err));
+            }
         }
     }
 
