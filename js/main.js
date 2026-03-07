@@ -142,7 +142,19 @@ function setupEventHandlers() {
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
             if (e.code === 'Escape') e.preventDefault(); // Evitar que el navegador salga de Fullscreen con Esc
-            toggleMenu();
+            if (uiManager.isScanModalOpen) {
+                uiManager.toggleScanModal();
+            } else {
+                toggleMenu();
+            }
+        }
+
+        if (e.code === 'Enter') {
+            if (uiManager.isScanModalOpen) {
+                uiManager.toggleScanModal();
+            } else if (scannableTarget) {
+                uiManager.toggleScanModal(scannableTarget);
+            }
         }
     });
 

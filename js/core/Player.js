@@ -216,7 +216,7 @@ class Player {
 
         if (!safeDrawImage(ctx, playerImage, -this.w / 2, -this.h / 2, this.w, this.h)) {
             // Fallback: dibujar rectángulo amarillo
-            ctx.fillStyle = "yellow";
+            ctx.fillStyle = "transparent";
             ctx.fillRect(-this.w / 2, -this.h / 4, this.w, this.h / 2);
         }
 

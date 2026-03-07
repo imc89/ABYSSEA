@@ -6,6 +6,8 @@ class UIManager {
     constructor() {
         this.currentZoneName = "ZONA EPIPELÁGICA";
         this.frameCount = 0;
+        this.isScanModalOpen = false;
+        this.activeScanTarget = null;
     }
 
     update(player, scannableTarget, fishCatalog) {
@@ -122,10 +124,12 @@ class UIManager {
 
     updateScannerDisplay(scannableTarget) {
         const scannerUI = document.getElementById('scanner-ui');
+        const indicator = document.getElementById('scanning-indicator');
 
         if (scannableTarget && scannerUI) {
             scannerUI.style.opacity = "1";
             scannerUI.style.transform = "translateX(0)";
+            if (indicator) indicator.style.display = 'block';
 
             const scanName = document.getElementById('scan-name');
             if (scanName) {
@@ -150,6 +154,43 @@ class UIManager {
         } else if (scannerUI) {
             scannerUI.style.opacity = "0";
             scannerUI.style.transform = "translateX(20px)";
+            if (indicator) indicator.style.display = 'none';
+        }
+    }
+
+    toggleScanModal(target = null) {
+        if (this.isScanModalOpen) {
+            // Cerrar
+            this.isScanModalOpen = false;
+            this.activeScanTarget = null;
+            const modal = document.getElementById('scan-modal');
+            if (modal) modal.classList.remove('active');
+        } else if (target) {
+            // Abrir con datos
+            this.isScanModalOpen = true;
+            this.activeScanTarget = target;
+
+            const modal = document.getElementById('scan-modal');
+            const mImg = document.getElementById('modal-scan-img');
+            const mName = document.getElementById('modal-scan-name');
+            const mSci = document.getElementById('modal-scan-scientific');
+            const mDesc = document.getElementById('modal-scan-description');
+            const mDepth = document.getElementById('modal-scan-depth');
+            const mBehav = document.getElementById('modal-scan-behavior');
+
+            if (mImg) mImg.src = target.config.imagen;
+            if (mName) mName.innerText = target.config.nombre;
+            if (mSci) mSci.innerText = target.config.cientifico;
+            if (mDesc) mDesc.innerText = target.config.descripcion || "No hay datos descriptivos disponibles para este espécimen en la base de datos central.";
+            if (mDepth) mDepth.innerText = `${target.config.minProf}m - ${target.config.maxProf}m`;
+            if (mBehav) mBehav.innerText = target.config.esCardumen ? "Comportamiento Grupal" : "Comportamiento Solitario";
+
+            if (modal) modal.classList.add('active');
+
+            // Sonido de escaneo
+            const scanAudio = new Audio('audio/sonar.mp3');
+            scanAudio.volume = 0.3;
+            scanAudio.play().catch(e => { });
         }
     }
 
