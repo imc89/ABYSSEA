@@ -191,6 +191,197 @@
                 box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
             }
         }
+
+        /* POI Discovery Point Animation */
+        @keyframes poi-ring {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        /* Discovery Modal Styling */
+        #discovery-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 85%;
+            height: 80%;
+            background: #000;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 20px;
+            z-index: 210;
+            display: none;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.5s ease;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 1);
+        }
+
+        #discovery-modal.active {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            backdrop-filter: blur(10px);
+        }
+
+        .discovery-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0, 8, 16, 0.8) 0%, #000 100%);
+            z-index: 1;
+        }
+
+        .discovery-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            /* Better vertical distribution */
+            padding: 60px 40px;
+            box-sizing: border-box;
+        }
+
+        .discovery-frame {
+            position: absolute;
+            inset: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+            pointer-events: none;
+        }
+
+        .discovery-frame::before,
+        .discovery-frame::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #06b6d4;
+        }
+
+        .discovery-frame::before {
+            top: 0;
+            left: 0;
+            border-right: 0;
+            border-bottom: 0;
+        }
+
+        .discovery-frame::after {
+            bottom: 0;
+            right: 0;
+            border-left: 0;
+            border-top: 0;
+        }
+
+        /* Macro Minigame Styles */
+        #macro-canvas {
+            position: absolute;
+            inset: 0;
+            cursor: none;
+            z-index: 1;
+        }
+
+        #macro-crosshair {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translate(-50%, -50%);
+            /* Center on mouse */
+        }
+
+        #macro-crosshair::before,
+        #macro-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 255, 0.8);
+        }
+
+        #macro-crosshair::before {
+            width: 1px;
+            height: 100%;
+        }
+
+        #macro-crosshair::after {
+            width: 100%;
+            height: 1px;
+        }
+
+        .macro-dot {
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        .macro-flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .flash-active {
+            animation: flash-anim 0.4s ease-out;
+        }
+
+        @keyframes flash-anim {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        #macro-success-ui {
+            pointer-events: none;
+            opacity: 0;
+            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        #macro-success-ui.active {
+            pointer-events: auto;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #macro-discovery-img {
+            max-height: 40vh;
+            /* Scalable image based on viewport */
+            width: auto;
+            filter: drop-shadow(0 0 30px rgba(0, 255, 255, 0.3));
+            transition: transform 0.5s ease;
+        }
+
+        #macro-discovery-img:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
@@ -359,6 +550,76 @@
                 </div>
             </div>
 
+            <!-- Discovery Discovery Modal -->
+            <div id="discovery-modal" onmousemove="uiManager.macroManager.handleMouseMove(event)">
+                <div class="discovery-bg"></div>
+
+                <!-- Minigame Canvas -->
+                <canvas id="macro-canvas"></canvas>
+
+                <!-- Crosshair -->
+                <div id="macro-crosshair">
+                    <div class="macro-dot"></div>
+                </div>
+
+                <!-- Flash Effect Layer -->
+                <div id="macro-flash" class="macro-flash"></div>
+
+                <div class="discovery-frame"></div>
+
+                <div class="discovery-content pointer-events-none">
+                    <div
+                        class="hud-glass p-2 px-6 rounded-full text-cyan-400 text-[10px] font-bold tracking-[0.3em] uppercase mb-16 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+                        MODO DE OBSERVACIÓN MACRO ACTIVADO
+                    </div>
+
+                    <!-- Success UI (Initially Hidden) -->
+                    <div id="macro-success-ui" class="text-center w-full max-w-2xl px-12">
+                        <div class="relative group mb-8 inline-block">
+                            <div class="absolute -inset-8 bg-cyan-500/10 blur-3xl rounded-full opacity-100"></div>
+                            <img id="macro-discovery-img" src="./img/little/Eurythenes.png" alt="Macro Discovery"
+                                class="object-contain relative z-10 drop-shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                        </div>
+
+                        <div class="space-y-2 mb-6">
+                            <h3 id="macro-discovery-title"
+                                class="text-white text-4xl font-bold uppercase tracking-tighter">
+                                Eurythenes gryllus</h3>
+                            <p id="macro-discovery-genus" class="text-cyan-400 font-mono italic text-base">
+                                Anfípodo Gigante Abisal</p>
+                        </div>
+
+                        <div class="hud-glass p-6 rounded-2xl border border-white/5 bg-white/[0.02] mb-8">
+                            <p id="macro-discovery-desc"
+                                class="text-white/70 text-sm leading-relaxed text-center italic">
+                                "Este carroñero abisal es capaz de detectar restos orgánicos a kilómetros de distancia.
+                                Su
+                                presencia indica una zona de afloramiento rocoso con alta actividad biológica en
+                                microescala."
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Interaction Hint -->
+                    <div id="macro-hint"
+                        class="mt-auto mb-12 text-cyan-400/60 font-mono text-[10px] tracking-widest animate-pulse">
+                        BUSCA LA CRIATURA Y PULSA [ESPACIO] PARA ILUMINAR
+                    </div>
+
+                    <button id="macro-exit-btn" onclick="uiManager.toggleDiscoveryModal()"
+                        class="px-12 py-3 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 font-bold uppercase tracking-widest rounded-full hover:bg-cyan-500/30 transition-all opacity-0 pointer-events-none">
+                        VOLVER AL SUBMARINO [ENTER]
+                    </button>
+                </div>
+
+                <!-- HUD Decorator -->
+                <div class="absolute bottom-6 left-6 text-white/20 font-mono text-[8px] uppercase">Coords:
+                    DEEP_ABYSS_882
+                </div>
+                <div class="absolute bottom-6 right-6 text-white/20 font-mono text-[8px] uppercase">Zoom: 8.5x</div>
+                <div class="absolute top-6 right-6 text-white/20 font-mono text-[8px] uppercase">Sens: HIGH_MACRO</div>
+            </div>
+
             <div class="flex justify-center">
                 <div
                     class="hud-glass px-8 py-4 rounded-full flex items-center gap-8 text-white/50 text-[11px] font-bold uppercase tracking-widest pointer-events-auto border-b-2 border-b-cyan-500/20">
@@ -442,6 +703,7 @@
     <!-- Módulos de configuración -->
     <script src="js/config/constants.js"></script>
     <script src="js/config/fishes.js"></script>
+    <script src="js/config/macros.js"></script>
 
     <!-- Módulos de utilidades -->
     <script src="js/utils/helpers.js"></script>
@@ -455,6 +717,7 @@
     <!-- Módulos del core -->
     <script src="js/core/Camera.js"></script>
     <script src="js/core/Player.js"></script>
+    <script src="js/core/macroManager.js"></script>
     <script src="js/core/UI.js"></script>
 
     <!-- Main game loop -->
