@@ -41,14 +41,14 @@ const PLAYER_CONFIG = {
     startY: 220,
     speed: 0.42,
     boost: 2.2,
-    width: 120,
-    height: 110,
+    width: 150,
+    height: 120,
     sonarMaxCooldown: 9,     // 10 segundos
     sonarMaxRadius: 2500,
     sonarExpansionSpeed: 25,
     lightDrainRate: 0.05,
     lightRechargeRate: 0.1,
-    image: 'https://static.wikitide.net/frackinuniversewiki/e/eb/Fusub-0.png'
+    image: './img/submarine/sub1.png'
 };
 
 const CAMERA_CONFIG = {
