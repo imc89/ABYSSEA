@@ -8,9 +8,17 @@ class UIManager {
         this.frameCount = 0;
         this.isScanModalOpen = false;
         this.activeScanTarget = null;
+
+        // Gestor del minijuego Macro (decoupled)
+        this.macroManager = new MacroManager();
     }
 
-    update(player, scannableTarget, fishCatalog) {
+    // El getter isDiscoveryModalOpen ahora se maneja directamente viendo el estado de macroManager
+    get isDiscoveryModalOpen() {
+        return this.macroManager.isOpen;
+    }
+
+    update(player, scannableTarget, fishCatalog, nearPOI) {
         this.frameCount++;
 
         // Actualizar telemetría de profundidad
@@ -26,7 +34,7 @@ class UIManager {
         this.updateSonarDisplay(player);
 
         // Actualizar scanner de objetivos
-        this.updateScannerDisplay(scannableTarget);
+        this.updateScannerDisplay(scannableTarget, nearPOI);
 
         // Actualizar indicadores de especies por profundidad
         this.updateDepthSpeciesIndicators(player, fishCatalog);
@@ -122,14 +130,45 @@ class UIManager {
         }
     }
 
-    updateScannerDisplay(scannableTarget) {
+    updateScannerDisplay(scannableTarget, nearPOI) {
         const scannerUI = document.getElementById('scanner-ui');
         const indicator = document.getElementById('scanning-indicator');
+
+        if (nearPOI) {
+            // Caso especial: Punto de Descubrimiento (Zoom)
+            if (scannerUI) {
+                scannerUI.style.opacity = "1";
+                scannerUI.style.transform = "translateX(0)";
+
+                const hudData = this.macroManager.getHUDData();
+
+                const scanName = document.getElementById('scan-name');
+                if (scanName) scanName.innerText = hudData.title;
+
+                const scanGenus = document.getElementById('scan-genus');
+                if (scanGenus) scanGenus.innerText = hudData.subtitle;
+
+                const scanRange = document.getElementById('scan-range');
+                if (scanRange) scanRange.innerText = "---";
+
+                const scanBehavior = document.getElementById('scan-behavior');
+                if (scanBehavior) scanBehavior.innerText = hudData.status;
+
+                if (indicator) {
+                    indicator.innerText = hudData.prompt;
+                    indicator.style.display = 'block';
+                }
+            }
+            return;
+        }
 
         if (scannableTarget && scannerUI) {
             scannerUI.style.opacity = "1";
             scannerUI.style.transform = "translateX(0)";
-            if (indicator) indicator.style.display = 'block';
+            if (indicator) {
+                indicator.innerText = "PULSA [ENTER] ANALIZAR";
+                indicator.style.display = 'block';
+            }
 
             const scanName = document.getElementById('scan-name');
             if (scanName) {
@@ -193,6 +232,13 @@ class UIManager {
             scanAudio.play().catch(e => { });
         }
     }
+
+    toggleDiscoveryModal(specieId = null) {
+        this.macroManager.toggle(specieId);
+    }
+
+
+
 
     /**
      * NUEVA FUNCIÓN: Muestra qué especies se pueden encontrar a la profundidad actual

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Blue - Marine Simulator Pro</title>
+    <title>ABYSSEA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
@@ -191,6 +191,258 @@
                 box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
             }
         }
+
+        /* POI Discovery Point Animation */
+        @keyframes poi-ring {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        /* Discovery Modal Styling */
+        #discovery-modal {
+            position: fixed;
+            top: 45%;
+            /* Subido de 50% para no tapar el menú inferior */
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 85%;
+            height: 75%;
+            /* Ajustado ligeramente */
+            background: #000;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
+            z-index: 210;
+            display: none;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.5s ease;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 1);
+        }
+
+        #discovery-modal.active {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            backdrop-filter: blur(10px);
+        }
+
+        .discovery-bg {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0, 8, 16, 0.8) 0%, #000 100%);
+            z-index: 1;
+        }
+
+        .discovery-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            /* Better vertical distribution */
+            padding: 60px 40px;
+            box-sizing: border-box;
+        }
+
+        .discovery-frame {
+            position: absolute;
+            inset: 30px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Vértices de fotografía (Esquinas en ángulo recto) */
+        .discovery-frame::before,
+        .discovery-frame::after,
+        .discovery-frame .corner-bl,
+        .discovery-frame .corner-br {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(0, 255, 255, 0.6);
+        }
+
+        /* Top-Left */
+        .discovery-frame::before {
+            top: 0;
+            left: 0;
+            border-right: 0;
+            border-bottom: 0;
+        }
+
+        /* Top-Right */
+        .discovery-frame::after {
+            top: 0;
+            right: 0;
+            border-left: 0;
+            border-bottom: 0;
+        }
+
+        /* Bottom-Left */
+        .discovery-frame .corner-bl {
+            bottom: 0;
+            left: 0;
+            border-right: 0;
+            border-top: 0;
+        }
+
+        /* Bottom-Right */
+        .discovery-frame .corner-br {
+            bottom: 0;
+            right: 0;
+            border-left: 0;
+            border-top: 0;
+        }
+
+        /* Macro Minigame Styles */
+        #macro-canvas {
+            position: absolute;
+            inset: 0;
+            cursor: none;
+            z-index: 1;
+        }
+
+        #macro-crosshair {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translate(-50%, -50%);
+            animation: crosshair-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes crosshair-pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+        }
+
+        #macro-crosshair::before,
+        #macro-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+
+        #macro-crosshair::before {
+            width: 1px;
+            height: 40px;
+        }
+
+        #macro-crosshair::after {
+            width: 40px;
+            height: 1px;
+        }
+
+        .crosshair-scanner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-top-color: rgba(0, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: rotate-scanner 3s linear infinite;
+        }
+
+        @keyframes rotate-scanner {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .macro-dot {
+            width: 4px;
+            height: 4px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        .macro-flash {
+            position: absolute;
+            inset: 0;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .flash-active {
+            animation: flash-anim 0.4s ease-out;
+        }
+
+        @keyframes flash-anim {
+            0% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        #macro-success-ui {
+            pointer-events: none;
+            opacity: 0 !important;
+            display: none !important;
+            transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(15px);
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        #macro-success-ui.active {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        #macro-discovery-img {
+            max-height: 40vh;
+            /* Scalable image based on viewport */
+            width: auto;
+            filter: drop-shadow(0 0 30px rgba(0, 255, 255, 0.3));
+            transition: transform 0.5s ease;
+        }
+
+        #macro-discovery-img:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 
@@ -359,6 +611,73 @@
                 </div>
             </div>
 
+            <!-- Discovery Discovery Modal -->
+            <div id="discovery-modal" onmousemove="uiManager.macroManager.handleMouseMove(event)">
+                <div class="discovery-bg"></div>
+
+                <!-- Minigame Canvas -->
+                <canvas id="macro-canvas"></canvas>
+
+                <!-- Crosshair -->
+                <div id="macro-crosshair">
+                    <div class="crosshair-scanner"></div>
+                    <div class="macro-dot"></div>
+                </div>
+
+                <!-- Flash Effect Layer -->
+                <div id="macro-flash" class="macro-flash"></div>
+
+                <div class="discovery-frame">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                </div>
+
+                <div class="discovery-content pointer-events-none">
+                    <div
+                        class="hud-glass p-2 px-6 rounded-full text-cyan-400 text-[10px] font-bold tracking-[0.3em] uppercase mb-16 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+                        MODO DE OBSERVACIÓN MACRO ACTIVADO
+                    </div>
+
+                    <!-- Success UI (Initially Hidden) -->
+                    <div id="macro-success-ui"
+                        class="hidden w-full max-w-4xl px-8 flex flex-col md:flex-row items-center gap-10">
+                        <div class="relative group flex-shrink-0">
+                            <div class="absolute -inset-8 bg-cyan-500/5 blur-3xl rounded-full opacity-100"></div>
+                            <img id="macro-discovery-img"
+                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                alt="Macro Discovery"
+                                class="max-w-[280px] md:max-w-xs object-contain relative z-10 drop-shadow-[0_0_50px_rgba(6,182,212,0.15)]">
+                        </div>
+
+                        <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                            <div class="space-y-1 mb-4">
+                                <h3 id="macro-discovery-title"
+                                    class="text-white text-3xl md:text-4xl font-bold uppercase tracking-tighter"></h3>
+                                <p id="macro-discovery-genus"
+                                    class="text-cyan-400 font-mono italic text-sm md:text-base"></p>
+                            </div>
+
+                            <div class="hud-glass p-5 md:p-6 rounded-2xl border border-white/5 bg-white/[0.02] w-full">
+                                <p id="macro-discovery-desc"
+                                    class="text-white/70 text-xs md:text-sm leading-relaxed italic"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="macro-exit-btn" onclick="uiManager.toggleDiscoveryModal()"
+                        class="mb-8 px-6 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400/80 text-[11px] font-bold uppercase tracking-widest rounded-full hover:bg-cyan-500/20 hover:text-cyan-400 transition-all opacity-0 pointer-events-none">
+                        SALIR DEL MACRO [ENTER]
+                    </button>
+                </div>
+
+                <!-- HUD Decorator -->
+                <div class="absolute bottom-6 left-6 text-white/20 font-mono text-[8px] uppercase">Coords:
+                    DEEP_ABYSS_882
+                </div>
+                <div class="absolute bottom-6 right-6 text-white/20 font-mono text-[8px] uppercase">Zoom: 8.5x</div>
+                <div class="absolute top-6 right-6 text-white/20 font-mono text-[8px] uppercase">Sens: HIGH_MACRO</div>
+            </div>
+
             <div class="flex justify-center">
                 <div
                     class="hud-glass px-8 py-4 rounded-full flex items-center gap-8 text-white/50 text-[11px] font-bold uppercase tracking-widest pointer-events-auto border-b-2 border-b-cyan-500/20">
@@ -442,6 +761,7 @@
     <!-- Módulos de configuración -->
     <script src="js/config/constants.js"></script>
     <script src="js/config/fishes.js"></script>
+    <script src="js/config/macros.js"></script>
 
     <!-- Módulos de utilidades -->
     <script src="js/utils/helpers.js"></script>
@@ -455,6 +775,7 @@
     <!-- Módulos del core -->
     <script src="js/core/Camera.js"></script>
     <script src="js/core/Player.js"></script>
+    <script src="js/core/macroManager.js"></script>
     <script src="js/core/UI.js"></script>
 
     <!-- Main game loop -->

@@ -210,9 +210,16 @@ class Player {
             ctx.scale(-1, 1);
         }
 
-        // Misma fórmula que los peces: se desvanece gradualmente, invisible por debajo de los 500m (5000 game units)
-        const fishAmbientAlpha = Math.max(0, 1 - (this.y / 5000));
-        ctx.globalAlpha = this.lightOn ? 1.0 : fishAmbientAlpha;
+        // CÁLCULO DE VISIBILIDAD BASADO EN ZONAS CIENTÍFICAS
+        const depthMeters = this.y / WORLD.depthScale;
+        let ambientAlphaSub = 1.0;
+        if (depthMeters > 200 && depthMeters <= 1000) {
+            ambientAlphaSub = 1 - (depthMeters - 200) / 800;
+        } else if (depthMeters > 1000) {
+            ambientAlphaSub = 0;
+        }
+
+        ctx.globalAlpha = this.lightOn ? 1.0 : ambientAlphaSub;
 
         if (!safeDrawImage(ctx, playerImage, -this.w / 2, -this.h / 2, this.w, this.h)) {
             // Fallback: dibujar rectángulo amarillo

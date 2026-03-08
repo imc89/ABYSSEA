@@ -22,6 +22,10 @@ let lowBatteryAudio = null;
 let isMusicMuted = false;
 let isMenuOpen = false;
 
+// Puntos de interés (Mini-descubrimientos)
+let discoveryPoints = [];
+let nearPOI = null;
+
 /**
  * Inicialización del juego
  */
@@ -107,6 +111,24 @@ function init() {
         }
     });
 
+    // Inicializar Puntos de Descubrimiento (POIs) dinámicamente desde MACRO_CATALOG
+    Object.values(MACRO_CATALOG).forEach(specie => {
+        for (let i = 0; i < (specie.cantidadPoints || 0); i++) {
+            const minGameUnits = specie.minProf * WORLD.depthScale;
+            const maxGameUnits = specie.maxProf * WORLD.depthScale;
+
+            discoveryPoints.push({
+                id: `${specie.id}_${i}`,
+                specieId: specie.id, // Guardar ID de la especie para el minijuego
+                x: 100 + Math.random() * (canvas.width - 200),
+                y: minGameUnits + Math.random() * (maxGameUnits - minGameUnits),
+                radius: 40,
+                discovered: false,
+                pulse: 0
+            });
+        }
+    });
+
     // Event listeners
     setupEventHandlers();
 
@@ -128,8 +150,17 @@ function setupEventHandlers() {
             setControls('ARROWS');
         }
 
+        if (uiManager.isDiscoveryModalOpen) {
+            uiManager.macroManager.state.keys[e.code] = true;
+            uiManager.macroManager.state.keys[e.key] = true;
+        }
+
         if (e.code === 'Space') {
-            player.toggleLight();
+            if (uiManager.isDiscoveryModalOpen) {
+                uiManager.macroManager.toggleLight();
+            } else {
+                player.toggleLight();
+            }
         }
 
         if (e.code === 'KeyE') {
@@ -152,6 +183,10 @@ function setupEventHandlers() {
         if (e.code === 'Enter') {
             if (uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
+            } else if (uiManager.isDiscoveryModalOpen) {
+                uiManager.macroManager.onEnter();
+            } else if (nearPOI) {
+                uiManager.toggleDiscoveryModal(nearPOI.specieId);
             } else if (scannableTarget) {
                 uiManager.toggleScanModal(scannableTarget);
             }
@@ -160,6 +195,10 @@ function setupEventHandlers() {
 
     window.addEventListener('keyup', e => {
         keys[e.code] = false;
+        if (uiManager.isDiscoveryModalOpen) {
+            uiManager.macroManager.state.keys[e.code] = false;
+            uiManager.macroManager.state.keys[e.key] = false;
+        }
     });
 
     window.addEventListener('resize', resize);
@@ -207,6 +246,8 @@ function loop() {
  * Actualizar lógica del juego
  */
 function update() {
+    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
+
     // Actualizar jugador (pasar canvas para límites dinámicos)
     const moving = player.update(keys, controlScheme, WORLD, canvas);
 
@@ -263,6 +304,38 @@ function update() {
     bubbles = bubbles.filter(b => b.life > 0);
     bubbles.forEach(b => b.update());
 
+    // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
+    nearPOI = null;
+    discoveryPoints.forEach(poi => {
+        // Primero: Proximidad básica (para optimizar)
+        const dist = Math.hypot(player.x - poi.x, player.y - poi.y);
+
+        // Segundo: Verificación de cono de luz
+        poi.isLit = false;
+        if (player.lightOn && player.lightBattery > 0 && dist < WORLD.lightSpotRange) {
+            const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
+            const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+
+            let diff = Math.abs(angTo - lookDir);
+            while (diff > Math.PI) {
+                diff = Math.PI * 2 - diff;
+            }
+
+            if (diff < WORLD.lightAngle) {
+                poi.isLit = true;
+            }
+        }
+
+        if (poi.isLit) {
+            nearPOI = poi;
+            // Solo animar si está siendo iluminado
+            poi.pulse = (poi.pulse + 0.05) % (Math.PI * 2);
+        } else {
+            // Reset suave del pulso o simplemente mantenerlo estático
+            poi.pulse = 0;
+        }
+    });
+
     // Actualizar partículas
     marineSnow.forEach(p => p.update(player, canvas));
 
@@ -273,7 +346,7 @@ function update() {
     scannableTarget = findScannableTarget();
 
     // Actualizar UI
-    uiManager.update(player, scannableTarget, FISH_CATALOG);
+    uiManager.update(player, scannableTarget, FISH_CATALOG, nearPOI);
 }
 
 /**
@@ -337,11 +410,33 @@ function draw() {
     ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Alpha ambiental basado en profundidad real (0m = 1.0, 1000m = 0.0)
-    const ambientAlpha = Math.max(0, 1 - depthMeters / 1000);
+    // Alpha ambiental basado en zonas científicas:
+    // 0-200m (Eu fótica): 1.0 (Plena luz)
+    // 200-1000m (Disfótica): Gradiente 1.0 -> 0.0 (Penumbra)
+    // 1000m+ (Afótica): 0.0 (Oscuridad total, solo bioluminiscencia)
+    let ambientAlpha = 1.0;
+    if (depthMeters > 200 && depthMeters <= 1000) {
+        ambientAlpha = 1 - (depthMeters - 200) / 800;
+    } else if (depthMeters > 1000) {
+        ambientAlpha = 0;
+    }
 
     // Dibujar partículas de nieve marina
     marineSnow.forEach(p => p.draw(ctx, player, camera, ambientAlpha));
+
+    // Dibujar Puntos de Descubrimiento (POIs)
+    discoveryPoints.forEach(poi => {
+        const sx = poi.x - camera.x;
+        const sy = poi.y - camera.y;
+
+        // Solo si está en pantalla
+        if (sx < -100 || sx > canvas.width + 100 || sy < -100 || sy > canvas.height + 100) return;
+
+        ctx.save();
+
+        // Círculo concéntrico brillante ajustable desde MacroManager
+        MacroManager.drawPOI(ctx, sx, sy, poi.pulse, poi.isLit);
+    });
 
     // Dibujar burbujas (visibilidad via luz del submarino o luz ambiental superficial)
     bubbles.forEach(b => b.draw(ctx, camera, ambientAlpha, player, canvas));
