@@ -260,8 +260,14 @@ class Fish {
             ctx.stroke();
         }
 
-        // CÁLCULO DE VISIBILIDAD PARA EL DOM ELEMENT
-        const ambientAlpha = Math.max(0.05, 1 - (this.y / 5000));
+        // CÁLCULO DE VISIBILIDAD BASADO EN ZONAS CIENTÍFICAS
+        const depthMeters = this.y / WORLD.depthScale;
+        let ambientAlpha = 1.0;
+        if (depthMeters > 200 && depthMeters <= 1000) {
+            ambientAlpha = 1 - (depthMeters - 200) / 800;
+        } else if (depthMeters > 1000) {
+            ambientAlpha = 0;
+        }
         const dist = Math.hypot(this.x - player.x, this.y - (player.y + WORLD.lightOffsetY));
 
         // Dentro del cono = opacidad plena. La caída ocurre en los bordes angulares y al salir del rango.

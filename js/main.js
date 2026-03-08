@@ -304,15 +304,36 @@ function update() {
     bubbles = bubbles.filter(b => b.life > 0);
     bubbles.forEach(b => b.update());
 
-    // Verificar proximidad a Puntos de Descubrimiento (POIs)
+    // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
     discoveryPoints.forEach(poi => {
+        // Primero: Proximidad básica (para optimizar)
         const dist = Math.hypot(player.x - poi.x, player.y - poi.y);
-        if (dist < 100) {
-            nearPOI = poi;
+
+        // Segundo: Verificación de cono de luz
+        poi.isLit = false;
+        if (player.lightOn && player.lightBattery > 0 && dist < WORLD.lightSpotRange) {
+            const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
+            const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+
+            let diff = Math.abs(angTo - lookDir);
+            while (diff > Math.PI) {
+                diff = Math.PI * 2 - diff;
+            }
+
+            if (diff < WORLD.lightAngle) {
+                poi.isLit = true;
+            }
         }
-        // Animación de pulso
-        poi.pulse = (poi.pulse + 0.05) % (Math.PI * 2);
+
+        if (poi.isLit) {
+            nearPOI = poi;
+            // Solo animar si está siendo iluminado
+            poi.pulse = (poi.pulse + 0.05) % (Math.PI * 2);
+        } else {
+            // Reset suave del pulso o simplemente mantenerlo estático
+            poi.pulse = 0;
+        }
     });
 
     // Actualizar partículas
@@ -389,8 +410,16 @@ function draw() {
     ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Alpha ambiental basado en profundidad real (0m = 1.0, 1000m = 0.0)
-    const ambientAlpha = Math.max(0, 1 - depthMeters / 1000);
+    // Alpha ambiental basado en zonas científicas:
+    // 0-200m (Eu fótica): 1.0 (Plena luz)
+    // 200-1000m (Disfótica): Gradiente 1.0 -> 0.0 (Penumbra)
+    // 1000m+ (Afótica): 0.0 (Oscuridad total, solo bioluminiscencia)
+    let ambientAlpha = 1.0;
+    if (depthMeters > 200 && depthMeters <= 1000) {
+        ambientAlpha = 1 - (depthMeters - 200) / 800;
+    } else if (depthMeters > 1000) {
+        ambientAlpha = 0;
+    }
 
     // Dibujar partículas de nieve marina
     marineSnow.forEach(p => p.draw(ctx, player, camera, ambientAlpha));
@@ -406,7 +435,7 @@ function draw() {
         ctx.save();
 
         // Círculo concéntrico brillante ajustable desde MacroManager
-        MacroManager.drawPOI(ctx, sx, sy, poi.pulse);
+        MacroManager.drawPOI(ctx, sx, sy, poi.pulse, poi.isLit);
     });
 
     // Dibujar burbujas (visibilidad via luz del submarino o luz ambiental superficial)

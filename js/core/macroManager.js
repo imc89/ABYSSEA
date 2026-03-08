@@ -8,24 +8,20 @@ class MacroManager {
      * Ajusta estos valores para cambiar la apariencia de los círculos concéntricos en el mundo.
      */
     static POI_CONFIG = {
-        innerRadius: 5,            // Radio del punto central brillante
-        outerRadiusMultiplier: 1.0, // Multiplicador del radio exterior pulsante
-        glowBlur: 20,              // Intensidad del brillo (shadowBlur)
-        pulseSpeed: 0.005,         // Velocidad de la animación de pulsación
-        innerColor: "rgba(255, 255, 255, 0.9)", // Color del punto central
-        outerColor: "rgba(0, 255, 255, 0.4)",  // Color del anillo exterior
-        glowColor: "cyan"          // Color del resplandor
+        innerRadius: 4,            // Radio del punto central
+        glowBlur: 25,              // Intensidad del brillo
+        pulseSpeed: 0.004,         // Velocidad de la animación
+        innerColor: "rgba(255, 255, 255, 1.0)", // Blanco puro para el núcleo
+        accentColor: "rgba(49, 181, 181, 0.8)",  // Cian brillante
+        haloColor: "rgba(0, 255, 255, 0.2)"    // Cian suave para los halos
     };
 
     constructor() {
         this.isOpen = false;
         this.state = {
-            // Posición y movimiento de la criatura
-            creatureX: 0,
-            creatureY: 0,
-            creatureVX: 0,
-            creatureVY: 0,
-            creatureScale: 0.4,
+            // Posición y movimiento de las criaturas
+            creatures: [],
+            breathingScale: 1,
 
             // Estado del minijuego
             revealed: false,
@@ -44,7 +40,8 @@ class MacroManager {
 
             // Gestión de tiempo y entrada
             lastTime: 0,
-            keys: {}
+            keys: {},
+            successTimeout: null
         };
     }
 
@@ -52,27 +49,42 @@ class MacroManager {
      * Dibuja un Punto de Interés (POI) en las coordenadas especificadas.
      * Centraliza la lógica visual de los puntos de descubrimiento en el mapa.
      */
-    static drawPOI(ctx, x, y, pulse) {
+    static drawPOI(ctx, x, y, pulse, isLit) {
         const config = MacroManager.POI_CONFIG;
 
         ctx.save();
 
-        // 1. Círculo exterior pulsante (Anillo de detección)
-        const ringScale = 0.8 + Math.sin(pulse) * 0.15; // Un poco más pequeño y controlado
-        const ringAlpha = 0.2 + Math.sin(pulse) * 0.15;
+        if (isLit) {
+            // 1. ANILLO ÚNICO ELEGANTE (Solo si está iluminado)
+            const layerPulse = (pulse + 0.8) % (Math.PI * 2);
+            const scale = 18 * (0.9 + Math.sin(layerPulse) * 0.1); // Radio reducido de 25 a 18
+            const alpha = 0.4 * (0.5 + Math.sin(layerPulse) * 0.5);
 
-        ctx.beginPath();
-        ctx.arc(x, y, 40 * ringScale * config.outerRadiusMultiplier, 0, Math.PI * 2);
-        ctx.strokeStyle = config.outerColor.replace('0.4', ringAlpha.toFixed(2));
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(x, y, scale, 0, Math.PI * 2);
+            ctx.strokeStyle = config.haloColor.replace('0.2', alpha.toFixed(3));
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-        // 2. Punto brillante central (Núcleo)
+            // 2. RESPLANDOR EXTERIOR (Glow suave)
+            const corePulse = Math.sin(pulse) * 0.2 + 0.8;
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 20 * corePulse); // Radio reducido de 30 a 20
+            gradient.addColorStop(0, config.accentColor.replace('0.8', (0.4 * corePulse).toFixed(2)));
+            gradient.addColorStop(1, 'transparent');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, 20 * corePulse, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // 3. NÚCLEO BRILLANTE (Siempre visible pero más pequeño en oscuridad)
         ctx.beginPath();
-        ctx.arc(x, y, config.innerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = config.innerColor;
-        ctx.shadowBlur = config.glowBlur;
-        ctx.shadowColor = config.glowColor;
+        const coreSize = isLit ? config.innerRadius : config.innerRadius * 0.7;
+        ctx.arc(x, y, coreSize, 0, Math.PI * 2);
+        ctx.fillStyle = isLit ? config.innerColor : "rgba(255, 255, 255, 1)";
+        ctx.shadowBlur = isLit ? config.glowBlur : 10;
+        ctx.shadowColor = "cyan";
         ctx.fill();
 
         ctx.restore();
@@ -101,23 +113,80 @@ class MacroManager {
 
     open(specieId = null) {
         this.isOpen = true;
-        this.currentSpecieId = specieId; // Guardar la especie actual para cargar sus datos
+        this.currentSpecieId = specieId;
+
+        // Limpieza absoluta antes de que el modal sea visible
+        this.state.revealed = false;
+        this.state.lightOn = true;
+        this._clearSpecieUI();
+
         const modal = document.getElementById('discovery-modal');
         if (modal) modal.classList.add('active');
+
+        // Audio AL ENTRAR (como pidió el usuario)
+        const macroStartAudio = new Audio('audio/macro.mp3');
+        macroStartAudio.volume = 0.5;
+        macroStartAudio.play().catch(e => { });
 
         // Inicializar minijuego (asíncrono)
         setTimeout(() => this.init(specieId), 100);
 
-        // Sonido de transición/zoom
+        // Sonido de zoom (sonar muy bajo)
         const zoomAudio = new Audio('audio/sonar.mp3');
-        zoomAudio.volume = 0.5;
+        zoomAudio.volume = 0.1;
         zoomAudio.play().catch(e => { });
+    }
+
+    _clearSpecieUI() {
+        if (this.state.successTimeout) {
+            clearTimeout(this.state.successTimeout);
+            this.state.successTimeout = null;
+        }
+
+        // Limpiar Canvas inmediatamente si existe
+        if (this.state.ctx && this.state.canvas) {
+            this.state.ctx.fillStyle = '#020205';
+            this.state.ctx.fillRect(0, 0, this.state.canvas.width, this.state.canvas.height);
+        }
+
+        const successUI = document.getElementById('macro-success-ui');
+        if (successUI) {
+            successUI.classList.remove('active');
+            // Forzar ocultación inmediata y absoluta por estilo
+            successUI.style.setProperty('display', 'none', 'important');
+            successUI.style.setProperty('opacity', '0', 'important');
+            successUI.style.setProperty('pointer-events', 'none', 'important');
+        }
+
+        const exitBtn = document.getElementById('macro-exit-btn');
+        if (exitBtn) {
+            exitBtn.classList.add('opacity-0', 'pointer-events-none');
+            exitBtn.style.setProperty('opacity', '0', 'important');
+        }
+
+        const mImg = document.getElementById('macro-discovery-img');
+        const mTitle = document.getElementById('macro-discovery-title');
+        const mGenus = document.getElementById('macro-discovery-genus');
+        const mDesc = document.getElementById('macro-discovery-desc');
+
+        // Vaciado total para prevenir el "flash" de información antigua
+        if (mImg) mImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+        if (mTitle) mTitle.innerHTML = "";
+        if (mGenus) mGenus.innerHTML = "";
+        if (mDesc) mDesc.innerHTML = "";
     }
 
     close() {
         this.isOpen = false;
+
+        // Limpiar UI inmediatamente
+        this._clearSpecieUI();
+
         const modal = document.getElementById('discovery-modal');
         if (modal) modal.classList.remove('active');
+
+        this.state.revealed = false;
+        this.currentSpecieId = null;
     }
 
     /**
@@ -141,22 +210,34 @@ class MacroManager {
         const sId = specieId || this.currentSpecieId || 'eurythenes';
 
         // --- CONFIGURACIÓN DE DATOS ---
-        // Obtenemos la información técnica de la especie desde el catálogo centralizado
         const macroData = window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : {
             id: 'fallback',
             imagen: './img/little/Eurythenes.png',
-            escala: 0.4,
+            ancho: 120,
+            alto: 80,
             velocidadX: 1.5,
-            velocidadY: 0.8
+            velocidadY: 0.8,
+            minEspecimenes: 1,
+            maxEspecimenes: 1
         };
 
-        // --- POSICIONAMIENTO INICIAL ---
-        // Situamos a la criatura aleatoriamente dejando un margen de seguridad en los bordes
-        this.state.creatureX = 150 + Math.random() * (this.state.canvas.width - 300);
-        this.state.creatureY = 150 + Math.random() * (this.state.canvas.height - 300);
-        this.state.creatureVX = (Math.random() - 0.5) * macroData.velocidadX;
-        this.state.creatureVY = (Math.random() - 0.5) * macroData.velocidadY;
-        this.state.creatureScale = macroData.escala;
+        // --- POSICIONAMIENTO DE CRIATURAS ---
+        this.state.creatures = [];
+        const numSpecimens = macroData.minEspecimenes + Math.floor(Math.random() * (macroData.maxEspecimenes - macroData.minEspecimenes + 1));
+
+        for (let i = 0; i < numSpecimens; i++) {
+            this.state.creatures.push({
+                x: 150 + Math.random() * (this.state.canvas.width - 300),
+                y: 150 + Math.random() * (this.state.canvas.height - 300),
+                vx: (Math.random() - 0.5) * macroData.velocidadX,
+                vy: (Math.random() - 0.5) * macroData.velocidadY,
+                w: macroData.ancho,
+                h: macroData.alto,
+                rangoDeteccion: macroData.rangoDeteccion || 80
+            });
+        }
+
+        this.state.breathingScale = 1;
         this.state.lightOn = true;
 
         // Carga de textura principal
@@ -193,12 +274,7 @@ class MacroManager {
         this.state.crosshairY = this.state.canvas.height / 2;
 
         // --- RESET DE INTERFAZ HTML ---
-        const successUI = document.getElementById('macro-success-ui');
-        if (successUI) successUI.classList.remove('active');
-        const hint = document.getElementById('macro-hint');
-        if (hint) hint.style.opacity = "1";
-        const exitBtn = document.getElementById('macro-exit-btn');
-        if (exitBtn) exitBtn.classList.add('opacity-0', 'pointer-events-none');
+        this._clearSpecieUI();
 
         // Iniciar el bucle de renderizado
         this.loop();
@@ -257,16 +333,18 @@ class MacroManager {
             ch.style.top = `${this.state.crosshairY}px`;
         }
 
-        // 2. MOVIMIENTO DE LA CRIATURA
-        this.state.creatureX += this.state.creatureVX * dt;
-        this.state.creatureY += this.state.creatureVY * dt;
+        // 2. MOVIMIENTO DE LAS CRIATURAS
+        this.state.creatures.forEach(c => {
+            c.x += c.vx * dt;
+            c.y += c.vy * dt;
 
-        // Efecto de respiración/escala latente
-        this.state.creatureScale = 0.4 + Math.sin(Date.now() * 0.001) * 0.015;
+            // Rebote en paredes
+            if (c.x < 50 || c.x > canvas.width - 50) c.vx *= -1;
+            if (c.y < 50 || c.y > canvas.height - 50) c.vy *= -1;
+        });
 
-        // Rebote en paredes
-        if (this.state.creatureX < 50 || this.state.creatureX > canvas.width - 50) this.state.creatureVX *= -1;
-        if (this.state.creatureY < 50 || this.state.creatureY > canvas.height - 50) this.state.creatureVY *= -1;
+        // Efecto de respiración (multiplicador relativo)
+        this.state.breathingScale = 1 + Math.sin(Date.now() * 0.001) * 0.03;
 
         // 3. MOVIMIENTO DE PARTÍCULAS
         this.state.particles.forEach(p => {
@@ -281,7 +359,7 @@ class MacroManager {
     }
 
     draw() {
-        const { ctx, canvas, creatureX, creatureY, creatureImg, revealed, crosshairX, crosshairY, rocks, particles, creatureScale, lightOn } = this.state;
+        const { ctx, canvas, creatures, creatureImg, revealed, crosshairX, crosshairY, rocks, particles, breathingScale, lightOn } = this.state;
         if (!ctx) return;
 
         // Limpiar fondo
@@ -324,25 +402,17 @@ class MacroManager {
             }
         });
 
-        // Dibujar criatura
-        ctx.save();
-        ctx.translate(creatureX, creatureY);
-        ctx.scale(creatureScale, creatureScale);
-        const w = 300;
-        const h = 200;
-        ctx.globalAlpha = revealed ? 1.0 : 0.7;
+        // Dibujar criaturas
+        creatures.forEach(c => {
+            ctx.save();
+            ctx.translate(c.x, c.y);
+            const w = c.w * breathingScale;
+            const h = c.h * breathingScale;
+            ctx.globalAlpha = revealed ? 1.0 : 0.7;
 
-        // Efecto de brillo detrás de la criatura si está revelada
-        if (revealed) {
-            const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 150);
-            glow.addColorStop(0, 'rgba(0, 255, 255, 0.2)');
-            glow.addColorStop(1, 'rgba(0, 255, 255, 0)');
-            ctx.fillStyle = glow;
-            ctx.fillRect(-200, -200, 400, 400);
-        }
-
-        ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
-        ctx.restore();
+            ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
+            ctx.restore();
+        });
 
         // MÁSCARA DE LUZ (Linterna Atmosférica)
         ctx.save();
@@ -386,10 +456,14 @@ class MacroManager {
             ctx.restore();
         }
 
-        // Hint visual si estamos enfocando a la criatura no revelada
+        // Hint visual si estamos enfocando a alguna criatura no revelada
         if (lightOn && !revealed) {
-            const dist = Math.hypot(crosshairX - creatureX, crosshairY - creatureY);
-            if (dist < 100) {
+            const isNear = creatures.some(c => {
+                const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
+                return dist < 100; // Radio del hint
+            });
+
+            if (isNear) {
                 ctx.save();
                 ctx.setLineDash([5, 5]);
                 ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
@@ -403,14 +477,22 @@ class MacroManager {
     }
 
     onEnter() {
-        const { lightOn, revealed, crosshairX, crosshairY, creatureX, creatureY } = this.state;
+        const { lightOn, revealed, crosshairX, crosshairY, creatures } = this.state;
         if (revealed) {
+            // --- LIMPIEZA AGRESIVA ---
+            // Limpiar ANTES de cerrar para evitar que la info se vea un solo frame
+            this._clearSpecieUI();
             this.close();
             return;
         }
         if (lightOn) {
-            const dist = Math.hypot(crosshairX - creatureX, crosshairY - creatureY);
-            if (dist < 80) {
+            // Verificar si alguna criatura está cerca del cursor
+            const isNear = creatures.some(c => {
+                const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
+                return dist < c.rangoDeteccion;
+            });
+
+            if (isNear) {
                 this.state.revealed = true;
                 this.onSuccess();
             }
@@ -418,32 +500,45 @@ class MacroManager {
     }
 
     onSuccess() {
-        // Actualizar UI de éxito con los datos de la especie actual
+        this.state.revealed = true;
+
+        // Obtener datos del catálogo
         const sId = this.currentSpecieId || 'eurythenes';
         const macroData = window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : null;
 
-        if (macroData) {
-            const mImg = document.getElementById('macro-discovery-img');
-            const mTitle = document.getElementById('macro-discovery-title');
-            const mGenus = document.getElementById('macro-discovery-genus');
-            const mDesc = document.getElementById('macro-discovery-desc');
+        // NO cargamos los datos aquí. Los cargamos DENTRO del timeout 
+        // para que no haya ni un frame de información vieja.
 
-            if (mImg) mImg.src = macroData.imagen;
-            if (mTitle) mTitle.innerText = macroData.nombre;
-            if (mGenus) mGenus.innerText = macroData.cientifico;
-            if (mDesc) mDesc.innerText = macroData.descripcion;
-        }
-
-        setTimeout(() => {
+        this.state.successTimeout = setTimeout(() => {
             const successUI = document.getElementById('macro-success-ui');
-            if (successUI) successUI.classList.add('active');
-            const hint = document.getElementById('macro-hint');
-            if (hint) hint.style.opacity = "0";
-            const exitBtn = document.getElementById('macro-exit-btn');
-            if (exitBtn) exitBtn.classList.remove('opacity-0', 'pointer-events-none');
-            const successAudio = new Audio('audio/sonar.mp3');
-            successAudio.volume = 0.5;
-            successAudio.play().catch(e => { });
+            if (successUI && this.isOpen) {
+                // Poblamos los datos síncronamente JUSTO antes de mostrar la UI
+                if (macroData) {
+                    const mImg = document.getElementById('macro-discovery-img');
+                    const mTitle = document.getElementById('macro-discovery-title');
+                    const mGenus = document.getElementById('macro-discovery-genus');
+                    const mDesc = document.getElementById('macro-discovery-desc');
+
+                    if (mImg) mImg.src = macroData.imagen;
+                    if (mTitle) mTitle.innerText = macroData.nombre;
+                    if (mGenus) mGenus.innerText = macroData.cientifico;
+                    if (mDesc) mDesc.innerText = macroData.descripcion;
+                }
+
+                // Mostrar UI
+                successUI.style.setProperty('display', 'flex', 'important');
+                successUI.style.setProperty('opacity', '1', 'important');
+                successUI.classList.add('active');
+
+                const exitBtn = document.getElementById('macro-exit-btn');
+                if (exitBtn) {
+                    exitBtn.classList.remove('opacity-0', 'pointer-events-none');
+                    exitBtn.style.setProperty('opacity', '1', 'important');
+                    exitBtn.style.setProperty('pointer-events', 'auto', 'important');
+                }
+
+                // NO sonido aquí (el usuario pidió que el sonido macro.mp3 solo suene al entrar)
+            }
         }, 500);
     }
 

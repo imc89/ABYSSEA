@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deep Blue - Marine Simulator Pro</title>
+    <title>ABYSSEA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
@@ -208,14 +208,16 @@
         /* Discovery Modal Styling */
         #discovery-modal {
             position: fixed;
-            top: 50%;
+            top: 45%;
+            /* Subido de 50% para no tapar el menú inferior */
             left: 50%;
             transform: translate(-50%, -50%) scale(0.95);
             width: 85%;
-            height: 80%;
+            height: 75%;
+            /* Ajustado ligeramente */
             background: #000;
-            border: 2px solid rgba(0, 255, 255, 0.3);
-            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
             z-index: 210;
             display: none;
             overflow: hidden;
@@ -254,20 +256,24 @@
 
         .discovery-frame {
             position: absolute;
-            inset: 20px;
-            border: 1px solid rgba(0, 255, 255, 0.1);
+            inset: 30px;
             pointer-events: none;
+            z-index: 5;
         }
 
+        /* Vértices de fotografía (Esquinas en ángulo recto) */
         .discovery-frame::before,
-        .discovery-frame::after {
+        .discovery-frame::after,
+        .discovery-frame .corner-bl,
+        .discovery-frame .corner-br {
             content: '';
             position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 2px solid #06b6d4;
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(0, 255, 255, 0.6);
         }
 
+        /* Top-Left */
         .discovery-frame::before {
             top: 0;
             left: 0;
@@ -275,7 +281,24 @@
             border-bottom: 0;
         }
 
+        /* Top-Right */
         .discovery-frame::after {
+            top: 0;
+            right: 0;
+            border-left: 0;
+            border-bottom: 0;
+        }
+
+        /* Bottom-Left */
+        .discovery-frame .corner-bl {
+            bottom: 0;
+            left: 0;
+            border-right: 0;
+            border-top: 0;
+        }
+
+        /* Bottom-Right */
+        .discovery-frame .corner-br {
             bottom: 0;
             right: 0;
             border-left: 0;
@@ -292,9 +315,9 @@
 
         #macro-crosshair {
             position: absolute;
-            width: 100px;
-            height: 100px;
-            border: 1px solid rgba(0, 255, 255, 0.5);
+            width: 120px;
+            height: 120px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
             border-radius: 50%;
             pointer-events: none;
             z-index: 10;
@@ -302,24 +325,62 @@
             align-items: center;
             justify-content: center;
             transform: translate(-50%, -50%);
-            /* Center on mouse */
+            animation: crosshair-pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes crosshair-pulse {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.5;
+            }
         }
 
         #macro-crosshair::before,
         #macro-crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(0, 255, 255, 0.8);
+            background: rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
         }
 
         #macro-crosshair::before {
             width: 1px;
-            height: 100%;
+            height: 40px;
         }
 
         #macro-crosshair::after {
-            width: 100%;
+            width: 40px;
             height: 1px;
+        }
+
+        .crosshair-scanner {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-top-color: rgba(0, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: rotate-scanner 3s linear infinite;
+        }
+
+        @keyframes rotate-scanner {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .macro-dot {
@@ -355,19 +416,19 @@
 
         #macro-success-ui {
             pointer-events: none;
-            opacity: 0;
-            transition: all 1s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(20px);
-            display: flex;
-            flex-direction: column;
+            opacity: 0 !important;
+            display: none !important;
+            transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translateY(15px);
             align-items: center;
             justify-content: center;
             flex: 1;
         }
 
         #macro-success-ui.active {
+            display: flex !important;
+            opacity: 1 !important;
             pointer-events: auto;
-            opacity: 1;
             transform: translateY(0);
         }
 
@@ -559,13 +620,17 @@
 
                 <!-- Crosshair -->
                 <div id="macro-crosshair">
+                    <div class="crosshair-scanner"></div>
                     <div class="macro-dot"></div>
                 </div>
 
                 <!-- Flash Effect Layer -->
                 <div id="macro-flash" class="macro-flash"></div>
 
-                <div class="discovery-frame"></div>
+                <div class="discovery-frame">
+                    <div class="corner-bl"></div>
+                    <div class="corner-br"></div>
+                </div>
 
                 <div class="discovery-content pointer-events-none">
                     <div
@@ -574,41 +639,34 @@
                     </div>
 
                     <!-- Success UI (Initially Hidden) -->
-                    <div id="macro-success-ui" class="text-center w-full max-w-2xl px-12">
-                        <div class="relative group mb-8 inline-block">
-                            <div class="absolute -inset-8 bg-cyan-500/10 blur-3xl rounded-full opacity-100"></div>
-                            <img id="macro-discovery-img" src="./img/little/Eurythenes.png" alt="Macro Discovery"
-                                class="object-contain relative z-10 drop-shadow-[0_0_50px_rgba(6,182,212,0.2)]">
+                    <div id="macro-success-ui"
+                        class="hidden w-full max-w-4xl px-8 flex flex-col md:flex-row items-center gap-10">
+                        <div class="relative group flex-shrink-0">
+                            <div class="absolute -inset-8 bg-cyan-500/5 blur-3xl rounded-full opacity-100"></div>
+                            <img id="macro-discovery-img"
+                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                alt="Macro Discovery"
+                                class="max-w-[280px] md:max-w-xs object-contain relative z-10 drop-shadow-[0_0_50px_rgba(6,182,212,0.15)]">
                         </div>
 
-                        <div class="space-y-2 mb-6">
-                            <h3 id="macro-discovery-title"
-                                class="text-white text-4xl font-bold uppercase tracking-tighter">
-                                Eurythenes gryllus</h3>
-                            <p id="macro-discovery-genus" class="text-cyan-400 font-mono italic text-base">
-                                Anfípodo Gigante Abisal</p>
-                        </div>
+                        <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                            <div class="space-y-1 mb-4">
+                                <h3 id="macro-discovery-title"
+                                    class="text-white text-3xl md:text-4xl font-bold uppercase tracking-tighter"></h3>
+                                <p id="macro-discovery-genus"
+                                    class="text-cyan-400 font-mono italic text-sm md:text-base"></p>
+                            </div>
 
-                        <div class="hud-glass p-6 rounded-2xl border border-white/5 bg-white/[0.02] mb-8">
-                            <p id="macro-discovery-desc"
-                                class="text-white/70 text-sm leading-relaxed text-center italic">
-                                "Este carroñero abisal es capaz de detectar restos orgánicos a kilómetros de distancia.
-                                Su
-                                presencia indica una zona de afloramiento rocoso con alta actividad biológica en
-                                microescala."
-                            </p>
+                            <div class="hud-glass p-5 md:p-6 rounded-2xl border border-white/5 bg-white/[0.02] w-full">
+                                <p id="macro-discovery-desc"
+                                    class="text-white/70 text-xs md:text-sm leading-relaxed italic"></p>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- Interaction Hint -->
-                    <div id="macro-hint"
-                        class="mt-auto mb-12 text-cyan-400/60 font-mono text-[10px] tracking-widest animate-pulse">
-                        BUSCA LA CRIATURA Y PULSA [ESPACIO] PARA ILUMINAR
                     </div>
 
                     <button id="macro-exit-btn" onclick="uiManager.toggleDiscoveryModal()"
-                        class="px-12 py-3 bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 font-bold uppercase tracking-widest rounded-full hover:bg-cyan-500/30 transition-all opacity-0 pointer-events-none">
-                        VOLVER AL SUBMARINO [ENTER]
+                        class="mb-8 px-6 py-2 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400/80 text-[11px] font-bold uppercase tracking-widest rounded-full hover:bg-cyan-500/20 hover:text-cyan-400 transition-all opacity-0 pointer-events-none">
+                        SALIR DEL MACRO [ENTER]
                     </button>
                 </div>
 
