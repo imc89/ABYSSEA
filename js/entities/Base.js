@@ -203,7 +203,7 @@ class Base {
         // Partículas de polvo ancladas al mundo bajo cada foco de la base.
         // Son completamente independientes del submarino y no tienen parallax.
 
-        const PARTICLES_PER_SPOTLIGHT = 120;
+        const PARTICLES_PER_SPOTLIGHT = window.WORLD.spotlightParticles || 80;   // Dinámico según calidad
         const SPOTLIGHT_RANGE = 600;   // Alcance vertical del haz
         const CONE_WIDTH_AT_BOTTOM = 130; // Anchura del cono en el extremo inferior
         const PARTICLE_SPEED = 20;     // Ciclo en segundos para subir todo el haz
@@ -250,7 +250,10 @@ class Base {
 
                 if (alpha < 0.01) continue;
 
-                const radius = 0.4 + Math.abs(Math.sin(seed * 1.618)) * 1.2;
+                // Aumentar el tamaño base para compensar visualmente si hay pocas partículas (LOW quality)
+                const baseRad = PARTICLES_PER_SPOTLIGHT <= 40 ? 0.8 : 0.4;
+                const mulRad = PARTICLES_PER_SPOTLIGHT <= 40 ? 2.0 : 1.2;
+                const radius = baseRad + Math.abs(Math.sin(seed * 1.618)) * mulRad;
 
                 const dustGrad = ctx.createRadialGradient(px, py, 0, px, py, radius);
                 dustGrad.addColorStop(0, `rgba(240, 248, 255, ${alpha})`);

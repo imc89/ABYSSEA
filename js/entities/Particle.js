@@ -107,26 +107,21 @@ class Particle {
             ctx.beginPath();
             ctx.arc(this.x, this.y, drawRadius, 0, Math.PI * 2);
 
-            // Efecto de iluminación refinado (sin blur y sin ser un círculo sólido gigante)
+            // Efecto de iluminación refinado (OPTIMIZACIÓN: sin gradientes)
             if (isIlluminated && illuminationFactor > 0.1) {
-                // Crear un gradiente radial sutil para dar volumen a la partícula en vez de un color plano
-                const gradient = ctx.createRadialGradient(
-                    this.x, this.y, 0,
-                    this.x, this.y, drawRadius
-                );
+                // OPTIMIZACIÓN: Dos círculos superpuestos en vez de degradado radial pesado
+                ctx.fillStyle = `rgba(180, 230, 255, ${alpha * 0.3})`;
+                ctx.fill();
 
-                // Centro muy brillante blanco
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, alpha + 0.3)})`);
-                // Borde suave azulado translúcido
-                gradient.addColorStop(1, `rgba(180, 230, 255, ${alpha * 0.3})`);
-
-                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, drawRadius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, alpha + 0.3)})`;
+                ctx.fill();
             } else {
                 // Color azul translúcido oscuro por defecto en penumbra
                 ctx.fillStyle = `rgba(160, 200, 240, ${alpha * 0.8})`;
+                ctx.fill();
             }
-
-            ctx.fill();
             ctx.restore();
         }
     }

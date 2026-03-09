@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ABYSSEA</title>
+    <link rel="icon" href="img/icon/web/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="img/icon/web/apple-touch-icon.png">
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
@@ -715,12 +718,6 @@
                 Ajustes de Sistema</h2>
 
             <div class="flex flex-col gap-4">
-                <!-- Volver al Juego -->
-                <button onclick="toggleMenu()"
-                    class="flex items-center justify-center p-4 rounded-xl bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 hover:border-cyan-500/60 transition-all group mb-2">
-                    <span class="text-cyan-400 text-sm font-bold uppercase tracking-[0.2em] group-hover:text-cyan-300">
-                        VOLVER AL JUEGO</span>
-                </button>
 
                 <!-- Pantalla Completa -->
                 <button onclick="toggleFullscreen()"
@@ -734,6 +731,20 @@
                         </div>
                     </div>
                 </button>
+
+                <!-- Calidad Gráfica -->
+                <div class="flex flex-col gap-3 p-4 rounded-xl bg-white/5 border border-white/10 group">
+                    <span class="text-white/80 text-sm font-bold uppercase tracking-widest text-center">Calidad
+                        Gráfica</span>
+                    <div class="flex items-center justify-between gap-2 mt-1">
+                        <button id="q-btn-low" onclick="setQuality('LOW')"
+                            class="flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400">BAJO</button>
+                        <button id="q-btn-med" onclick="setQuality('MED')"
+                            class="flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white">MEDIO</button>
+                        <button id="q-btn-high" onclick="setQuality('HIGH')"
+                            class="flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white">ALTO</button>
+                    </div>
+                </div>
 
                 <!-- Música Ambiental -->
                 <button onclick="toggleMusicMute()"

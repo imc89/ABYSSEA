@@ -2,12 +2,47 @@
  * GAME CONSTANTS - Configuración del mundo y física del juego
  */
 
+let GRAPHICS_QUALITY = 'LOW';
+
+const QUALITY_PROFILES = {
+    LOW: {
+        particleCount: 80,             // Océano más vacío, ultra rápido
+        spotlightParticles: 20,
+        aiThrottleRate: 0.2,           // IA al 20%
+        useGradients: false,
+        bubbleSpawnRate: 0.15,         // Muy pocas burbujas
+        drawFishGlows: false           // Sin aura de neón en los peces (ahorro masivo)
+    },
+    MED: {
+        particleCount: 200,            // Océano normal
+        spotlightParticles: 60,
+        aiThrottleRate: 0.5,           // IA al 50%
+        useGradients: false,
+        bubbleSpawnRate: 0.35,         // Burbujas normales
+        drawFishGlows: true            // Con aura de neón cacheados
+    },
+    HIGH: {
+        particleCount: 450,            // Océano denso
+        spotlightParticles: 120,
+        aiThrottleRate: 1.0,           // IA en tiempo real 
+        useGradients: true,            // Degradados HD en burbujas y nieve
+        bubbleSpawnRate: 0.70,         // Estela densa de burbujas
+        drawFishGlows: true            // Aura de neón
+    }
+};
+
 const WORLD = {
     width: 2000,         // Reducido de 8000 para juego más vertical
     height: 120000,      // Aumentado para 12,000 metros (escala 10:1)
     depthScale: 10,      // 10 unidades de juego = 1 metro
     friction: 0.96,
-    particleCount: 400,
+    // Propiedades dinámicas administradas por QUALITY_PROFILES
+    particleCount: QUALITY_PROFILES[GRAPHICS_QUALITY].particleCount,
+    spotlightParticles: QUALITY_PROFILES[GRAPHICS_QUALITY].spotlightParticles,
+    aiThrottleRate: QUALITY_PROFILES[GRAPHICS_QUALITY].aiThrottleRate,
+    useGradients: QUALITY_PROFILES[GRAPHICS_QUALITY].useGradients,
+    bubbleSpawnRate: QUALITY_PROFILES[GRAPHICS_QUALITY].bubbleSpawnRate,
+    drawFishGlows: QUALITY_PROFILES[GRAPHICS_QUALITY].drawFishGlows,
     lightSpotRange: 275,     // Longitud del foco direccional (cono)
     lightGlowRange: 250,     // Radio del halo radial alrededor del submarino
     lightGlowIntensity: 0.24, // Opacidad máxima del halo radial (0.0 a 1.0)
@@ -68,6 +103,8 @@ const PHYSICS = {
 
 // Exportar para uso en otros módulos
 if (typeof window !== 'undefined') {
+    window.GRAPHICS_QUALITY = GRAPHICS_QUALITY;
+    window.QUALITY_PROFILES = QUALITY_PROFILES;
     window.WORLD = WORLD;
     window.BASE_CONFIG = BASE_CONFIG;
     window.PLAYER_CONFIG = PLAYER_CONFIG;
