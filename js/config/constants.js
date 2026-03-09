@@ -3,6 +3,16 @@
  */
 
 let GRAPHICS_QUALITY = 'LOW';
+if (typeof window !== 'undefined') {
+    try {
+        const savedQuality = window.localStorage.getItem('abyss_graphics_quality');
+        if (savedQuality && ['LOW', 'MED', 'HIGH'].includes(savedQuality)) {
+            GRAPHICS_QUALITY = savedQuality;
+        }
+    } catch (e) {
+        console.warn("localStorage no dispoible para guardar preferencias", e);
+    }
+}
 
 const QUALITY_PROFILES = {
     LOW: {

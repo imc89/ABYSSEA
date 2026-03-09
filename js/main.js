@@ -635,6 +635,13 @@ function setQuality(level) {
 
     window.GRAPHICS_QUALITY = level;
 
+    // Guardar selección en localhost de forma óptima (localStorage)
+    try {
+        window.localStorage.setItem('abyss_graphics_quality', level);
+    } catch (e) {
+        console.warn("No se pudo guardar la calidad en localStorage", e);
+    }
+
     // Aplicar perfil al mundo
     const profile = window.QUALITY_PROFILES[level];
     window.WORLD.particleCount = profile.particleCount;
