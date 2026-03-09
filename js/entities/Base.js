@@ -113,7 +113,7 @@ class Base {
         // DECAL PRINCIPAL: DEEP BLUE PRIME
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.font = 'bold 90px "JetBrains Mono", monospace';
-        ctx.fillText('STATION PRIME: ABYSSAL DEPLOYMENT', sx + this.w / 2 - 1400, sy + 110);
+        ctx.fillText('ABYSSEA', sx + this.w / 2 - 960, sy + 110);
 
         // Línea de poder del reactor principal
         ctx.fillStyle = this.colors.accent;
