@@ -87,70 +87,80 @@ class Fish {
 
         // COMPORTAMIENTO DE CARDUMEN (solo si esCardumen = true)
         if (this.config.esCardumen) {
-            let sepX = 0, sepY = 0;
-            let aliX = 0, aliY = 0;
-            let cohX = 0, cohY = 0;
-            let count = 0;
+            // OPTIMIZACIÓN CPU: Reducir coste algorítmico computando la IA el ~25% de las veces
+            // Guarda el vector de escape/dirección anterior y lo reaplica en ciclos 'inactivos' de pensar
+            if (this._steerX === undefined) this._steerX = 0;
+            if (this._steerY === undefined) this._steerY = 0;
 
-            for (let other of others) {
-                if (other === this ||
-                    other.config.id !== this.config.id ||
-                    other.groupIndex !== this.groupIndex) continue;
+            if (Math.random() < window.WORLD.aiThrottleRate) {
+                let sepX = 0, sepY = 0;
+                let aliX = 0, aliY = 0;
+                let cohX = 0, cohY = 0;
+                let count = 0;
 
-                const dx = other.x - this.x;
-                const dy = other.y - this.y;
-                const dSq = dx * dx + dy * dy;
+                for (let other of others) {
+                    if (other === this ||
+                        other.config.id !== this.config.id ||
+                        other.groupIndex !== this.groupIndex) continue;
 
-                if (dSq < PERCEPTION * PERCEPTION && dSq > 0) {
-                    const d = Math.sqrt(dSq);
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+                    const dSq = dx * dx + dy * dy;
 
-                    // Separación: repulsión suave con caída cuadrática inversa
-                    if (d < SEP_RADIUS) {
-                        const strength = (SEP_RADIUS - d) / SEP_RADIUS; // 1 muy cerca, 0 en borde
-                        sepX -= (dx / d) * strength * strength;
-                        sepY -= (dy / d) * strength * strength;
+                    if (dSq < PERCEPTION * PERCEPTION && dSq > 0) {
+                        const d = Math.sqrt(dSq);
+
+                        // Separación: repulsión suave con caída cuadrática inversa
+                        if (d < SEP_RADIUS) {
+                            const strength = (SEP_RADIUS - d) / SEP_RADIUS; // 1 muy cerca, 0 en borde
+                            sepX -= (dx / d) * strength * strength;
+                            sepY -= (dy / d) * strength * strength;
+                        }
+
+                        // Alineación y cohesión solo en radio lejano
+                        aliX += other.vx;
+                        aliY += other.vy;
+                        cohX += other.x;
+                        cohY += other.y;
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    // --- Alineación: Vel. deseada = vel. media del grupo ---
+                    const aliDesX = (aliX / count);
+                    const aliDesY = (aliY / count);
+
+                    // --- Cohesión: Vel. deseada = dirección al centroide ---
+                    const cxTarget = cohX / count;
+                    const cyTarget = cohY / count;
+                    const cohDist = Math.hypot(cxTarget - this.x, cyTarget - this.y);
+                    const cohDesX = cohDist > 0 ? (cxTarget - this.x) / cohDist * this.maxSpeed : 0;
+                    const cohDesY = cohDist > 0 ? (cyTarget - this.y) / cohDist * this.maxSpeed : 0;
+
+                    // --- Separación: Ya normalizada por fuerza ---
+                    const sepMag = Math.hypot(sepX, sepY);
+                    const sepNX = sepMag > 0 ? sepX / sepMag : 0;
+                    const sepNY = sepMag > 0 ? sepY / sepMag : 0;
+
+                    // Acumulación de fuerzas ponderadas → steering suave (limitado a MAX_FORCE)
+                    let steerX = sepNX * 0.7 + (aliDesX - this.vx) * 0.3 + (cohDesX - this.vx) * 0.15;
+                    let steerY = sepNY * 0.7 + (aliDesY - this.vy) * 0.3 + (cohDesY - this.vy) * 0.15;
+
+                    // Limitar la fuerza de steering para suavidad
+                    const steerMag = Math.hypot(steerX, steerY);
+                    if (steerMag > MAX_FORCE) {
+                        steerX = (steerX / steerMag) * MAX_FORCE;
+                        steerY = (steerY / steerMag) * MAX_FORCE;
                     }
 
-                    // Alineación y cohesión solo en radio lejano
-                    aliX += other.vx;
-                    aliY += other.vy;
-                    cohX += other.x;
-                    cohY += other.y;
-                    count++;
+                    this._steerX = steerX;
+                    this._steerY = steerY;
                 }
             }
 
-            if (count > 0) {
-                // --- Alineación: Vel. deseada = vel. media del grupo ---
-                const aliDesX = (aliX / count);
-                const aliDesY = (aliY / count);
-
-                // --- Cohesión: Vel. deseada = dirección al centroide ---
-                const cxTarget = cohX / count;
-                const cyTarget = cohY / count;
-                const cohDist = Math.hypot(cxTarget - this.x, cyTarget - this.y);
-                const cohDesX = cohDist > 0 ? (cxTarget - this.x) / cohDist * this.maxSpeed : 0;
-                const cohDesY = cohDist > 0 ? (cyTarget - this.y) / cohDist * this.maxSpeed : 0;
-
-                // --- Separación: Ya normalizada por fuerza ---
-                const sepMag = Math.hypot(sepX, sepY);
-                const sepNX = sepMag > 0 ? sepX / sepMag : 0;
-                const sepNY = sepMag > 0 ? sepY / sepMag : 0;
-
-                // Acumulación de fuerzas ponderadas → steering suave (limitado a MAX_FORCE)
-                let steerX = sepNX * 0.7 + (aliDesX - this.vx) * 0.3 + (cohDesX - this.vx) * 0.15;
-                let steerY = sepNY * 0.7 + (aliDesY - this.vy) * 0.3 + (cohDesY - this.vy) * 0.15;
-
-                // Limitar la fuerza de steering para suavidad
-                const steerMag = Math.hypot(steerX, steerY);
-                if (steerMag > MAX_FORCE) {
-                    steerX = (steerX / steerMag) * MAX_FORCE;
-                    steerY = (steerY / steerMag) * MAX_FORCE;
-                }
-
-                this.vx += steerX;
-                this.vy += steerY;
-            }
+            this.vx += this._steerX;
+            this.vy += this._steerY;
         }
 
         // FUERZA DE WANDER orgánica — oscilación suave independiente para cada pez
@@ -328,15 +338,46 @@ class Fish {
                                 ctx.rotate(angleRad);
                                 if (isFlipped) ctx.scale(1, -1);
 
-                                const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, power);
-                                gradient.addColorStop(0, color);
-                                gradient.addColorStop(1, 'transparent');
-                                ctx.fillStyle = gradient;
-                                ctx.globalAlpha = pulse;
+                                // OPTIMIZACIÓN EXTREMA para nivel BAJO: Dos círculos superpuestos o usar el HD solo cuando es iluminado
+                                let useHDGlow = window.WORLD.drawFishGlows;
 
-                                ctx.beginPath();
-                                ctx.arc(pos.x, pos.y, power, 0, Math.PI * 2);
-                                ctx.fill();
+                                // Si estamos en calidad BAJA pero el pez está muy iluminado por el jugador,
+                                // le devolvemos transitoriamente el gráfico de alta calidad por estética
+                                if (!useHDGlow && typeof this.isIlluminated !== 'undefined' && this.isIlluminated && this.illuminationFactor > 0.6) {
+                                    useHDGlow = true;
+                                }
+
+                                if (!useHDGlow) {
+                                    // 1. Halo extendido muy tenue
+                                    ctx.globalAlpha = pulse * 0.15;
+                                    ctx.fillStyle = color;
+                                    ctx.beginPath();
+                                    ctx.arc(pos.x, pos.y, power * 0.8, 0, Math.PI * 2);
+                                    ctx.fill();
+
+                                    // 2. Núcleo más brillante y pequeño
+                                    ctx.globalAlpha = pulse * 0.45;
+                                    ctx.beginPath();
+                                    ctx.arc(pos.x, pos.y, power * 0.35, 0, Math.PI * 2);
+                                    ctx.fill();
+                                } else {
+                                    // NIVEL MEDIO/ALTO o Pez iluminado directamente: Usa el canvas hd en cache con degradados
+                                    if (!this._glowCache) this._glowCache = {};
+                                    const cacheKey = `${power}_${color}`;
+
+                                    if (!this._glowCache[cacheKey]) {
+                                        this._glowCache[cacheKey] = createPreRenderedRadialGradient(power, [
+                                            { stop: 0, color: color },
+                                            { stop: 1, color: 'transparent' }
+                                        ]);
+                                    }
+
+                                    if (this._glowCache[cacheKey]) {
+                                        ctx.globalAlpha = pulse;
+                                        ctx.drawImage(this._glowCache[cacheKey], pos.x - power, pos.y - power);
+                                    }
+                                }
+
                                 ctx.restore();
                             } else if (capa === 'front' && this.lightElements[i]) {
                                 // Dibujar en DOM (Capa delantera)

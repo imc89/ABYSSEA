@@ -115,6 +115,34 @@ function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
 }
 
+/**
+ * Crea un canvas en memoria con un gradiente radial pre-renderizado, guiño a la optimización
+ * para hardware de gama baja limitando "createRadialGradient" en tiempo real.
+ * Se debe usar con ctx.globalAlpha y ctx.drawImage.
+ * @param {number} radius - Radio del gradiente
+ * @param {Array} colorStops - Array de objetos {stop: number, color: string}
+ * @returns {HTMLCanvasElement} Canvas offscreen pre-dibujado
+ */
+function createPreRenderedRadialGradient(radius, colorStops) {
+    if (typeof document === 'undefined') return null;
+    const c = document.createElement('canvas');
+    c.width = radius * 2;
+    c.height = radius * 2;
+    const ctx = c.getContext('2d');
+
+    // Para simplificar la cache, creamos el gradiente base
+    const grad = ctx.createRadialGradient(radius, radius, 0, radius, radius, radius);
+    for (let cStop of colorStops) {
+        grad.addColorStop(cStop.stop, cStop.color);
+    }
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(radius, radius, radius, 0, Math.PI * 2);
+    ctx.fill();
+    return c;
+}
+
 // Exportar para uso en otros módulos
 if (typeof window !== 'undefined') {
     window.lerpColor = lerpColor;
@@ -122,4 +150,5 @@ if (typeof window !== 'undefined') {
     window.ImageCache = ImageCache;
     window.distance = distance;
     window.clamp = clamp;
+    window.createPreRenderedRadialGradient = createPreRenderedRadialGradient;
 }

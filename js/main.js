@@ -273,7 +273,7 @@ function update() {
 
     // Generar burbujas y audio si el jugador se mueve
     if (moving) {
-        if (Math.random() < 0.4) {
+        if (Math.random() < window.WORLD.bubbleSpawnRate) {
             bubbles.push(new Bubble(player.x, player.y, -player.vx, -player.vy));
         }
 
@@ -606,6 +606,55 @@ function updateSettingsUI() {
     if (mDot) mDot.classList.toggle('left-1', !active);
     if (mDot) mDot.classList.toggle('bg-white', active);
     if (mDot) mDot.classList.toggle('bg-white/40', !active);
+
+    // Actualizar visual de Calidad Gráfica
+    const btnLow = document.getElementById('q-btn-low');
+    const btnMed = document.getElementById('q-btn-med');
+    const btnHigh = document.getElementById('q-btn-high');
+
+    if (btnLow && btnMed && btnHigh) {
+        // Reset all
+        const inactiveClass = "flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white";
+        btnLow.className = inactiveClass;
+        btnMed.className = inactiveClass;
+        btnHigh.className = inactiveClass;
+
+        // Set active
+        const activeClass = "flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400";
+        if (window.GRAPHICS_QUALITY === 'LOW') btnLow.className = activeClass;
+        if (window.GRAPHICS_QUALITY === 'MED') btnMed.className = activeClass;
+        if (window.GRAPHICS_QUALITY === 'HIGH') btnHigh.className = activeClass;
+    }
+}
+
+/**
+ * Cambia la calidad gráfica del juego en tiempo real
+ */
+function setQuality(level) {
+    if (!window.QUALITY_PROFILES[level]) return;
+
+    window.GRAPHICS_QUALITY = level;
+
+    // Aplicar perfil al mundo
+    const profile = window.QUALITY_PROFILES[level];
+    window.WORLD.particleCount = profile.particleCount;
+    window.WORLD.spotlightParticles = profile.spotlightParticles;
+    window.WORLD.aiThrottleRate = profile.aiThrottleRate;
+    window.WORLD.useGradients = profile.useGradients;
+    window.WORLD.bubbleSpawnRate = profile.bubbleSpawnRate;
+    window.WORLD.drawFishGlows = profile.drawFishGlows;
+
+    // Ajustar partículas activas (marine snow)
+    if (marineSnow.length > window.WORLD.particleCount) {
+        marineSnow.length = window.WORLD.particleCount; // Truncar arrary
+    } else {
+        const toAdd = window.WORLD.particleCount - marineSnow.length;
+        for (let i = 0; i < toAdd; i++) {
+            marineSnow.push(new Particle());
+        }
+    }
+
+    updateSettingsUI();
 }
 
 // Escuchar cambios de fullscreen nativos para actualizar la UI
@@ -617,4 +666,5 @@ if (typeof window !== 'undefined') {
     window.toggleFullscreen = toggleFullscreen;
     window.toggleMusicMute = toggleMusicMute;
     window.toggleMenu = toggleMenu;
+    window.setQuality = setQuality;
 }
