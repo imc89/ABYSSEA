@@ -225,11 +225,6 @@ class UIManager {
             if (mBehav) mBehav.innerText = target.config.esCardumen ? "Comportamiento Grupal" : "Comportamiento Solitario";
 
             if (modal) modal.classList.add('active');
-
-            // Sonido de escaneo
-            const scanAudio = new Audio('audio/sonar.mp3');
-            scanAudio.volume = 0.3;
-            scanAudio.play().catch(e => { });
         }
     }
 
