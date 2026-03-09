@@ -131,10 +131,7 @@ class MacroManager {
         // Inicializar minijuego (asíncrono)
         setTimeout(() => this.init(specieId), 100);
 
-        // Sonido de zoom (sonar muy bajo)
-        const zoomAudio = new Audio('audio/sonar.mp3');
-        zoomAudio.volume = 0.1;
-        zoomAudio.play().catch(e => { });
+
     }
 
     _clearSpecieUI() {

@@ -172,7 +172,7 @@ function setupEventHandlers() {
         }
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
-            if (e.code === 'Escape') e.preventDefault(); // Evitar que el navegador salga de Fullscreen con Esc
+            e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
             if (uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
             } else {
@@ -550,11 +550,25 @@ function toggleMenu() {
 
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-        });
+        document.documentElement.requestFullscreen()
+            .then(() => {
+                // Intentar bloquear la tecla Escape para que no salga de pantalla completa
+                if (navigator.keyboard && navigator.keyboard.lock) {
+                    navigator.keyboard.lock(['Escape']).catch(err => {
+                        console.warn("Keyboard Lock no disponible o denegado:", err);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        // Ya no cerramos el menú automáticamente por petición del usuario
     } else {
         if (document.exitFullscreen) {
+            // Liberar el teclado al salir de pantalla completa
+            if (navigator.keyboard && navigator.keyboard.unlock) {
+                navigator.keyboard.unlock();
+            }
             document.exitFullscreen();
         }
     }
