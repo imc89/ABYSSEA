@@ -1,3 +1,7 @@
+<!--
+  [ES] Documento HTML principal. Carga UI flotante, estilos CSS personalizados y los scripts del motor del juego.
+  [EN] Main HTML document. Loads floating UI, custom CSS styles and the game engine scripts.
+-->
 <!DOCTYPE html>
 <html lang="es">
 
@@ -451,9 +455,17 @@
 
 <body>
 
+    <!-- 
+      [ES] Capa del DOM separada para renderizar peces (Optimización para GIFs animados sin perder rendimiento canvas). 
+      [EN] Separated DOM layer to render fishes (Optimization for animated GIFs without losing canvas performance). 
+    -->
     <div id="fish-layer"
         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></div>
     <div class="scanline"></div>
+    <!-- 
+      [ES] Contenedor global de la Interfaz de Usuario superpuesta. 
+      [EN] Global container for the overlaid User Interface. 
+    -->
     <div id="ui-layer">
         <div class="p-6 flex flex-col h-full justify-between">
             <div class="flex justify-between items-start">
@@ -546,7 +558,10 @@
                 </div>
             </div>
 
-            <!-- Modal de Escaneo Detallado -->
+            <!-- 
+              [ES] Modal de Escaneo Detallado del Espécimen capturado por el sonar. 
+              [EN] Detailed Scan Modal of the Specimen captured by the sonar. 
+            -->
             <div id="scan-modal">
                 <div class="flex flex-col md:flex-row gap-8 items-center">
                     <!-- Vista previa del espécimen -->
@@ -614,7 +629,10 @@
                 </div>
             </div>
 
-            <!-- Discovery Discovery Modal -->
+            <!-- 
+              [ES] Modal de Descubrimiento (Micro-observación Macro) para revelar detalles ambientales. 
+              [EN] Discovery Modal (Macro micro-observation) to reveal environmental details. 
+            -->
             <div id="discovery-modal" onmousemove="uiManager.macroManager.handleMouseMove(event)">
                 <div class="discovery-bg"></div>
 
@@ -708,7 +726,10 @@
         </div>
     </div>
 
-    <!-- Menú de Esc / Ajustes -->
+    <!-- 
+      [ES] Menú de Ajustes y Pausa interactivo del menú ESC. 
+      [EN] Settings and Pause interactive menu spawned by ESC. 
+    -->
     <div id="esc-menu"
         class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-auto">
         <div
@@ -767,8 +788,16 @@
         </div>
     </div>
 
+    <!-- 
+      [ES] Lienzo principal del juego operado por Canvas 2D API. 
+      [EN] Main game canvas operated by Canvas 2D API. 
+    -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- 
+      [ES] Carga de scripts del juego dividida y organizada por responsabilidades. 
+      [EN] Loading of game scripts split and matched by responsibilities. 
+    -->
     <!-- Módulos de configuración -->
     <script src="js/config/constants.js"></script>
     <script src="js/config/fishes.js"></script>

@@ -1,5 +1,7 @@
 /**
- * BUBBLE CLASS - Sistema de burbujas con física realista
+ * BUBBLE CLASS
+ * [ES] Sistema de partículas fluido (burbujas). Incluye simulaciones realistas de flotabilidad, desgaste, rozamiento y absorción de luz.
+ * [EN] Fluid particle system (bubbles). Includes realistic simulations of buoyancy, decay, drag, and light absorption.
  */
 
 class Bubble {
@@ -18,6 +20,10 @@ class Bubble {
             (PHYSICS.buoyancyMax - PHYSICS.buoyancyMin);
     }
 
+    /**
+     * [ES] Aplica la física de la burbuja en cada frame: sube por el agua, reduce velocidad horizontal, se agranda y finalmente desaparece (muere).
+     * [EN] Applies bubble physics every frame: it rises through water, lowers horizontal speed, grows, and finally vanishes (dies).
+     */
     update() {
         // Aplicar resistencia del agua
         this.vx *= PHYSICS.bubbleVelocityDamping.x;
@@ -39,6 +45,10 @@ class Bubble {
         this.life -= this.decay;
     }
 
+    /**
+     * [ES] Renderizado óptico de la burbuja emulando volumen de cristal 3D mediante degradados múltiples frente a fuentes de luz dinámica.
+     * [EN] Optical rendering of the bubble emulating 3D glass volume using multiple gradients against dynamic light sources.
+     */
     draw(ctx, camera, ambientAlpha, player, canvas) {
         const sx = this.x - camera.x;
         const sy = this.y - camera.y;

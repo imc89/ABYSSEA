@@ -1,5 +1,7 @@
 /**
- * BASE CLASS - Estructura de la estación de inicio avanzada (Deep Blue Prime)
+ * BASE CLASS
+ * [ES] Estructura de la estación de inicio (Deep Blue Prime). Actúa como anclaje espacial y punto seguro al inicio de la inmersión.
+ * [EN] Starting station structure (Deep Blue Prime). Acts as a spatial anchor and safe point at the beginning of the dive.
  */
 
 class Base {
@@ -28,6 +30,10 @@ class Base {
         this.clampProgress = 0; // 0 = cerrado, 1 = abierto
     }
 
+    /**
+     * [ES] Dibuja todas las capas visuales de la base: casco, detalles lumínicos, bahía de atraque y el brazo robótico dinámico.
+     * [EN] Draws all visual layers of the base: hull, lighting details, docking bay, and the dynamic robotic arm.
+     */
     draw(ctx, camera, player) {
         const sx = this.x - camera.x;
         const sy = this.y - camera.y;
@@ -56,6 +62,10 @@ class Base {
         ctx.restore();
     }
 
+    /**
+     * [ES] Pinta el bloque principal blindado, usando gradientes de profundidad e imprimiendo calcomanías industriales.
+     * [EN] Paints the main armored block, using depth gradients and stamping industrial decals.
+     */
     drawMainHull(ctx, sx, sy, time) {
         // Fondo base sombra pesada
         ctx.shadowColor = 'rgba(0,0,0,1)';
@@ -123,6 +133,10 @@ class Base {
         ctx.shadowBlur = 0;
     }
 
+    /**
+     * [ES] Renderiza elementos secundarios como ranuras estructurales, luces de advertencia y focos estáticos.
+     * [EN] Renders secondary elements like structural grooves, warning lights, and static spotlights.
+     */
     drawDetails(ctx, sx, sy, time) {
         const pipeY = sy + this.h + 40; // Alineado con los mamparos inferiores
 
@@ -199,6 +213,10 @@ class Base {
         });
     }
 
+    /**
+     * [ES] Sistema de partículas exclusivo de la base (nieve marina) atrapado en los conos de luz estáticos, dando atmósfera.
+     * [EN] Base-exclusive particle system (marine snow) trapped in the static light cones, providing atmosphere.
+     */
     drawSpotlightDust(ctx, camera, time) {
         // Partículas de polvo ancladas al mundo bajo cada foco de la base.
         // Son completamente independientes del submarino y no tienen parallax.
@@ -267,6 +285,10 @@ class Base {
         }
     }
 
+    /**
+     * [ES] Dibuja la estructura hueca bajo la base donde el jugador inicia la partida antes de liberarse.
+     * [EN] Draws the hollow structure beneath the base where the player starts the game before detaching.
+     */
     drawDockingArea(ctx, sx, sy, camera, time) {
         // Bahía de atraque centrada basada en el ancho del canvas real
         const bayX = (ctx.canvas.width / 2) - camera.x - 300;
@@ -287,6 +309,10 @@ class Base {
         ctx.fillRect(bayX, bayY - 20, bayW, 10);
     }
 
+    /**
+     * [ES] Construcción cinemática inversa (IK) simple del brazo mecánico gigante que sujeta al submarino al comienzo.
+     * [EN] Simple inverse kinematics (IK) construction of the giant mechanical arm holding the submarine at start.
+     */
     drawRoboticArm(ctx, camera, player, time) {
         // Enganche alineado de manera precisa al centro de la pantalla
         const originX = (ctx.canvas.width / 2) - camera.x;
@@ -365,6 +391,10 @@ class Base {
         ctx.restore();
     }
 
+    /**
+     * [ES] Dibuja un rectángulo texturizado con franjas diagonales de advertencia.
+     * [EN] Draws a textured rectangle with diagonal hazard stripes.
+     */
     drawHazardBox(ctx, x, y, width, height) {
         ctx.save();
         ctx.fillStyle = this.colors.hazardStripe1;
@@ -390,6 +420,10 @@ class Base {
         ctx.restore();
     }
 
+    /**
+     * [ES] Dibuja la columna central de enganche del soporte grúa.
+     * [EN] Draws the central anchor column of the crane support.
+     */
     drawCranePillar(ctx) {
         // Base anclada
         this.drawHazardBox(ctx, -45, 0, 90, 25);
@@ -424,6 +458,10 @@ class Base {
         ctx.stroke();
     }
 
+    /**
+     * [ES] Dibuja un engranaje o articulación circular conectora para las partes móviles del brazo grueso.
+     * [EN] Draws a circular connecting gear or joint for the thick arm's moving parts.
+     */
     drawJoint(ctx, scale = 1) {
         ctx.save();
         ctx.scale(scale, scale);
@@ -449,6 +487,10 @@ class Base {
         ctx.restore();
     }
 
+    /**
+     * [ES] Renderiza una sección alargada de la grúa con decoraciones e hilos hidráulicos opcionales.
+     * [EN] Renders an elongated section of the crane with decorations and optional hydraulic lines.
+     */
     drawArmSegment(ctx, x1, y1, x2, y2, color, hasPiston = false) {
         ctx.save();
         ctx.lineCap = 'round';
@@ -504,6 +546,10 @@ class Base {
         ctx.restore();
     }
 
+    /**
+     * [ES] Modela la pinza pesada del final del brazo articulado, con focos internos para montaje de precisión.
+     * [EN] Models the heavy pincer at the end of the articulated arm, with internal spotlights for precision assembly.
+     */
     drawPincerTip(ctx, dir) {
         ctx.save();
 

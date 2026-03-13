@@ -1,5 +1,7 @@
 /**
- * FISH CLASS - Entidad de pez con IA de cardumen y respeto a zonas de profundidad
+ * FISH CLASS
+ * [ES] Entidad inteligente de pez marino con algoritmo de cardumen (Boids) optimizado y sensibilidad estricta a rangos de profundidad.
+ * [EN] Intelligent marine fish entity with optimized schooling algorithm (Boids) and strict sensitivity to depth ranges.
  */
 
 class Fish {
@@ -79,6 +81,10 @@ class Fish {
         }
     }
 
+    /**
+     * [ES] Lógica iterativa del espécimen. Calcula comportamiento grupal (cohesión, alineación, separación), huida del cazador y colisión de bordes oceánicos.
+     * [EN] Iterative logic of the specimen. Calculates group behavior (cohesion, alignment, separation), hunter fleeing, and ocean border collision.
+     */
     update(others, player, canvas) {
         const PERCEPTION = 180;  // Radio de percepción del vecindario
         const SEP_RADIUS = 45;   // Radio de separación personal
@@ -250,6 +256,10 @@ class Fish {
         this.sonarDetection *= 0.96;  // Decaimiento del efecto
     }
 
+    /**
+     * [ES] Sistema visual dual. Renderiza un DOM HTML <img> sobre el lienzo rotando con CSS. Calcula relámpagos de espécimen (luces abisales) en Canvas si tiene.
+     * [EN] Dual visual system. Renders a HTML DOM <img> floating over canvas rotating with CSS. Calculates specimen flashes (abyssal lights) on Canvas if any.
+     */
     draw(ctx, camera, imageCache, player, canvas) {
         const sx = this.x - camera.x;
         const sy = this.y - camera.y;

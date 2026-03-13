@@ -1,18 +1,20 @@
 /**
- * FISH CATALOG - Configuración escalable de especies
+ * FISH CATALOG
+ * [ES] Catálogo general de especies de peces. Define todos los atributos (visuales y lógicos) de las criaturas para poblar el ecosistema del juego de manera estructurada.
+ * [EN] General fish species catalog. Defines all attributes (visual and logical) of creatures to populate the game ecosystem in a structured way.
  * 
- * Cada especie tiene:
- * - id: Identificador único
- * - nombre: Nombre común
- * - cientifico: Nombre científico
- * - imagen: URL de la imagen
- * - esCardumen: Si forma cardúmenes (true) o es solitario (false)
- * - minProf: Profundidad mínima en METROS (conversión automática a game units)
- * - maxProf: Profundidad máxima en METROS (conversión automática a game units)
- * - cantidadGrupos: Número de grupos a generar
- * - pecesPorGrupo: Peces por grupo (1 para solitarios)
- * - escala: Factor de escala del sprite
- * - velocidadBase: Velocidad base de movimiento
+ * Cada especie tiene / Each species has:
+ * - id: Identificador único / Unique identifier
+ * - nombre: Nombre común / Common name
+ * - cientifico: Nombre científico / Scientific name
+ * - imagen: URL de la imagen / Image URL
+ * - esCardumen: Si forma cardúmenes (true) o es solitario (false) / If it naturally schools (true) or is solitary (false)
+ * - minProf: Profundidad mínima en METROS / Minimum depth in METERS
+ * - maxProf: Profundidad máxima en METROS / Maximum depth in METERS
+ * - cantidadGrupos: Número de grupos a generar / Number of groups to spawn
+ * - pecesPorGrupo: Peces por grupo (1 para solitarios) / Fishes per group (1 for solitaries)
+ * - escala: Factor de escala del sprite / Sprite scale factor
+ * - velocidadBase: Velocidad base de movimiento / Base movement speed
  */
 
 const FISH_CATALOG = [

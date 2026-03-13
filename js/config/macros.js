@@ -1,5 +1,7 @@
 /**
- * MACRO CATALOG - Configuración de encuentros de micro-escala
+ * MACRO CATALOG
+ * [ES] Catálogo de eventos o encuentros a micro-escala. Define puntos de interés especiales que se diferencian de los peces comunes para enriquecer la exploración.
+ * [EN] Micro-scale events or encounters catalog. Defines special points of interest different from common fish to enrich exploration.
  */
 
 const MACRO_CATALOG = {

@@ -1,5 +1,7 @@
 /**
- * PLAYER / SUBMARINE - Gestión del jugador y sus sistemas
+ * PLAYER / SUBMARINE
+ * [ES] Gestión del jugador (el submarino) y sus subsistemas críticos (movimiento, iluminación, sónar y colisiones lógicas).
+ * [EN] Player (submarine) management and its critical subsystems (movement, lighting, sonar, and logical collisions).
  */
 
 class Player {
@@ -35,6 +37,10 @@ class Player {
         this.lockY = this.y;
     }
 
+    /**
+     * [ES] Bucle principal de físicas y lógica del jugador. Gestiona inputs, físicas, gasto de batería y colisiones contra límites del nivel.
+     * [EN] Main physics and logic loop for the player. Handles inputs, physics, battery drain, and collisions against level boundaries.
+     */
     update(keys, controlScheme, world, canvas) {
         // Actualizar sónar
         if (this.sonarActive) {
@@ -161,12 +167,20 @@ class Player {
         return moving;
     }
 
+    /**
+     * [ES] Libera al submarino de su anclaje inicial a la base, dándole un impulso mecánico hacia abajo.
+     * [EN] Releases the submarine from its initial docking at the base, giving it a mechanical downward boost.
+     */
     unlock() {
         if (!this.isLocked) return;
         this.isLocked = false;
         this.vy = 5.0; // Impulso inicial muy fuerte para salir expulsado de la base
     }
 
+    /**
+     * [ES] Interpreta la pulsación de teclas adaptándose al esquema de control activo (WASD o Flechas).
+     * [EN] Interprets key presses adapting to the active control scheme (WASD or Arrows).
+     */
     isKeyPressed(action, keys, controlScheme) {
         if (controlScheme === 'WASD') {
             if (action === 'up') return keys['KeyW'];
@@ -182,6 +196,10 @@ class Player {
         return false;
     }
 
+    /**
+     * [ES] Activa el sistema de sónar si no está en tiempo de recarga (cooldown), iniciando la onda de detección.
+     * [EN] Activates the sonar system if it's not on cooldown, starting the detection wave.
+     */
     activateSonar() {
         if (this.sonarCooldown <= 0 && !this.sonarActive) {
             this.sonarActive = true;
@@ -192,6 +210,10 @@ class Player {
         return false;
     }
 
+    /**
+     * [ES] Alterna el estado del foco de luz principal (encendido/apagado) y reproduce el efecto de sonido correspondiente.
+     * [EN] Toggles the main spotlight state (on/off) and plays the corresponding sound effect.
+     */
     toggleLight() {
         if (this.lightBattery > 2) {
             this.lightOn = !this.lightOn;
@@ -201,6 +223,10 @@ class Player {
         }
     }
 
+    /**
+     * [ES] Renderiza el sprite del submarino en pantalla, calculando la opacidad base según la oscuridad de la zona profunda actual.
+     * [EN] Renders the submarine sprite on screen, calculating base opacity according to the darkness of the current depth zone.
+     */
     draw(ctx, camera, playerImage, ambientAlpha, canvas) {
         ctx.save();
         ctx.translate(this.x - camera.x, this.y - camera.y);
@@ -230,6 +256,10 @@ class Player {
         ctx.restore();
     }
 
+    /**
+     * [ES] Dibuja los halos de luz (direccional y radial) emitidos por el submarino cuando la linterna está encendida.
+     * [EN] Draws the light halos (directional and radial) emitted by the submarine when the flashlight is on.
+     */
     drawLight(ctx, camera) {
         if (!this.lightOn) return;
 
@@ -270,6 +300,10 @@ class Player {
         ctx.restore();
     }
 
+    /**
+     * [ES] Dibuja el anillo expansivo del pulso del sónar cuando está activo.
+     * [EN] Draws the expanding ring of the sonar pulse when it's active.
+     */
     drawSonar(ctx, camera) {
         if (!this.sonarActive) return;
 

@@ -1,9 +1,12 @@
 /**
- * UTILITY HELPERS - Funciones auxiliares reutilizables
+ * UTILITY HELPERS
+ * [ES] Colección de funciones auxiliares reutilizables. Centralizar operaciones comunes reduce la duplicación de código y mejora la mantenibilidad.
+ * [EN] Collection of reusable helper functions. Centralizing common operations reduces code duplication and improves maintainability.
  */
 
 /**
- * Interpolación lineal entre dos colores RGB
+ * [ES] Interpolación lineal entre dos colores RGB. Útil para transiciones suaves de color en el juego, como los cambios de profundidad.
+ * [EN] Linear interpolation between two RGB colors. Useful for smooth color transitions in the game, as depths dynamically change.
  * @param {Array} c1 - Color inicial [R, G, B]
  * @param {Array} c2 - Color final [R, G, B]
  * @param {number} t - Factor de interpolación (0-1)
@@ -14,7 +17,8 @@ function lerpColor(c1, c2, t) {
 }
 
 /**
- * Dibuja una imagen de forma segura manejando errores de carga
+ * [ES] Dibuja una imagen en el canvas previniendo excepciones si la imagen está corrupta o no ha cargado, evitando que el juego colapse.
+ * [EN] Draws an image on the canvas preventing exceptions if the image is corrupted or hasn't loaded, keeping the game from crashing.
  * @param {CanvasRenderingContext2D} ctx - Contexto del canvas
  * @param {Image} image - Objeto Image a dibujar
  * @param {number} dx - Posición X
@@ -37,7 +41,8 @@ function safeDrawImage(ctx, image, dx, dy, dw, dh) {
 }
 
 /**
- * Cache de imágenes con manejo de errores
+ * [ES] Sistema de caché de imágenes. Almacena temporalmente las texturas en memoria del navegador para evitar tirones (stutters) de carga durante el juego.
+ * [EN] Image caching system. Temporarily stores textures in the browser's memory to prevent loading stutters while playing.
  */
 class ImageCache {
     constructor() {
@@ -45,7 +50,8 @@ class ImageCache {
     }
 
     /**
-     * Carga una imagen y la almacena en caché
+     * [ES] Inicia la carga asíncrona de una imagen, administrando callbacks para reaccionar a cargas exitosas o fallidas, garantizando la integridad visual.
+     * [EN] Initiates asynchronous image loading, managing callbacks for success and failure to ensure visual integrity.
      * @param {string} id - Identificador único
      * @param {string} src - URL de la imagen
      * @param {Function} onLoad - Callback cuando carga exitosamente
@@ -75,7 +81,8 @@ class ImageCache {
     }
 
     /**
-     * Obtiene una imagen del caché
+     * [ES] Recupera inmediatamente una imagen usando su identificador en caché para ser renderizada al vuelo.
+     * [EN] Immediately retrieves an image using its cached identifier to be rendered on the fly.
      * @param {string} id - Identificador de la imagen
      * @returns {Image|null}
      */
@@ -84,7 +91,8 @@ class ImageCache {
     }
 
     /**
-     * Verifica si todas las imágenes están cargadas
+     * [ES] Chequeo de estado global. Confirma si todos los recursos han terminado sus intentos de carga para autorizar el inicio del juego.
+     * [EN] Global state check. Confirms if all resources have finished their loading attempts in order to authorize the start of gameplay.
      * @returns {boolean}
      */
     allLoaded() {
@@ -93,7 +101,8 @@ class ImageCache {
 }
 
 /**
- * Calcula la distancia entre dos puntos
+ * [ES] Calcula la distancia euclidiana entre dos puntos. Operación fundamental para sistemas mecánicos de proximidad y colisión.
+ * [EN] Calculates the Euclidean distance between two points. Fundamental math operation for mechanical proximity and collision systems.
  * @param {number} x1 
  * @param {number} y1 
  * @param {number} x2 
@@ -105,7 +114,8 @@ function distance(x1, y1, x2, y2) {
 }
 
 /**
- * Limita un valor entre un mínimo y máximo
+ * [ES] Restringe un valor numérico a unos bordes específicos. Evita que entidades salgan del área de juego o crucen variables límite.
+ * [EN] Restricts a numeric value to specific borders. Prevents entities from leaving the play area or spilling over bounds variables.
  * @param {number} value 
  * @param {number} min 
  * @param {number} max 
@@ -116,8 +126,8 @@ function clamp(value, min, max) {
 }
 
 /**
- * Crea un canvas en memoria con un gradiente radial pre-renderizado, guiño a la optimización
- * para hardware de gama baja limitando "createRadialGradient" en tiempo real.
+ * [ES] Pre-cálculo y dibujado de un gradiente radial en un lienzo invisible. Increíblemente útil para dispositivos de gama baja que se saturan creando "radial gradients" por frame.
+ * [EN] Pre-calculation and drawing of a radial gradient onto an invisible canvas. Incredibly useful for low-end devices which get bloated generating per-frame "radial gradients".
  * Se debe usar con ctx.globalAlpha y ctx.drawImage.
  * @param {number} radius - Radio del gradiente
  * @param {Array} colorStops - Array de objetos {stop: number, color: string}

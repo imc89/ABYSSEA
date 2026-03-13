@@ -1,5 +1,7 @@
 /**
- * PARTICLE CLASS - Nieve marina con efecto parallax
+ * PARTICLE CLASS
+ * [ES] Partícula de "Nieve Marina" ambiental que genera profundidad visual simulando un fuerte desplazamiento de perspectiva (Parallax) respecto al jugador.
+ * [EN] Environmental "Marine Snow" particle generating visual depth by simulating strong perspective shift (Parallax) relative to the player.
  */
 
 class Particle {
@@ -9,6 +11,10 @@ class Particle {
         this.y = Math.random() * window.innerHeight;
     }
 
+    /**
+     * [ES] Recicla la partícula cuando sale de los límites de pantalla en lugar de destruirla y crear nueva memora (Object Pooling).
+     * [EN] Recycles the particle when it goes out of screen bounds instead of destroying it and creating new memory (Object Pooling).
+     */
     reset() {
         this.x = Math.random() * window.innerWidth;
         this.y = -20;
@@ -20,6 +26,10 @@ class Particle {
         this.parallax = 0.3 + Math.random() * 0.6;
     }
 
+    /**
+     * [ES] Actualiza el movimiento de suspensión biológica acoplado a la inercia opuesta de la cámara del submarino.
+     * [EN] Updates biological suspension movement coupled with the opposite inertia of the submarine's camera.
+     */
     update(player, canvas) {
         this.x += (this.speedX) - player.vx * this.parallax;
         this.y += (this.speedY) - player.vy * this.parallax;
@@ -38,6 +48,10 @@ class Particle {
         }
     }
 
+    /**
+     * [ES] Dibuja el copillo de nieve prestando especial atención en capturar y refractar fuertemente la luz del foco del buque.
+     * [EN] Draws the snow speck paying special attention to heavily catching and refracting the vessel's spotlight beam.
+     */
     draw(ctx, player, camera, ambientAlpha) {
         let isIlluminated = false;
         let illuminationFactor = 0;
