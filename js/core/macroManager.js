@@ -1,5 +1,7 @@
 /**
- * MacroManager - Gestiona el minijuego de observación a micro-escala
+ * MACRO MANAGER
+ * [ES] Gestiona el minijuego de observación a micro-escala. Instancia un ecosistema procedural para examinar criaturas diminutas.
+ * [EN] Manages the micro-scale observation minigame. Instantiates a procedural ecosystem to examine tiny creatures.
  */
 
 class MacroManager {
@@ -46,8 +48,8 @@ class MacroManager {
     }
 
     /**
-     * Dibuja un Punto de Interés (POI) en las coordenadas especificadas.
-     * Centraliza la lógica visual de los puntos de descubrimiento en el mapa.
+     * [ES] Dibuja un Punto de Interés (POI) en las coordenadas especificadas del mapa principal marcando anomalías descubribles.
+     * [EN] Draws a Point of Interest (POI) at the specified coordinates on the main map marking discoverable anomalies.
      */
     static drawPOI(ctx, x, y, pulse, isLit) {
         const config = MacroManager.POI_CONFIG;
@@ -91,8 +93,8 @@ class MacroManager {
     }
 
     /**
-     * Devuelve los datos necesarios para mostrar la información en el HUD
-     * cuando el jugador está cerca de un punto de descubrimiento Macro.
+     * [ES] Devuelve los datos necesarios para mostrar la información rápida en el HUD al acercarse a un POI Macro.
+     * [EN] Returns the necessary data to show quick information on the HUD when approaching a Macro POI.
      */
     getHUDData() {
         return {
@@ -124,9 +126,7 @@ class MacroManager {
         if (modal) modal.classList.add('active');
 
         // Audio AL ENTRAR (como pidió el usuario)
-        const macroStartAudio = new Audio('audio/macro.mp3');
-        macroStartAudio.volume = 0.5;
-        macroStartAudio.play().catch(e => { });
+        GlobalAudioPool.play('macro', 0.5);
 
         // Inicializar minijuego (asíncrono)
         setTimeout(() => this.init(specieId), 100);
@@ -187,8 +187,8 @@ class MacroManager {
     }
 
     /**
-     * Inicializa el minijuego Macro.
-     * Se encarga de limpiar el estado anterior y generar el nuevo entorno (rocas, partículas, etc).
+     * [ES] Inicia y prepara el minijuego Macro. Limpia el estado anterior y genera el entorno submarino en el canvas secundario.
+     * [EN] Initializes and prepares the Macro minigame. Clears previous state and generates the submarine environment in the secondary canvas.
      */
     init(specieId = null) {
         this.state.canvas = document.getElementById('macro-canvas');
@@ -278,7 +278,8 @@ class MacroManager {
     }
 
     /**
-     * Genera una serie de puntos para crear una forma de roca irregular.
+     * [ES] Genera una serie aleatoria de vértices para dibujar una forma de roca irregular procedural.
+     * [EN] Generates a random series of vertices to draw a procedural irregular rock shape.
      */
     generateRockShape() {
         const segments = [];
@@ -292,7 +293,8 @@ class MacroManager {
     }
 
     /**
-     * Bucle principal de animación a 60fps (vía requestAnimationFrame).
+     * [ES] Bucle principal de animación nativo del minijuego balanceando el timestep a 60fps.
+     * [EN] Native animation main loop for the minigame balancing timestep to 60fps.
      */
     loop() {
         if (!this.isOpen) return;
@@ -307,7 +309,8 @@ class MacroManager {
     }
 
     /**
-     * Actualiza la lógica de movimiento y colisiones.
+     * [ES] Actualiza la lógica espacial (posición de linterna, de criaturas sueltas y de partículas suspendidas).
+     * [EN] Updates spatial logic (flashlight position, free creatures, and suspended particles).
      */
     update(dt) {
         const { canvas, keys } = this.state;
@@ -355,6 +358,10 @@ class MacroManager {
         });
     }
 
+    /**
+     * [ES] Pinta las capas del minijuego (fondo, partículas, siluetas, y la rica simulación de luz de linterna).
+     * [EN] Paints the minigame layers (background, particles, silhouettes, and the heavily stylized flashlight simulation).
+     */
     draw() {
         const { ctx, canvas, creatures, creatureImg, revealed, crosshairX, crosshairY, rocks, particles, breathingScale, lightOn } = this.state;
         if (!ctx) return;
@@ -473,6 +480,10 @@ class MacroManager {
         }
     }
 
+    /**
+     * [ES] Gestiona el intento de análisis. Comprueba si la luz recae sobre una criatura esquiva al clickear/Enter.
+     * [EN] Manages the scan attempt. Checks if light overlaps an elusive creature when clicked/Enter.
+     */
     onEnter() {
         const { lightOn, revealed, crosshairX, crosshairY, creatures } = this.state;
         if (revealed) {
@@ -496,6 +507,10 @@ class MacroManager {
         }
     }
 
+    /**
+     * [ES] Accionado al iluminar con precisión una criatura. Despliega la UI de éxito extrayendo biografía del Macro Catalog.
+     * [EN] Triggered upon precisely illuminating a creature. Deploys success UI extracting biography from the Macro Catalog.
+     */
     onSuccess() {
         this.state.revealed = true;
 
@@ -541,9 +556,7 @@ class MacroManager {
 
     toggleLight() {
         this.state.lightOn = !this.state.lightOn;
-        const clickAudio = new Audio('audio/light.mp3');
-        clickAudio.volume = 0.3;
-        clickAudio.play().catch(e => { });
+        GlobalAudioPool.play('light', 0.3);
     }
 
     handleMouseMove(e) {

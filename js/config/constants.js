@@ -1,7 +1,13 @@
 /**
- * GAME CONSTANTS - Configuración del mundo y física del juego
+ * GAME CONSTANTS
+ * [ES] Configuración central del mundo y física del juego. Define las reglas base y constantes inmutables para mantener la coherencia en todo el juego.
+ * [EN] Core world configuration and game physics. Defines baseline rules and immutable constants to maintain consistency throughout the game.
  */
 
+/**
+ * [ES] Define la calidad gráfica base. Se inicializa en 'LOW' para garantizar el rendimiento en dispositivos de gama baja por defecto.
+ * [EN] Defines the baseline graphics quality. Initialized to 'LOW' to ensure performance on low-end devices by default.
+ */
 let GRAPHICS_QUALITY = 'LOW';
 if (typeof window !== 'undefined') {
     try {
@@ -14,6 +20,10 @@ if (typeof window !== 'undefined') {
     }
 }
 
+/**
+ * [ES] Perfiles predefinidos de calidad gráfica. Ajustan dinámicamente el número de entidades renderizadas para equilibrar los FPS según la capacidad del dispositivo.
+ * [EN] Predefined graphics quality profiles. Dynamically adjusts the number of rendered entities to balance FPS according to the device's capability.
+ */
 const QUALITY_PROFILES = {
     LOW: {
         particleCount: 80,             // Océano más vacío, ultra rápido
@@ -41,6 +51,10 @@ const QUALITY_PROFILES = {
     }
 };
 
+/**
+ * [ES] Parámetros globales del mundo del juego, como dimensiones y física. Centraliza estas propiedades para facilitar ajustes de balance y diseño de niveles.
+ * [EN] Global game world parameters, such as dimensions and physics. Centralizes these properties to facilitate balancing and level design tweaks.
+ */
 const WORLD = {
     width: 2000,         // Reducido de 8000 para juego más vertical
     height: 120000,      // Aumentado para 12,000 metros (escala 10:1)
@@ -73,6 +87,10 @@ const WORLD = {
     ]
 };
 
+/**
+ * [ES] Configuración de la base inicial submarina. Sirve como punto de partida seguro y lugar de anclaje para el jugador.
+ * [EN] Configuration for the starting underwater base. It serves as a safe starting point and anchor location for the player.
+ */
 const BASE_CONFIG = {
     y: -50,
     width: 3000,
@@ -81,6 +99,10 @@ const BASE_CONFIG = {
     lightColor: '#00ffff'
 };
 
+/**
+ * [ES] Configuración inicial del jugador, incluyendo posición, atributos de movimiento y habilidades como el sonar.
+ * [EN] Initial player configuration, including start position, movement attributes, and abilities like sonar.
+ */
 const PLAYER_CONFIG = {
     startX: 800,   // Centro aproximado, se ajustará al ancho del canvas
     startY: 220,
@@ -96,10 +118,18 @@ const PLAYER_CONFIG = {
     image: './img/submarine/sub1.png'
 };
 
+/**
+ * [ES] Ajustes de la cámara del juego. Define la suavidad del seguimiento para evitar mareos (motion sickness) en el jugador.
+ * [EN] Game camera settings. Defines tracking smoothness to prevent motion sickness for the player.
+ */
 const CAMERA_CONFIG = {
     smoothing: 0.05  // Factor de interpolación para seguimiento suave
 };
 
+/**
+ * [ES] Valores físicos globales para simulaciones como flotabilidad y burbujas, aportando realismo al entorno acuático.
+ * [EN] Global physical values for simulations such as buoyancy and bubbles, adding realism to the aquatic environment.
+ */
 const PHYSICS = {
     bubbleDecayMin: 0.003,
     bubbleDecayMax: 0.010,

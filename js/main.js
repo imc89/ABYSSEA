@@ -1,5 +1,7 @@
 /**
- * MAIN GAME - Orquestación principal del juego
+ * MAIN GAME
+ * [ES] Orquestación principal del juego. Inicializa el ciclo de vida (loop), gestiona estados globales e integra todos los sistemas.
+ * [EN] Main game orchestration. Initializes the lifecycle (loop), manages global states, and integrates all systems.
  */
 
 // Estado del juego
@@ -7,6 +9,7 @@ let canvas, ctx;
 let camera;
 let player;
 let uiManager;
+let uiTelemetry;
 let imageCache;
 
 let fishes = [];
@@ -22,12 +25,21 @@ let lowBatteryAudio = null;
 let isMusicMuted = false;
 let isMenuOpen = false;
 
+// Telemetría / Culling
+let telemetryData = {
+    activeFishes: 0,
+    renderedFishes: 0,
+    particles: 0,
+    bubbles: 0
+};
+
 // Puntos de interés (Mini-descubrimientos)
 let discoveryPoints = [];
 let nearPOI = null;
 
 /**
- * Inicialización del juego
+ * [ES] Inicialización del juego. Configura el lienzo, inicializa clases principales, carga audio/imágenes y genera el mundo.
+ * [EN] Game initialization. Sets up the canvas, initializes main classes, loads audio/images, and generates the world.
  */
 function init() {
     canvas = document.getElementById('gameCanvas');
@@ -54,6 +66,7 @@ function init() {
     }
 
     uiManager = new UIManager();
+    uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
 
     // Inicializar audio de burbujas (motor)
@@ -71,17 +84,21 @@ function init() {
     lowBatteryAudio.loop = true;
     lowBatteryAudio.volume = 0.6;
 
-    // Cargar imágenes de peces para caché (aunque ahora usen DOM, puede ser útil)
-    FISH_CATALOG.forEach(fish => {
-        imageCache.load(fish.id, fish.imagen);
-    });
+    // Precargar Audios en el Pool Global
+    GlobalAudioPool.initPool('fish_escape', 'audio/fish_escape.mp3', 5);
+    GlobalAudioPool.initPool('light', 'audio/light.mp3', 2);
+    GlobalAudioPool.initPool('sonar', 'audio/sonar.mp3', 2);
+    GlobalAudioPool.initPool('hook', 'audio/hook.mp3', 1);
+    GlobalAudioPool.initPool('macro', 'audio/macro.mp3', 1);
 
-    // Cargar imagen del jugador
+    // Cargar imagen del jugador (necesaria para player.draw())
     imageCache.load('player', PLAYER_CONFIG.image);
 
-    // Generar partículas de nieve marina
+    // Generar partículas de nieve marina (esparcidas por el mundo inicial)
     for (let i = 0; i < WORLD.particleCount; i++) {
-        marineSnow.push(new Particle());
+        const p = new Particle();
+        p.y = Math.random() * 2000;
+        marineSnow.push(p);
     }
 
     // Generar peces según el catálogo
@@ -137,7 +154,8 @@ function init() {
 }
 
 /**
- * Configurar event handlers
+ * [ES] Configurar listeners de teclado y redimensionamiento. Conecta el input del jugador con los controles de UI y movimiento.
+ * [EN] Configure keyboard and resize listeners. Connects player input with UI and movement controls.
  */
 function setupEventHandlers() {
     window.addEventListener('keydown', e => {
@@ -163,11 +181,14 @@ function setupEventHandlers() {
             }
         }
 
+        if (e.key === '<') {
+            uiTelemetry.toggle();
+        }
+
         if (e.code === 'KeyE') {
             if (player.activateSonar()) {
                 uiManager.createSonarUIWaves();
-                const sonarAudio = new Audio('audio/sonar.mp3');
-                sonarAudio.play().catch(e => console.error("Could not play sonar audio", e));
+                GlobalAudioPool.play('sonar', 1.0);
             }
         }
 
@@ -205,16 +226,19 @@ function setupEventHandlers() {
 }
 
 /**
- * Ajustar tamaño del canvas
+ * [ES] Ajusta el lienzo al tamaño de la ventana y reconfigura entidades dependientes de la resolución.
+ * [EN] Adjusts the canvas to window size and reconfigures resolution-dependent entities.
  */
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Regenerar partículas al cambiar tamaño
+    // Regenerar partículas al cambiar tamaño (Dándoles profundidad aleatoria en el mundo)
     marineSnow = [];
     for (let i = 0; i < WORLD.particleCount; i++) {
-        marineSnow.push(new Particle());
+        const p = new Particle();
+        p.y = Math.random() * (WORLD.depthScale * 2000); // Esparcirlas un poco si se reinician
+        marineSnow.push(p);
     }
 
     // Re-centrar jugador horizontalmente si está enganchado en la base
@@ -224,7 +248,8 @@ function resize() {
 }
 
 /**
- * Cambiar esquema de controles
+ * [ES] Cambiar esquema visual de controles en la UI (Flechas vs WASD).
+ * [EN] Change visual control scheme in the UI (Arrows vs WASD).
  */
 function setControls(mode) {
     controlScheme = mode;
@@ -234,7 +259,8 @@ function setControls(mode) {
 }
 
 /**
- * Loop principal del juego
+ * [ES] Bucle recursivo nativo manejado por requestAnimationFrame a 60FPS constantes.
+ * [EN] Native recursive loop handled by requestAnimationFrame at a constant 60FPS.
  */
 function loop() {
     update();
@@ -243,7 +269,8 @@ function loop() {
 }
 
 /**
- * Actualizar lógica del juego
+ * [ES] Lógica principal de actualización (sin pintar). Calcula físicas, colisiones, eventos musicales y de descubrimiento.
+ * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
 function update() {
     if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
@@ -255,8 +282,8 @@ function update() {
     if (player.isLocked) {
         if (keys['KeyS'] || keys['ArrowDown']) {
             player.unlock();
-            const hookAudio = new Audio('audio/hook.mp3');
-            hookAudio.play().catch(e => console.error("Could not play hook audio", e));
+            GlobalAudioPool.play('hook', 1.0);
+
             if (bgMusic && bgMusic.paused) {
                 // Iniciar música en la primera interacción (política de navegadores)
                 bgMusic.play().catch(err => console.warn("Audio playback blocked", err));
@@ -316,10 +343,7 @@ function update() {
             const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
 
-            let diff = Math.abs(angTo - lookDir);
-            while (diff > Math.PI) {
-                diff = Math.PI * 2 - diff;
-            }
+            const diff = clampAngleDelta(angTo, lookDir);
 
             if (diff < WORLD.lightAngle) {
                 poi.isLit = true;
@@ -336,11 +360,25 @@ function update() {
         }
     });
 
-    // Actualizar partículas
-    marineSnow.forEach(p => p.update(player, canvas));
+    // Actualizar partículas (ahora son world-space y necesitan la cámara para culling)
+    marineSnow.forEach(p => p.update(player, canvas, camera));
 
-    // Actualizar peces (pasar canvas para límites dinámicos)
-    fishes.forEach(f => f.update(fishes, player, canvas));
+    // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
+    telemetryData.activeFishes = 0;
+
+    // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
+    const proximateFishes = [];
+    fishes.forEach(f => {
+        // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
+        f.isSimulated = Math.abs(f.y - player.y) < 1500;
+        if (f.isSimulated) {
+            proximateFishes.push(f);
+            telemetryData.activeFishes++;
+        }
+    });
+
+    // Solo actualizar IA y Posiciones locales de los que están simulados usando la lista truncada proximateFishes
+    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas));
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
     scannableTarget = findScannableTarget();
@@ -350,28 +388,26 @@ function update() {
 }
 
 /**
- * Encontrar pez en el cono de luz para escanear
+ * [ES] Encontrar pez en el cono de luz para activar escáner. Determina la entidad más cercana enfocada.
+ * [EN] Find fish inside the light cone to activate scanner. Determines the closest focused entity.
  */
 function findScannableTarget() {
     if (!player.lightOn) return null;
 
-    let minDist = WORLD.lightSpotRange;
+    let minDistSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
     let target = null;
 
     fishes.forEach(f => {
-        const d = distance(f.x, f.y, player.x, player.y + WORLD.lightOffsetY);
+        const dSq = distanceSq(f.x, f.y, player.x, player.y + WORLD.lightOffsetY);
 
-        if (d < minDist) {
+        if (dSq < minDistSq) {
             const angTo = Math.atan2(f.y - (player.y + WORLD.lightOffsetY), f.x - player.x);
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
 
-            let diff = Math.abs(angTo - lookDir);
-            while (diff > Math.PI) {
-                diff = Math.PI * 2 - diff;
-            }
+            const diff = clampAngleDelta(angTo, lookDir);
 
             if (diff < WORLD.lightAngle) {
-                minDist = d;
+                minDistSq = dSq;
                 target = f;
             }
         }
@@ -381,7 +417,8 @@ function findScannableTarget() {
 }
 
 /**
- * Renderizar el juego
+ * [ES] Renderiza el canvas completo en orden de Z-Index (Fondo -> Partículas -> POIs -> Entidades -> HUD).
+ * [EN] Renders the entire canvas in Z-Index order (Background -> Particles -> POIs -> Entities -> HUD).
  */
 function draw() {
     // --- CÁLCULO DE COLOR DE FONDO Y LUZ AMBIENTAL ---
@@ -421,8 +458,12 @@ function draw() {
         ambientAlpha = 0;
     }
 
-    // Dibujar partículas de nieve marina
-    marineSnow.forEach(p => p.draw(ctx, player, camera, ambientAlpha));
+    // Dibujar partículas de nieve marina y contar solo las que realmente se renderizaron (alpha > 0.01)
+    telemetryData.particles = 0;
+    marineSnow.forEach(p => {
+        const drawn = p.draw(ctx, player, camera, ambientAlpha, canvas);
+        if (drawn) telemetryData.particles++;
+    });
 
     // Dibujar Puntos de Descubrimiento (POIs)
     discoveryPoints.forEach(poi => {
@@ -439,7 +480,11 @@ function draw() {
     });
 
     // Dibujar burbujas (visibilidad via luz del submarino o luz ambiental superficial)
-    bubbles.forEach(b => b.draw(ctx, camera, ambientAlpha, player, canvas));
+    telemetryData.bubbles = 0;
+    bubbles.forEach(b => {
+        const rendered = b.draw(ctx, camera, ambientAlpha, player, canvas);
+        if (rendered) telemetryData.bubbles++;
+    });
 
     // Dibujar base de inicio (ahora le pasamos el player para las pinzas)
     startingBase.draw(ctx, camera, player);
@@ -459,8 +504,27 @@ function draw() {
     // Dibujar onda del sónar
     player.drawSonar(ctx, camera);
 
-    // Dibujar peces
-    fishes.forEach(f => f.draw(ctx, camera, imageCache, player, canvas));
+    // Dibujar peces (solo los simulados renderizaran al DOM para lazy loading)
+    telemetryData.renderedFishes = 0;
+    fishes.forEach(f => {
+        // Aprovechamos este flag del update para saltarse el draw si están muy lejanos
+        // Retornan true si dibujaron algo
+        if (f.isSimulated) {
+            const rendered = f.draw(ctx, camera, imageCache, player, canvas);
+            if (rendered) telemetryData.renderedFishes++;
+        } else {
+            // Aseguramos esconder DOM si dejaron de simularse
+            f.hideDOM();
+        }
+    });
+
+    // Actualizar UI de telemetría (si está activa)
+    uiTelemetry.update(
+        telemetryData.activeFishes,
+        telemetryData.renderedFishes,
+        telemetryData.particles,
+        telemetryData.bubbles
+    );
 
     // Dibujar línea de tracking al pez objetivo
     if (scannableTarget && player.lightOn && player.lightBattery > 0) {
@@ -537,7 +601,8 @@ function draw() {
 window.onload = init;
 
 /**
- * Funciones del Menú de Escape
+ * [ES] Abre o cierra el menú de ajustes ingame (Pausa conceptual).
+ * [EN] Opens or closes the in-game settings menu (Conceptual pause).
  */
 function toggleMenu() {
     isMenuOpen = !isMenuOpen;
@@ -548,6 +613,10 @@ function toggleMenu() {
     }
 }
 
+/**
+ * [ES] Alternar modo de pantalla completa nativo del navegador previniendo conflicto con la tecla ESC.
+ * [EN] Toggle native browser fullscreen mode preventing conflict with the ESC key.
+ */
 function toggleFullscreen() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen()
@@ -575,6 +644,10 @@ function toggleFullscreen() {
     updateSettingsUI();
 }
 
+/**
+ * [ES] Mutear/Desmutear la pista de audio de fondo y actualizar el botón en UI.
+ * [EN] Mute/Unmute the background audio track and update the UI button.
+ */
 function toggleMusicMute() {
     isMusicMuted = !isMusicMuted;
     if (bgMusic) bgMusic.muted = isMusicMuted;
@@ -582,6 +655,10 @@ function toggleMusicMute() {
     updateSettingsUI();
 }
 
+/**
+ * [ES] Refresca los estados visuales del menú interactivo de opciones según las variables globales.
+ * [EN] Refreshes visual states of the interactive options menu based on global variables.
+ */
 function updateSettingsUI() {
     // Actualizar visual del Toggle de Fullscreen
     const fsBg = document.getElementById('fs-toggle-bg');
@@ -628,7 +705,8 @@ function updateSettingsUI() {
 }
 
 /**
- * Cambia la calidad gráfica del juego en tiempo real
+ * [ES] Cambia la calidad gráfica del juego en tiempo real (Rendimiento). Modifica partículas, colisiones y cargas GPU.
+ * [EN] Changes game graphics quality in real-time (Performance). Modifies particles, collisions, and GPU loads.
  */
 function setQuality(level) {
     if (!window.QUALITY_PROFILES[level]) return;

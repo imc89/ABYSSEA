@@ -1,5 +1,7 @@
 /**
- * FISH CLASS - Entidad de pez con IA de cardumen y respeto a zonas de profundidad
+ * FISH CLASS
+ * [ES] Entidad inteligente de pez marino con algoritmo de cardumen (Boids) optimizado y sensibilidad estricta a rangos de profundidad.
+ * [EN] Intelligent marine fish entity with optimized schooling algorithm (Boids) and strict sensitivity to depth ranges.
  */
 
 class Fish {
@@ -44,6 +46,7 @@ class Fish {
         this.fleeing = false;
 
         // DOM Element setup para rendering nativo de GIFs sin CORS
+        // Modificación (Lazy Load): Este elemento se anexará posteriormente para ahorrar RAM/CPU
         this.domElement = document.createElement('img');
         this.domElement.src = config.imagen;
         this.domElement.style.position = 'absolute';
@@ -53,32 +56,47 @@ class Fish {
         this.domElement.style.height = `${this.height}px`;
         this.domElement.style.transformOrigin = "50% 50%";
 
-        // Agregar a la capa
-        if (typeof document !== 'undefined') {
-            const container = document.getElementById('fish-layer');
-            if (container) {
-                container.appendChild(this.domElement);
-
-                // Inicializar elementos DOM para luces frontales
-                this.lightElements = [];
-                if (config.numLuces > 0) {
-                    for (let i = 1; i <= config.numLuces; i++) {
-                        const capa = config[`capaluz${i}`] || 'back';
-                        if (capa === 'front') {
-                            const lightPulse = document.createElement('div');
-                            lightPulse.style.position = 'absolute';
-                            lightPulse.style.pointerEvents = 'none';
-                            lightPulse.style.borderRadius = '50%';
-                            lightPulse.style.zIndex = '5'; // Por delante de la imagen del pez
-                            container.appendChild(lightPulse);
-                            this.lightElements[i] = lightPulse;
-                        }
-                    }
+        this.isLazyLoaded = false;
+        
+        // Inicializar el array de luces del DOM (se annexan lazily en draw())
+        this.lightElements = [];
+        if (config.numLuces > 0) {
+            for (let i = 1; i <= config.numLuces; i++) {
+                const capa = config[`capaluz${i}`] || 'back';
+                if (capa === 'front') {
+                    const lightPulse = document.createElement('div');
+                    lightPulse.style.position = 'absolute';
+                    lightPulse.style.pointerEvents = 'none';
+                    lightPulse.style.borderRadius = '50%';
+                    lightPulse.style.zIndex = '5';
+                    this.lightElements[i] = lightPulse;
                 }
             }
         }
     }
 
+    /**
+     * [ES] Aplica matemáticas destructivas solo si es verdaderamente necesario desmontarlo de cámara.
+     * [EN] Destructive math applies only if really needed to unmount.
+     */
+    hideDOM() {
+        if (this.domElement && this.domElement.style.display !== 'none') {
+            this.domElement.style.display = 'none';
+        }
+        
+        if (this.lightElements) {
+            for (let i = 1; i < this.lightElements.length; i++) {
+                if (this.lightElements[i] && this.lightElements[i].style.display !== 'none') {
+                    this.lightElements[i].style.display = 'none';
+                }
+            }
+        }
+    }
+
+    /**
+     * [ES] Lógica iterativa del espécimen. Calcula comportamiento grupal (cohesión, alineación, separación), huida del cazador y colisión de bordes oceánicos.
+     * [EN] Iterative logic of the specimen. Calculates group behavior (cohesion, alignment, separation), hunter fleeing, and ocean border collision.
+     */
     update(others, player, canvas) {
         const PERCEPTION = 180;  // Radio de percepción del vecindario
         const SEP_RADIUS = 45;   // Radio de separación personal
@@ -170,8 +188,9 @@ class Fish {
 
         // EVITAR AL JUGADOR
         if (this.config.huyeDelJugador !== false) {
-            const dPlayer = Math.hypot(this.x - player.x, this.y - (player.y + WORLD.lightOffsetY));
-            if (dPlayer < 200) {
+            const dSqPlayer = distanceSq(this.x, this.y, player.x, player.y + WORLD.lightOffsetY);
+            if (dSqPlayer < 40000) { // 200 * 200
+                const dPlayer = Math.sqrt(dSqPlayer);
                 const ang = Math.atan2(this.y - player.y, this.x - player.x);
                 const fleeStr = Math.max(0, 1 - dPlayer / 200) * 0.4;
                 this.vx += Math.cos(ang) * fleeStr;
@@ -180,9 +199,7 @@ class Fish {
                 // Solo reproducir sonido al empezar a huir
                 if (!this.fleeing) {
                     this.fleeing = true;
-                    const escapeAudio = new Audio('audio/fish_escape.mp3');
-                    escapeAudio.volume = 0.05; // Volumen bajo para no saturar si hay muchos peces
-                    escapeAudio.play().catch(e => { });
+                    GlobalAudioPool.play('fish_escape', 0.05);
                 }
             } else {
                 this.fleeing = false;
@@ -243,22 +260,49 @@ class Fish {
         this.y += this.vy;
 
         // DETECCIÓN POR SÓNAR
-        const distToPlayerForSonar = Math.hypot(this.x - player.x, this.y - (player.y + WORLD.lightOffsetY));
-        if (player.sonarActive && Math.abs(distToPlayerForSonar - player.sonarRadius) < 120) {
-            this.sonarDetection = 1.0;
+        if (player.sonarActive) {
+            const distToPlayerForSonarSq = distanceSq(this.x, this.y, player.x, player.y + WORLD.lightOffsetY);
+            // Optimización: si no está cerca, evitarnos hacer Math.sqrt
+            const maxRadiusSq = (player.sonarRadius + 150) * (player.sonarRadius + 150);
+            const minRadiusSq = (player.sonarRadius - 150) * (player.sonarRadius - 150);
+            if (distToPlayerForSonarSq > minRadiusSq && distToPlayerForSonarSq < maxRadiusSq) {
+                 const distToPlayerForSonar = Math.sqrt(distToPlayerForSonarSq);
+                 if (Math.abs(distToPlayerForSonar - player.sonarRadius) < 120) {
+                     this.sonarDetection = 1.0;
+                 }
+            }
         }
         this.sonarDetection *= 0.96;  // Decaimiento del efecto
     }
 
+    /**
+     * [ES] Sistema visual dual. Renderiza un DOM HTML <img> sobre el lienzo rotando con CSS. Calcula relámpagos de espécimen (luces abisales) en Canvas si tiene.
+     * [EN] Dual visual system. Renders a HTML DOM <img> floating over canvas rotating with CSS. Calculates specimen flashes (abyssal lights) on Canvas if any.
+     */
     draw(ctx, camera, imageCache, player, canvas) {
         const sx = this.x - camera.x;
         const sy = this.y - camera.y;
 
-        // Culling - no dibujar si está fuera de pantalla
-        if (sy < -100 || sy > canvas.height + 100 ||
-            sx < -100 || sx > canvas.width + 100) {
-            if (this.domElement) this.domElement.style.display = 'none';
-            return;
+        // Culling visual - no dibujar si está fuera de la pantalla
+        // (Damos un margen extra usando WORLD.lightSpotRange para que la luz que desprendan se vea entrar)
+        if (sy < -WORLD.lightSpotRange * 2 || sy > canvas.height + WORLD.lightSpotRange * 2 ||
+            sx < -WORLD.lightSpotRange * 2 || sx > canvas.width + WORLD.lightSpotRange * 2) {
+            this.hideDOM();
+            return false;
+        }
+
+        // Lazy DOM Append
+        if (typeof document !== 'undefined' && !this.isLazyLoaded) {
+            const container = document.getElementById('fish-layer');
+            if (container) {
+                container.appendChild(this.domElement);
+                if (this.lightElements) {
+                    for(let i = 1; i < this.lightElements.length; i++) {
+                        if (this.lightElements[i]) container.appendChild(this.lightElements[i]);
+                    }
+                }
+                this.isLazyLoaded = true;
+            }
         }
 
         // EFECTO VISUAL DEL SÓNAR (se dibuja en el canvas)
@@ -278,23 +322,24 @@ class Fish {
         } else if (depthMeters > 1000) {
             ambientAlpha = 0;
         }
-        const dist = Math.hypot(this.x - player.x, this.y - (player.y + WORLD.lightOffsetY));
+        const dSq = distanceSq(this.x, this.y, player.x, player.y + WORLD.lightOffsetY);
 
         // Dentro del cono = opacidad plena. La caída ocurre en los bordes angulares y al salir del rango.
         let lightIntensity = 0;
-        if (player.lightOn && player.lightBattery > 0 && dist < WORLD.lightSpotRange) {
+        if (player.lightOn && player.lightBattery > 0 && dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+            const dist = Math.sqrt(dSq);
             const angToFish = Math.atan2(
                 this.y - (player.y + WORLD.lightOffsetY),
                 this.x - player.x
             );
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
-            let angleDiff = Math.abs(angToFish - lookDir);
-            while (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+            
+            const MathAngleDelta = clampAngleDelta(angToFish,lookDir);
 
-            if (angleDiff < WORLD.lightAngle) {
+            if (MathAngleDelta < WORLD.lightAngle) {
                 // El pez está dentro del cono: plena visibilidad.
                 // Solo fade suave en el borde angular del cono (último 20% del ángulo)
-                const edgeFade = Math.max(0, 1 - (angleDiff / WORLD.lightAngle - 0.8) / 0.2);
+                const edgeFade = Math.max(0, 1 - (MathAngleDelta / WORLD.lightAngle - 0.8) / 0.2);
                 lightIntensity = Math.min(1, edgeFade + 0.0001) > 0.8 ? 1.0 : edgeFade;
             } else if (dist < WORLD.lightGlowRange) {
                 // Halo radial mínimo solo para peces MUY cercanos al submarino
@@ -411,22 +456,37 @@ class Fish {
                 this.domElement.style.display = 'block';
 
                 // Ángulo en grados para CSS rotate
-                const angleDeg = Math.atan2(this.vy, this.vx) * (180 / Math.PI);
+                const MathAngleDeg = Math.atan2(this.vy, this.vx) * (180 / Math.PI);
 
                 // Si va a la izquierda, flip vertical (scaleY) porque el pez está rotado.
                 const flip = this.vx < 0 ? 'scaleY(-1)' : '';
-
-                // Restamos la mitad del tamaño para que el centro esté en sx, sy
-                this.domElement.style.transform = `translate(${sx - this.width / 2}px, ${sy - this.height / 2}px) rotate(${angleDeg}deg) ${flip}`;
+                
+                // CACHING: Only apply DOM writes when numbers change significantly
+                const renderX = Math.round(sx - this.width / 2);
+                const renderY = Math.round(sy - this.height / 2);
+                const renderAngle = Math.round(MathAngleDeg * 10) / 10; // Redondear angulo a 1 decimal
+                
+                const newTransform = `translate(${renderX}px, ${renderY}px) rotate(${renderAngle}deg) ${flip}`;
+                if (this._lastTransform !== newTransform) {
+                    this.domElement.style.transform = newTransform;
+                    this._lastTransform = newTransform;
+                }
 
                 // Opacidad: plena dentro del cono, se va oscureciendo al salir
                 let alpha = isLit
                     ? Math.max(ambientAlpha, player.lightFlickerIntensity * lightIntensity)
                     : ambientAlpha;
-                this.domElement.style.opacity = Math.min(1, alpha);
+                
+                alpha = Math.round(Math.min(1, alpha) * 100) / 100; // a 2 decimales
+                if (this._lastOpacity !== alpha) {
+                    this.domElement.style.opacity = alpha;
+                    this._lastOpacity = alpha;
+                }
             }
+            return true;
         } else {
-            if (this.domElement) this.domElement.style.display = 'none';
+            this.hideDOM();
+            return false;
         }
     }
 }

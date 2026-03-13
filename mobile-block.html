@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABYSSEA — Solo PC</title>
+    <link rel="icon" href="img/icon/web/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="img/icon/web/apple-touch-icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;400;700;900&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000a14;
+            font-family: 'Outfit', sans-serif;
+            color: #e0f4ff;
+            overflow: hidden;
+            height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* === DEEP OCEAN BACKGROUND === */
+        .ocean-bg {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 110%, #0a2a4a 0%, #040d1a 60%, #000508 100%);
+            z-index: 0;
+        }
+
+        /* Animated light rays from surface */
+        .ray {
+            position: fixed;
+            top: -10%;
+            width: 2px;
+            height: 120%;
+            background: linear-gradient(to bottom, rgba(0, 180, 255, 0.08), transparent 80%);
+            transform-origin: top center;
+            animation: sway var(--dur, 8s) ease-in-out infinite alternate;
+            z-index: 1;
+        }
+
+        @keyframes sway {
+            from {
+                transform: rotate(calc(var(--tilt, 0deg) - 2deg)) translateX(-6px);
+            }
+
+            to {
+                transform: rotate(calc(var(--tilt, 0deg) + 2deg)) translateX(6px);
+            }
+        }
+
+        /* Marine snow particles */
+        .particle {
+            position: fixed;
+            border-radius: 50%;
+            background: rgba(170, 220, 255, 0.4);
+            animation: fall var(--spd, 12s) linear infinite;
+            z-index: 1;
+        }
+
+        @keyframes fall {
+            from {
+                transform: translateY(-5vh) translateX(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 0.6;
+            }
+
+            to {
+                transform: translateY(110vh) translateX(var(--drift, 20px));
+                opacity: 0;
+            }
+        }
+
+        /* === GLASS CARD === */
+        .glass-card {
+            position: relative;
+            z-index: 10;
+            background: rgba(5, 20, 40, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(0, 160, 255, 0.15);
+            border-radius: 24px;
+            box-shadow:
+                0 0 60px rgba(0, 120, 255, 0.08),
+                0 0 120px rgba(0, 60, 150, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            padding: 2.5rem 2rem;
+            max-width: 380px;
+            width: 90vw;
+            text-align: center;
+            animation: surfaceIn 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        @keyframes surfaceIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* NO ENTRY ICON */
+        .icon-ring {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(0, 120, 255, 0.15), rgba(0, 200, 255, 0.08));
+            border: 1.5px solid rgba(0, 160, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            position: relative;
+            animation: pulseRing 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseRing {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 160, 255, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 14px rgba(0, 160, 255, 0);
+            }
+        }
+
+        .icon-ring svg {
+            width: 34px;
+            height: 34px;
+            color: #38bfff;
+        }
+
+        /* TITLE */
+        .game-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.5em;
+            color: rgba(56, 191, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin: 0 0 1rem;
+            background: linear-gradient(135deg, #ffffff 30%, #a0d8ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: rgba(190, 225, 255, 0.5);
+            line-height: 1.6;
+            margin-bottom: 1.8rem;
+        }
+
+        /* REQUIREMENTS ROW */
+        .req-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(0, 120, 255, 0.06);
+            border: 1px solid rgba(0, 160, 255, 0.1);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            margin-bottom: 0.6rem;
+        }
+
+        .req-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .req-label {
+            font-size: 0.78rem;
+            color: rgba(200, 235, 255, 0.7);
+            font-weight: 400;
+        }
+
+        .req-label strong {
+            display: block;
+            color: #a0d8ff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-bottom: 0.1rem;
+        }
+
+        /* FOOTER */
+        .footer-tag {
+            margin-top: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.55rem;
+            letter-spacing: 0.25em;
+            color: rgba(100, 160, 200, 0.3);
+            text-transform: uppercase;
+        }
+
+        /* Animated depth bar */
+        .depth-bar {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1px;
+            height: 25vh;
+            background: linear-gradient(to bottom, rgba(0, 160, 255, 0.3), transparent);
+            z-index: 2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Deep ocean background -->
+    <div class="ocean-bg"></div>
+    <div class="depth-bar"></div>
+
+    <!-- Marine snow + light rays (generated by JS) -->
+
+    <!-- Main card -->
+    <div class="glass-card">
+        <div class="icon-ring">
+            <!-- Desktop / monitor icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+            </svg>
+        </div>
+
+        <p class="game-title">ABYSSEA</p>
+        <h1>Solo disponible<br>en escritorio</h1>
+        <p class="subtitle">
+            Este juego requiere teclado para el control del submarino.<br>
+            Ábrelo desde un <strong style="color:#a0d8ff">ordenador</strong> para vivir la experiencia completa.
+        </p>
+
+        <div class="req-row">
+            <span class="req-icon">⌨️</span>
+            <div class="req-label">
+                <strong>Teclado</strong>
+                Control de movimiento con WASD o flechas
+            </div>
+        </div>
+        <div class="req-row">
+            <span class="req-icon">🖥️</span>
+            <div class="req-label">
+                <strong>Pantalla grande</strong>
+                Diseñado para resoluciones de escritorio
+            </div>
+        </div>
+        <div class="req-row">
+            <span class="req-icon">🌊</span>
+            <div class="req-label">
+                <strong>Chrome / Safari / Opera /Firefox</strong>
+                Navegador de escritorio recomendado
+            </div>
+        </div>
+
+        <p class="footer-tag">ABYSSEA_ENGINE · v1.0 · PC ONLY</p>
+    </div>
+
+    <script>
+        // ── Marine snow particles ──────────────────────────────────
+        const PARTICLE_COUNT = 50;
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const el = document.createElement('div');
+            el.className = 'particle';
+            const size = Math.random() * 2 + 0.5;
+            el.style.cssText = `
+                left: ${Math.random() * 100}vw;
+                top: ${Math.random() * 100}vh;
+                width: ${size}px;
+                height: ${size}px;
+                --spd: ${10 + Math.random() * 14}s;
+                --drift: ${(Math.random() - 0.5) * 60}px;
+                animation-delay: ${-Math.random() * 15}s;
+                opacity: ${0.2 + Math.random() * 0.5};
+            `;
+            document.body.appendChild(el);
+        }
+
+        // ── Light rays ────────────────────────────────────────────
+        const RAY_COUNT = 8;
+        const positions = [5, 15, 25, 38, 52, 65, 78, 92];
+        positions.forEach((pos, i) => {
+            const ray = document.createElement('div');
+            ray.className = 'ray';
+            ray.style.cssText = `
+                left: ${pos}vw;
+                width: ${1 + Math.random() * 2}px;
+                --dur: ${7 + Math.random() * 6}s;
+                --tilt: ${(Math.random() - 0.5) * 10}deg;
+                animation-delay: ${-Math.random() * 8}s;
+                opacity: ${0.5 + Math.random() * 0.5};
+            `;
+            document.body.appendChild(ray);
+        });
+    </script>
+</body>
+
+</html>

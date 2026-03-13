@@ -1,5 +1,7 @@
 /**
- * CAMERA - Sistema de cámara con seguimiento suave
+ * CAMERA
+ * [ES] Sistema de cámara con seguimiento suave. Controla qué parte del mundo se renderiza en pantalla y facilita la conversión de coordenadas.
+ * [EN] Camera system with smooth tracking. Controls which part of the world is rendered on screen and handles coordinate conversion.
  */
 
 class Camera {
@@ -8,6 +10,10 @@ class Camera {
         this.y = 0;
     }
 
+    /**
+     * [ES] Actualiza la posición de la cámara centrada en el jugador, aplicando interpolación para un movimiento fluido y limitando el scroll solo al eje vertical.
+     * [EN] Updates the camera position centered on the player, applying interpolation for smooth movement and restricting scroll to the vertical axis only.
+     */
     update(player, canvas) {
         // NO SCROLL HORIZONTAL - mundo del ancho de pantalla
         this.x = 0;
@@ -18,7 +24,8 @@ class Camera {
     }
 
     /**
-     * Convierte coordenadas del mundo a coordenadas de pantalla
+     * [ES] Convierte coordenadas absolutas del mundo del juego a coordenadas relativas a la pantalla actual.
+     * [EN] Converts absolute game world coordinates to screen-relative coordinates.
      */
     worldToScreen(worldX, worldY) {
         return {
@@ -28,7 +35,8 @@ class Camera {
     }
 
     /**
-     * Convierte coordenadas de pantalla a coordenadas del mundo
+     * [ES] Convierte coordenadas relativas a la pantalla en coordenadas absolutas del mundo del juego (ej. para clics del ratón).
+     * [EN] Converts screen-relative coordinates to absolute game world coordinates (e.g., for mouse clicks).
      */
     screenToWorld(screenX, screenY) {
         return {

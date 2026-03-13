@@ -1,5 +1,7 @@
 /**
- * UI - Sistema de actualización de interfaz
+ * UI MANAGER
+ * [ES] Sistema gestor de la interfaz de usuario (HUD). Actualiza dinámicamente indicadores visuales en el DOM HTML.
+ * [EN] User Interface (HUD) management system. Dynamically updates visual indicators in the HTML DOM.
  */
 
 class UIManager {
@@ -18,6 +20,10 @@ class UIManager {
         return this.macroManager.isOpen;
     }
 
+    /**
+     * [ES] Ciclo de actualización unificado de la interfaz. Coordina la sincronización de datos físicos con elementos visuales en pantalla.
+     * [EN] Unified UI update cycle. Coordinates the synchronization of physical data with on-screen visual elements.
+     */
     update(player, scannableTarget, fishCatalog, nearPOI) {
         this.frameCount++;
 
@@ -40,6 +46,10 @@ class UIManager {
         this.updateDepthSpeciesIndicators(player, fishCatalog);
     }
 
+    /**
+     * [ES] Actualiza el contador de profundidad numérico y la barra lateral de progreso de la inmersión.
+     * [EN] Updates the numeric depth counter and the vertical dive progress sidebar.
+     */
     updateDepthDisplay(player) {
         const depth = Math.floor(player.y / WORLD.depthScale);
         const depthDisplay = document.getElementById('depth-display');
@@ -53,6 +63,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Evalúa la profundidad actual para determinar y mostrar el nombre científico de la zona pelágica vigente (ej. Abisopelágica).
+     * [EN] Evaluates the current depth to determine and display the scientific name of the active pelagic zone (e.g., Abyssopelagic).
+     */
     updateZoneDisplay(player) {
         const depthMeters = player.y / WORLD.depthScale;
         let zone = WORLD.zones[0].name;
@@ -78,6 +92,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Sincroniza el nivel de batería interna del submarino con la barra visual de energía.
+     * [EN] Synchronizes the internal battery level of the submarine with the visual energy bar.
+     */
     updateBatteryDisplay(player) {
         const batteryBar = document.getElementById('battery-bar');
         if (batteryBar) {
@@ -90,6 +108,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Anima el anillo de recarga del sónar, su radar, y cambia los estados de texto y colores (Listo, Cargando, Escaneando).
+     * [EN] Animates the sonar recharge ring, its radar, and changes text status and colors (Ready, Loading, Scanning).
+     */
     updateSonarDisplay(player) {
         const radarLine = document.getElementById('sonar-radar-line');
         if (radarLine) {
@@ -130,6 +152,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Controla el panel lateral del escáner bioluminiscente, mostrando detalles preliminares si hay especies analizables cerca.
+     * [EN] Controls the bioluminescent scanner side panel, showing preliminary details if scannable species are nearby.
+     */
     updateScannerDisplay(scannableTarget, nearPOI) {
         const scannerUI = document.getElementById('scanner-ui');
         const indicator = document.getElementById('scanning-indicator');
@@ -197,6 +223,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Abre o cierra el modal a pantalla completa con la tarjeta de información detallada tras un escaneo.
+     * [EN] Opens or closes the full-screen modal with detailed information card after a scan.
+     */
     toggleScanModal(target = null) {
         if (this.isScanModalOpen) {
             // Cerrar
@@ -228,6 +258,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Delega la apertura/cierre del modal interactivo a micro-escala al MacroManager.
+     * [EN] Delegates the opening/closing of the interactive micro-scale modal to the MacroManager.
+     */
     toggleDiscoveryModal(specieId = null) {
         this.macroManager.toggle(specieId);
     }
@@ -236,7 +270,8 @@ class UIManager {
 
 
     /**
-     * NUEVA FUNCIÓN: Muestra qué especies se pueden encontrar a la profundidad actual
+     * [ES] Filtra y muestra los nombres de especies marinas nativas de la franja de profundidad actual.
+     * [EN] Filters and displays the names of marine species native to the current depth bracket.
      */
     updateDepthSpeciesIndicators(player, fishCatalog) {
         const currentDepth = player.y;
@@ -261,6 +296,10 @@ class UIManager {
         }
     }
 
+    /**
+     * [ES] Instancia elementos DOM temporales para simular el efecto de eco visual al usar el sónar.
+     * [EN] Instantiates temporary DOM elements to simulate the visual echo effect when using the sonar.
+     */
     createSonarUIWaves() {
         const container = document.getElementById('sonar-wave-container');
         if (!container) return;
