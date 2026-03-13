@@ -126,9 +126,7 @@ class MacroManager {
         if (modal) modal.classList.add('active');
 
         // Audio AL ENTRAR (como pidió el usuario)
-        const macroStartAudio = new Audio('audio/macro.mp3');
-        macroStartAudio.volume = 0.5;
-        macroStartAudio.play().catch(e => { });
+        GlobalAudioPool.play('macro', 0.5);
 
         // Inicializar minijuego (asíncrono)
         setTimeout(() => this.init(specieId), 100);
@@ -558,9 +556,7 @@ class MacroManager {
 
     toggleLight() {
         this.state.lightOn = !this.state.lightOn;
-        const clickAudio = new Audio('audio/light.mp3');
-        clickAudio.volume = 0.3;
-        clickAudio.play().catch(e => { });
+        GlobalAudioPool.play('light', 0.3);
     }
 
     handleMouseMove(e) {

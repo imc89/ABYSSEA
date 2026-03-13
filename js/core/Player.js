@@ -217,9 +217,7 @@ class Player {
     toggleLight() {
         if (this.lightBattery > 2) {
             this.lightOn = !this.lightOn;
-            const lightAudio = new Audio('audio/light.mp3');
-            lightAudio.volume = 0.4;
-            lightAudio.play().catch(e => console.warn("Could not play light audio", e));
+            GlobalAudioPool.play('light', 0.4);
         }
     }
 

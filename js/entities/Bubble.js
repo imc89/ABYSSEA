@@ -5,6 +5,9 @@
  */
 
 class Bubble {
+    // Cache estático para burbujas pre-renderizadas por tamaño (radio entero)
+    static renderCache = {};
+
     constructor(x, y, vx, vy, isEngine = true) {
         this.x = x;
         this.y = y;
@@ -59,20 +62,22 @@ class Bubble {
         }
 
         let visibility = ambientAlpha;
-        const distToPlayer = Math.hypot(this.x - player.x, this.y - player.y);
+        const distToPlayerSq = distanceSq(this.x, this.y, player.x, player.y);
         if (player.lightOn && player.lightBattery > 0) {
-            if (distToPlayer < WORLD.lightSpotRange) {
+            if (distToPlayerSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+                const distToPlayer = Math.sqrt(distToPlayerSq);
                 const angToBubble = Math.atan2(this.y - player.y, this.x - player.x);
                 const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
-                let angleDiff = Math.abs(angToBubble - lookDir);
-                while (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+                const angleDiff = clampAngleDelta(angToBubble, lookDir);
+
                 if (angleDiff < WORLD.lightAngle) {
                     visibility = Math.max(visibility,
                         player.lightFlickerIntensity * (1 - distToPlayer / WORLD.lightSpotRange));
                 }
             }
             // Halo mínimo para burbujas en el área inmediata del submarino
-            if (distToPlayer < WORLD.lightGlowRange) {
+            if (distToPlayerSq < WORLD.lightGlowRange * WORLD.lightGlowRange) {
+                const distToPlayer = Math.sqrt(distToPlayerSq);
                 const halo = (1 - distToPlayer / WORLD.lightGlowRange) * 0.5;
                 visibility = Math.max(visibility, halo);
             }
@@ -84,64 +89,90 @@ class Bubble {
         const r = this.size;
 
         ctx.save();
+        ctx.globalAlpha = alpha; // Ya hemos validado que alpha > 0.02
 
         if (window.WORLD.useGradients) {
-            // 1. Interior translúcido (volumen de vidrio)
-            const interior = ctx.createRadialGradient(
-                sx - r * 0.25, sy - r * 0.25, r * 0.05, // Centrado ligeramente arriba-izquierda
-                sx, sy, r
-            );
-            interior.addColorStop(0, `rgba(210, 245, 255, ${alpha * 0.18})`);
-            interior.addColorStop(0.6, `rgba(140, 210, 240, ${alpha * 0.06})`);
-            interior.addColorStop(1, `rgba(80, 170, 220, 0)`);
+            // CACHING: Pre-renderizar modelo de burbuja rotunda en offscreen canvas por tamaño (r redondeado x 2 para resolución)
+            const rKey = Math.ceil(this.size * 2) / 2; // Key con precision 0.5 para no tener cache infinita
+            
+            if (!Bubble.renderCache[rKey]) {
+                const offC = document.createElement('canvas');
+                const padding = 2; // Extra padding
+                offC.width = rKey * 2 + padding * 2;
+                offC.height = rKey * 2 + padding * 2;
+                const oCtx = offC.getContext('2d');
+                
+                // Centramos cordenadas en off-canvas
+                const cx = rKey + padding;
+                const cy = rKey + padding;
 
-            ctx.beginPath();
-            ctx.arc(sx, sy, r, 0, Math.PI * 2);
-            ctx.fillStyle = interior;
-            ctx.fill();
+                // 1. Interior translúcido (volumen de vidrio)
+                const interior = oCtx.createRadialGradient(
+                    cx - rKey * 0.25, cy - rKey * 0.25, rKey * 0.05,
+                    cx, cy, rKey
+                );
+                interior.addColorStop(0, `rgba(210, 245, 255, 0.18)`);
+                interior.addColorStop(0.6, `rgba(140, 210, 240, 0.06)`);
+                interior.addColorStop(1, `rgba(80, 170, 220, 0)`);
 
-            // 2. Borde sólido (el borde del cristal de la burbuja)
-            ctx.beginPath();
-            ctx.arc(sx, sy, r, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(200, 240, 255, ${alpha * 0.75})`;
-            ctx.lineWidth = Math.max(0.8, r * 0.18);
-            ctx.stroke();
+                oCtx.beginPath();
+                oCtx.arc(cx, cy, rKey, 0, Math.PI * 2);
+                oCtx.fillStyle = interior;
+                oCtx.fill();
 
-            // 3. Destello especular
-            const hlX = sx - r * 0.35;
-            const hlY = sy - r * 0.35;
-            const hlR = r * 0.28;
-            const highlight = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, hlR);
-            highlight.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.85})`);
-            highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-            ctx.beginPath();
-            ctx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
-            ctx.fillStyle = highlight;
-            ctx.fill();
+                // 2. Borde sólido (el borde del cristal de la burbuja)
+                oCtx.beginPath();
+                oCtx.arc(cx, cy, rKey, 0, Math.PI * 2);
+                oCtx.strokeStyle = `rgba(200, 240, 255, 0.75)`;
+                oCtx.lineWidth = Math.max(0.8, rKey * 0.18);
+                oCtx.stroke();
 
-            // 4. Pequeño reflejo inferior (luna de la burbuja)
-            const moonX = sx + r * 0.3;
-            const moonY = sy + r * 0.4;
-            const moonR = r * 0.12;
-            const moon = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonR);
-            moon.addColorStop(0, `rgba(200, 240, 255, ${alpha * 0.45})`);
-            moon.addColorStop(1, 'rgba(200, 240, 255, 0)');
-            ctx.beginPath();
-            ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-            ctx.fillStyle = moon;
-            ctx.fill();
+                // 3. Destello especular
+                const hlX = cx - rKey * 0.35;
+                const hlY = cy - rKey * 0.35;
+                const hlR = rKey * 0.28;
+                const highlight = oCtx.createRadialGradient(hlX, hlY, 0, hlX, hlY, hlR);
+                highlight.addColorStop(0, `rgba(255, 255, 255, 0.85)`);
+                highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                oCtx.beginPath();
+                oCtx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
+                oCtx.fillStyle = highlight;
+                oCtx.fill();
+
+                // 4. Pequeño reflejo inferior (luna de la burbuja)
+                const moonX = cx + rKey * 0.3;
+                const moonY = cy + rKey * 0.4;
+                const moonR = rKey * 0.12;
+                const moon = oCtx.createRadialGradient(moonX, moonY, 0, moonX, moonY, moonR);
+                moon.addColorStop(0, `rgba(200, 240, 255, 0.45)`);
+                moon.addColorStop(1, 'rgba(200, 240, 255, 0)');
+                oCtx.beginPath();
+                oCtx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+                oCtx.fillStyle = moon;
+                oCtx.fill();
+
+                Bubble.renderCache[rKey] = offC;
+            }
+
+            // Render del prerenderizado cacheado
+            const cachedCanvas = Bubble.renderCache[rKey];
+            const renderX = sx - rKey - 2; // - padding
+            const renderY = sy - rKey - 2; // - padding
+            ctx.drawImage(cachedCanvas, renderX, renderY);
+
         } else {
             // OPTIMIZACIÓN: Círculos translúcidos simples en lugar de 3 gradientes radiales pesados O(1) tiempo de GPU
             // 1. Interior translúcido (volumen de vidrio)
             ctx.beginPath();
             ctx.arc(sx, sy, r, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(140, 210, 240, ${alpha * 0.1})`;
+            ctx.fillStyle = `rgba(140, 210, 240, 0.1)`;
             ctx.fill();
 
             // 2. Borde sólido (el borde del cristal de la burbuja)
             ctx.beginPath();
             ctx.arc(sx, sy, r, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(200, 240, 255, ${alpha * 0.75})`;
+            ctx.strokeStyle = `rgba(200, 240, 255, 0.75)`;
             ctx.lineWidth = Math.max(0.8, r * 0.18);
             ctx.stroke();
 
@@ -151,7 +182,7 @@ class Bubble {
             const hlR = r * 0.28;
             ctx.beginPath();
             ctx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+            ctx.fillStyle = `rgba(255, 255, 255, 0.6)`;
             ctx.fill();
 
             // 4. Pequeño reflejo inferior (luna de la burbuja)
@@ -160,11 +191,12 @@ class Bubble {
             const moonR = r * 0.12;
             ctx.beginPath();
             ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(200, 240, 255, ${alpha * 0.3})`;
+            ctx.fillStyle = `rgba(200, 240, 255, 0.3)`;
             ctx.fill();
         }
 
         ctx.restore();
+        return true;
     }
 }
 

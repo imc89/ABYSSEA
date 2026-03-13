@@ -13,6 +13,30 @@
     <link rel="apple-touch-icon" href="img/icon/web/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <!--
+      [ES] Detección temprana de dispositivos móviles/tablet.
+           Redirige a mobile-block.html antes de cargar cualquier recurso pesado del juego.
+      [EN] Early mobile/tablet detection.
+           Redirects to mobile-block.html before loading any heavy game resources.
+    -->
+    <script>
+        (function detectMobile() {
+            // 1. Media query: pointer:coarse = pantalla táctil sin ratón
+            const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+
+            // 2. User-Agent: cubre iOS, iPadOS (con UA desktop simulado), Android
+            const ua = navigator.userAgent || '';
+            const mobileUA = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini|Mobile/i.test(ua);
+
+            // 3. Detectar iPadOS específicamente (reporta como Mac pero sin mouse)
+            const isIpadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+
+            if (hasCoarsePointer || mobileUA || isIpadOS) {
+                window.location.replace('mobile-block.html');
+            }
+        })();
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
@@ -467,6 +491,9 @@
       [EN] Global container for the overlaid User Interface. 
     -->
     <div id="ui-layer">
+        
+
+
         <div class="p-6 flex flex-col h-full justify-between">
             <div class="flex justify-between items-start">
                 <div class="flex flex-col gap-4">
@@ -817,6 +844,7 @@
     <script src="js/core/Player.js"></script>
     <script src="js/core/macroManager.js"></script>
     <script src="js/core/UI.js"></script>
+    <script src="js/core/UITelemetry.js"></script>
 
     <!-- Main game loop -->
     <script src="js/main.js"></script>

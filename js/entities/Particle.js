@@ -15,9 +15,9 @@ class Particle {
      * [ES] Recicla la partícula cuando sale de los límites de pantalla en lugar de destruirla y crear nueva memora (Object Pooling).
      * [EN] Recycles the particle when it goes out of screen bounds instead of destroying it and creating new memory (Object Pooling).
      */
-    reset() {
-        this.x = Math.random() * window.innerWidth;
-        this.y = -20;
+    reset(yPosition = -200) {
+        this.x = Math.random() * WORLD.width;
+        this.y = yPosition;
         this.width = Math.random() * 1.0 + 0.3;
         this.height = this.width * 0.8;
         this.baseAlpha = Math.random() * 0.12 + 0.04;
@@ -30,21 +30,24 @@ class Particle {
      * [ES] Actualiza el movimiento de suspensión biológica acoplado a la inercia opuesta de la cámara del submarino.
      * [EN] Updates biological suspension movement coupled with the opposite inertia of the submarine's camera.
      */
-    update(player, canvas) {
-        this.x += (this.speedX) - player.vx * this.parallax;
-        this.y += (this.speedY) - player.vy * this.parallax;
+    update(player, canvas, camera) {
+        // Movimiento base + Parallax inverso al jugador para sensación de profundidad
+        this.x += (this.speedX) - player.vx * (this.parallax * 0.1);
+        this.y += (this.speedY) - player.vy * (this.parallax * 0.1);
 
-        // Reposicionar cuando sale del canvas
-        if (this.y > canvas.height + 20) {
-            this.reset();
-        } else if (this.y < -20) {
-            this.y = canvas.height;
+        // Reposicionar usando WORLD bounds para que sean persistentes pero circulares alrededor del jugador
+        const margin = 2000;
+        if (this.y > player.y + margin) {
+            this.y = player.y - margin;
+            this.x = Math.random() * WORLD.width;
+        } else if (this.y < player.y - margin) {
+            this.y = player.y + margin;
         }
 
-        if (this.x < -20) {
-            this.x = canvas.width;
-        } else if (this.x > canvas.width + 20) {
-            this.x = -20;
+        if (this.x > player.x + margin) {
+            this.x = player.x - margin;
+        } else if (this.x < player.x - margin) {
+            this.x = player.x + margin;
         }
     }
 
@@ -52,13 +55,22 @@ class Particle {
      * [ES] Dibuja el copillo de nieve prestando especial atención en capturar y refractar fuertemente la luz del foco del buque.
      * [EN] Draws the snow speck paying special attention to heavily catching and refracting the vessel's spotlight beam.
      */
-    draw(ctx, player, camera, ambientAlpha) {
+    draw(ctx, player, camera, ambientAlpha, canvas) {
+        // Convertir coordenadas de mundo a pantalla
+        const sx = this.x - camera.x;
+        const sy = this.y - camera.y;
+
+        // CULLING ESTRICTO: Si no está en pantalla, ni siquiera calculamos luz
+        if (sx < -20 || sx > canvas.width + 20 || sy < -20 || sy > canvas.height + 20) {
+            return false;
+        }
+
         let isIlluminated = false;
         let illuminationFactor = 0;
 
         const distPlayer = Math.hypot(
-            this.x - (player.x - camera.x),
-            this.y - (player.y - camera.y)
+            sx - (player.x - camera.x),
+            sy - (player.y - camera.y)
         );
 
         let alpha = this.baseAlpha * ambientAlpha;
@@ -119,7 +131,7 @@ class Particle {
             const drawRadius = this.width * (1 + (illuminationFactor * 0.2));
 
             ctx.beginPath();
-            ctx.arc(this.x, this.y, drawRadius, 0, Math.PI * 2);
+            ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
 
             // Efecto de iluminación refinado (OPTIMIZACIÓN: sin gradientes)
             if (isIlluminated && illuminationFactor > 0.1) {
@@ -128,7 +140,7 @@ class Particle {
                 ctx.fill();
 
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, drawRadius * 0.4, 0, Math.PI * 2);
+                ctx.arc(sx, sy, drawRadius * 0.4, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, alpha + 0.3)})`;
                 ctx.fill();
             } else {
@@ -137,7 +149,9 @@ class Particle {
                 ctx.fill();
             }
             ctx.restore();
+            return true; // Particle was visible and drawn
         }
+        return false; // Not drawn (alpha too low)
     }
 }
 

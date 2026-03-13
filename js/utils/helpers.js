@@ -153,12 +153,87 @@ function createPreRenderedRadialGradient(radius, colorStops) {
     return c;
 }
 
+/**
+ * [ES] Sistema de pool de audios. Precarga y reutiliza elementos de audio para evitar pausas en el Garbage Collector (burbujas, luces).
+ * [EN] Audio pool system. Preloads and reuses audio elements to avoid Garbage Collector pauses (bubbles, lights).
+ */
+class AudioPool {
+    constructor() {
+        this.pools = {};
+    }
+
+    /**
+     * @param {string} id - Identificador del audio
+     * @param {string} src - Ruta del archivo
+     * @param {number} size - Tamaño del pool (cuántos audios solapados se permiten)
+     */
+    initPool(id, src, size = 3) {
+        this.pools[id] = [];
+        for (let i = 0; i < size; i++) {
+            const audio = new Audio(src);
+            this.pools[id].push(audio);
+        }
+    }
+
+    /**
+     * @param {string} id - Identificador
+     * @param {number} volume - Volumen (0.0 a 1.0)
+     */
+    play(id, volume = 1.0) {
+        if (!this.pools[id]) return null;
+        
+        // Buscar un audio libre
+        const pool = this.pools[id];
+        let audio = pool.find(a => a.paused || a.ended);
+        
+        // Si no hay libres, forzar el más antiguo (el primero)
+        if (!audio) {
+            audio = pool[0];
+            audio.currentTime = 0;
+            // Rotar el array para ponerlo al final (LRU)
+            pool.push(pool.shift());
+        }
+        
+        audio.volume = volume;
+        audio.play().catch(e => { /* Ignore auto-play blocks */ });
+        return audio;
+    }
+}
+
+/**
+ * [ES] Calcula la distancia euclidiana AL CUADRADO. Más rápido para comparaciones masivas (boids).
+ * [EN] Calculates squared Euclidean distance. Faster for massive comparisons (boids).
+ */
+function distanceSq(x1, y1, x2, y2) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return dx * dx + dy * dy;
+}
+
+/**
+ * [ES] Normaliza la diferencia angular para estar entre -PI y PI.
+ * [EN] Normalizes angle difference to be between -PI and PI.
+ */
+function clampAngleDelta(angle1, angle2) {
+    let diff = Math.abs(angle1 - angle2);
+    while (diff > Math.PI) {
+        diff = Math.PI * 2 - diff;
+    }
+    return diff;
+}
+
+// Inicializar un pool global
+const GlobalAudioPool = new AudioPool();
+
 // Exportar para uso en otros módulos
 if (typeof window !== 'undefined') {
     window.lerpColor = lerpColor;
     window.safeDrawImage = safeDrawImage;
     window.ImageCache = ImageCache;
     window.distance = distance;
+    window.distanceSq = distanceSq;
     window.clamp = clamp;
+    window.clampAngleDelta = clampAngleDelta;
     window.createPreRenderedRadialGradient = createPreRenderedRadialGradient;
+    window.GlobalAudioPool = GlobalAudioPool;
 }
