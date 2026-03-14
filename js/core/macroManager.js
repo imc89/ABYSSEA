@@ -209,7 +209,7 @@ class MacroManager {
         // --- CONFIGURACIÓN DE DATOS ---
         const macroData = window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : {
             id: 'fallback',
-            imagen: './img/little/Eurythenes.png',
+            imagen: 'img/little/Eurythenes.png',
             ancho: 120,
             alto: 80,
             velocidadX: 1.5,
@@ -414,7 +414,23 @@ class MacroManager {
             const h = c.h * breathingScale;
             ctx.globalAlpha = revealed ? 1.0 : 0.7;
 
-            ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
+            // [ES] Verificación de seguridad: No intentar pintar si la imagen falló (404)
+            // [EN] Safety check: Do not attempt to draw if the image failed to load (404)
+            if (creatureImg.complete && creatureImg.naturalWidth > 0) {
+                ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
+            } else {
+                // Fallback visual en caso de error de carga para evitar crash
+                ctx.fillStyle = revealed ? 'rgba(0, 255, 255, 0.5)' : 'rgba(0, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(0, 0, w / 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Brillo adicional para indicar que hay "algo" ahí
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'cyan';
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+                ctx.stroke();
+            }
             ctx.restore();
         });
 
@@ -548,8 +564,6 @@ class MacroManager {
                     exitBtn.style.setProperty('opacity', '1', 'important');
                     exitBtn.style.setProperty('pointer-events', 'auto', 'important');
                 }
-
-                // NO sonido aquí (el usuario pidió que el sonido macro.mp3 solo suene al entrar)
             }
         }, 500);
     }

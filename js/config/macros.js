@@ -9,7 +9,7 @@ const MACRO_CATALOG = {
         id: 'eurythenes',
         nombre: 'Eurythenes gryllus',
         cientifico: 'Anfípodo Gigante Abisal',
-        imagen: './img/little/Eurythenes.png',
+        imagen: 'img/little/Eurythenes.png',
         descripcion: 'Este carroñero abisal es capaz de detectar restos orgánicos a kilómetros de distancia. Su presencia indica una zona de afloramiento rocoso con alta actividad biológica en microescala.',
 
         // --- PARÁMETROS VISUALES ---
@@ -32,7 +32,7 @@ const MACRO_CATALOG = {
         id: 'hola',
         nombre: 'Angelito del Mar',
         cientifico: 'Clione limacina',
-        imagen: './img/little/Clione.png',
+        imagen: 'img/little/Clione.png',
         descripcion: 'Un molusco gasterópodo pelágico sin concha, conocido por su apariencia etérea de "ángel". Flota grácilmente en las corrientes abisales.',
 
         // --- PARÁMETROS VISUALES ---
