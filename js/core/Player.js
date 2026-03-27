@@ -246,9 +246,12 @@ class Player {
         ctx.globalAlpha = this.lightOn ? 1.0 : ambientAlphaSub;
 
         if (!safeDrawImage(ctx, playerImage, -this.w / 2, -this.h / 2, this.w, this.h)) {
-            // Fallback: dibujar rectángulo amarillo
-            ctx.fillStyle = "transparent";
+            // Fallback: dibujar submarino esquemático
+            ctx.fillStyle = "rgba(6, 182, 212, 0.4)";
             ctx.fillRect(-this.w / 2, -this.h / 4, this.w, this.h / 2);
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.8)";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-this.w / 2, -this.h / 4, this.w, this.h / 2);
         }
 
         ctx.restore();

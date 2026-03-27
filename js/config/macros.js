@@ -32,7 +32,7 @@ const MACRO_CATALOG = {
         id: 'hola',
         nombre: 'Angelito del Mar',
         cientifico: 'Clione limacina',
-        imagen: 'img/little/Clione.png',
+        imagen: 'img/little/CLIONE/CLIONE.gif',
         descripcion: 'Un molusco gasterópodo pelágico sin concha, conocido por su apariencia etérea de "ángel". Flota grácilmente en las corrientes abisales.',
 
         // --- PARÁMETROS VISUALES ---

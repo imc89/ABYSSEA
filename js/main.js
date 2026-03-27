@@ -38,16 +38,64 @@ let discoveryPoints = [];
 let nearPOI = null;
 
 /**
- * [ES] Inicialización del juego. Configura el lienzo, inicializa clases principales, carga audio/imágenes y genera el mundo.
- * [EN] Game initialization. Sets up the canvas, initializes main classes, loads audio/images, and generates the world.
+ * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
+ * [EN] Game initialization. Sets up the canvas, manages start screens and loads the world.
  */
 function init() {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
+    // 1. Mostrar Pantalla Splash inmediatamente
+    try {
+        new SplashScreen(() => {
+            // 2. Al interactuar con Splash, iniciar Loading inmediatamente
+            const loading = new LoadingScreen();
 
-    // Configurar tamaño del canvas
-    resize();
+            // 3. Inicializar el contexto de renderizado durante "Loading"
+            // Esto evita cualquier flash de canvas antes de tiempo
+            canvas = document.getElementById('gameCanvas');
+            if (canvas) {
+                ctx = canvas.getContext('2d', { alpha: false });
+                resize();
+            }
 
+            // Simular o realizar carga real de assets (Ralentizado para disfrutar consola)
+            let progress = 0;
+            const loadInterval = setInterval(() => {
+                progress += Math.random() * 2.5 + 0.5; // Incremento más pequeño
+                loading.update(progress);
+
+                if (progress >= 100) {
+                    clearInterval(loadInterval);
+
+                    // 4. Inicializar sistemas reales (Físicas, Audio, Entidades)
+                    try {
+                        setupGameCore();
+                        loading.finish(() => {
+                            // 5. Iniciar loop solo cuando Loading desaparece
+                            console.log("OSIRIS ENGINE: Systems Online. Starting game loop.");
+                            requestAnimationFrame(loop);
+                        });
+                    } catch (e) {
+                        console.error("Error during setupGameCore:", e);
+                    }
+                }
+            }, 100);
+        });
+    } catch (e) {
+        console.error("Error initializing SplashScreen:", e);
+        // Fallback de emergencia
+        canvas = document.getElementById('gameCanvas');
+        if (canvas) {
+            ctx = canvas.getContext('2d');
+            resize();
+        }
+        setupGameCore();
+        requestAnimationFrame(loop);
+    }
+}
+
+/**
+ * [ES] Configuración del núcleo del juego una vez superadas las pantallas de carga.
+ */
+function setupGameCore() {
     // Inicializar sistemas
     camera = new Camera();
     player = new Player();
@@ -57,86 +105,71 @@ function init() {
     player.x = canvas.width / 2;
     player.y = PLAYER_CONFIG.startY;
     player.lockY = player.y;
-    player.isLocked = true; // Forzar inicio bloqueado por seguridad
+    player.isLocked = true;
 
     // Limpiar capa nativa de DOM de peces
     const fishLayer = document.getElementById('fish-layer');
-    if (fishLayer) {
-        fishLayer.innerHTML = '';
-    }
+    if (fishLayer) fishLayer.innerHTML = '';
 
     uiManager = new UIManager();
     uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
 
-    // Inicializar audio de burbujas (motor)
+    // Inicializar audio
     bubblesAudio = new Audio('audio/bubbles.mp3');
     bubblesAudio.loop = true;
     bubblesAudio.volume = 0.4;
 
-    // Inicializar música de fondo
     bgMusic = new Audio('audio/sound.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
 
-    // Inicializar audio de batería baja
     lowBatteryAudio = new Audio('audio/battery-off.mp3');
     lowBatteryAudio.loop = true;
     lowBatteryAudio.volume = 0.6;
 
-    // Precargar Audios en el Pool Global
+    // Precargar Audios
     GlobalAudioPool.initPool('fish_escape', 'audio/fish_escape.mp3', 5);
     GlobalAudioPool.initPool('light', 'audio/light.mp3', 2);
     GlobalAudioPool.initPool('sonar', 'audio/sonar.mp3', 2);
     GlobalAudioPool.initPool('hook', 'audio/hook.mp3', 1);
     GlobalAudioPool.initPool('macro', 'audio/macro.mp3', 1);
 
-    // Cargar imagen del jugador (necesaria para player.draw())
+    // Cargar imagen del jugador
     imageCache.load('player', PLAYER_CONFIG.image);
 
-    // Generar partículas de nieve marina (esparcidas por el mundo inicial)
+    // Generar partículas de nieve marina (ahora en espacio de pantalla)
     for (let i = 0; i < WORLD.particleCount; i++) {
-        const p = new Particle();
-        p.y = Math.random() * 2000;
-        marineSnow.push(p);
+        marineSnow.push(new Particle());
     }
 
-    // Generar peces según el catálogo
+    // Generar peces
     FISH_CATALOG.forEach(specie => {
         for (let g = 0; g < specie.cantidadGrupos; g++) {
-            // CONVERSIÓN AUTOMÁTICA: metros → game units (×10)
             const minGameUnits = specie.minProf * WORLD.depthScale;
             const maxGameUnits = specie.maxProf * WORLD.depthScale;
-
             const centerX = Math.random() * canvas.width;
             const centerY = minGameUnits + Math.random() * (maxGameUnits - minGameUnits);
 
             for (let i = 0; i < specie.pecesPorGrupo; i++) {
                 const f = new Fish(specie, g);
-
-                // Distribuir peces alrededor del centro del grupo
-                // Mantener dentro del rango de profundidad configurado
                 const offsetX = (Math.random() - 0.5) * 300;
-                const offsetY = (Math.random() - 0.5) * 200; // Offset vertical más pequeño
-
+                const offsetY = (Math.random() - 0.5) * 200;
                 f.x = Math.max(0, Math.min(canvas.width, centerX + offsetX));
-                // CRITICAL: Asegurar que el offset NO saque al pez de su rango de profundidad
                 f.y = Math.max(minGameUnits, Math.min(maxGameUnits, centerY + offsetY));
-
                 fishes.push(f);
             }
         }
     });
 
-    // Inicializar Puntos de Descubrimiento (POIs) dinámicamente desde MACRO_CATALOG
+    // Puntos de Descubrimiento (POIs)
     Object.values(MACRO_CATALOG).forEach(specie => {
         for (let i = 0; i < (specie.cantidadPoints || 0); i++) {
             const minGameUnits = specie.minProf * WORLD.depthScale;
             const maxGameUnits = specie.maxProf * WORLD.depthScale;
-
             discoveryPoints.push({
                 id: `${specie.id}_${i}`,
-                specieId: specie.id, // Guardar ID de la especie para el minijuego
+                specieId: specie.id,
                 x: 100 + Math.random() * (canvas.width - 200),
                 y: minGameUnits + Math.random() * (maxGameUnits - minGameUnits),
                 radius: 40,
@@ -148,9 +181,6 @@ function init() {
 
     // Event listeners
     setupEventHandlers();
-
-    // Iniciar loop del juego
-    requestAnimationFrame(loop);
 }
 
 /**
@@ -233,12 +263,10 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Regenerar partículas al cambiar tamaño (Dándoles profundidad aleatoria en el mundo)
+    // Regenerar partículas al cambiar tamaño (Espacio de pantalla)
     marineSnow = [];
     for (let i = 0; i < WORLD.particleCount; i++) {
-        const p = new Particle();
-        p.y = Math.random() * (WORLD.depthScale * 2000); // Esparcirlas un poco si se reinician
-        marineSnow.push(p);
+        marineSnow.push(new Particle());
     }
 
     // Re-centrar jugador horizontalmente si está enganchado en la base
@@ -598,7 +626,12 @@ function draw() {
 }
 
 // Iniciar el juego cuando cargue la página
-window.onload = init;
+// Iniciar el juego cuando cargue la página
+if (document.readyState === 'complete') {
+    init();
+} else {
+    window.addEventListener('load', init);
+}
 
 /**
  * [ES] Abre o cierra el menú de ajustes ingame (Pausa conceptual).
