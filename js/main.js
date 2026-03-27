@@ -290,8 +290,17 @@ function setControls(mode) {
  * [ES] Bucle recursivo nativo manejado por requestAnimationFrame a 60FPS constantes.
  * [EN] Native recursive loop handled by requestAnimationFrame at a constant 60FPS.
  */
-function loop() {
-    update();
+let lastTime = 0;
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Limit dt to prevent massive jumps (e.g., when switching tabs)
+    if (dt > 100) dt = 16.666; 
+    const dtMult = dt / 16.666;
+
+    update(dtMult);
     draw();
     requestAnimationFrame(loop);
 }
@@ -300,11 +309,11 @@ function loop() {
  * [ES] Lógica principal de actualización (sin pintar). Calcula físicas, colisiones, eventos musicales y de descubrimiento.
  * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
-function update() {
+function update(dtMult = 1.0) {
     if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
 
     // Actualizar jugador (pasar canvas para límites dinámicos)
-    const moving = player.update(keys, controlScheme, WORLD, canvas);
+    const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);
 
     // Lógica de desenganche de la base (S en WASD o ArrowDown)
     if (player.isLocked) {
@@ -357,7 +366,7 @@ function update() {
 
     // Actualizar burbujas y filtrar las muertas
     bubbles = bubbles.filter(b => b.life > 0);
-    bubbles.forEach(b => b.update());
+    bubbles.forEach(b => b.update(dtMult));
 
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
@@ -389,7 +398,7 @@ function update() {
     });
 
     // Actualizar partículas (ahora son world-space y necesitan la cámara para culling)
-    marineSnow.forEach(p => p.update(player, canvas, camera));
+    marineSnow.forEach(p => p.update(player, canvas, camera, dtMult));
 
     // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
     telemetryData.activeFishes = 0;
@@ -406,7 +415,7 @@ function update() {
     });
 
     // Solo actualizar IA y Posiciones locales de los que están simulados usando la lista truncada proximateFishes
-    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas));
+    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas, dtMult));
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
     scannableTarget = findScannableTarget();
