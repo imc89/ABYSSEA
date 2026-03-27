@@ -41,10 +41,10 @@ class Player {
      * [ES] Bucle principal de físicas y lógica del jugador. Gestiona inputs, físicas, gasto de batería y colisiones contra límites del nivel.
      * [EN] Main physics and logic loop for the player. Handles inputs, physics, battery drain, and collisions against level boundaries.
      */
-    update(keys, controlScheme, world, canvas) {
+    update(keys, controlScheme, world, canvas, dtMult = 1.0) {
         // Actualizar sónar
         if (this.sonarActive) {
-            this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed;
+            this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
             if (this.sonarRadius > PLAYER_CONFIG.sonarMaxRadius) {
                 this.sonarActive = false;
                 this.sonarCharging = true;
@@ -53,7 +53,7 @@ class Player {
 
         if (this.sonarCharging) {
             if (this.sonarCooldown > 0) {
-                this.sonarCooldown -= 1 / 60;
+                this.sonarCooldown -= (1 / 60) * dtMult;
             } else {
                 this.sonarCharging = false;
             }
@@ -61,13 +61,13 @@ class Player {
 
         // Gestión de batería del faro
         if (this.lightOn) {
-            this.lightBattery -= PLAYER_CONFIG.lightDrainRate;
+            this.lightBattery -= PLAYER_CONFIG.lightDrainRate * dtMult;
             if (this.lightBattery <= 0) {
                 this.lightBattery = 0;
                 this.lightOn = false;
             }
         } else if (this.lightBattery < 100) {
-            this.lightBattery += PLAYER_CONFIG.lightRechargeRate;
+            this.lightBattery += PLAYER_CONFIG.lightRechargeRate * dtMult;
         }
 
         // EFECTO DE BOMBILLA MURIÉNDOSE: parpadeo agresivo cuando la batería baja del 10%
@@ -116,13 +116,13 @@ class Player {
             this.targetAngle *= 0.9;
         }
 
-        // Aplicar fricción
-        this.vx *= world.friction;
-        this.vy *= world.friction;
+        // Aplicar fricción (pow to keep it framerate independent if dtMult varies greatly, but * dtMult is acceptable for small diffs)
+        this.vx *= Math.pow(world.friction, dtMult);
+        this.vy *= Math.pow(world.friction, dtMult);
 
         // Actualizar posición
-        this.x += this.vx;
-        this.y += this.vy;
+        this.x += this.vx * dtMult;
+        this.y += this.vy * dtMult;
 
         // LÍMITES HORIZONTALES - bordes naturales del canvas
         const margin = 80;
@@ -148,7 +148,7 @@ class Player {
         }
 
         // Suavizar ángulo
-        this.angle += (this.targetAngle - this.angle) * 0.1;
+        this.angle += (this.targetAngle - this.angle) * 0.1 * dtMult;
 
         // Bloqueo de ascenso (colisión con el casco inferior de la Base Abisal)
         // La estructura térmica principal bloquea el paso por encima de la cota Y=160.

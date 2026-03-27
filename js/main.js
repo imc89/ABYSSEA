@@ -71,6 +71,7 @@ function init() {
                         loading.finish(() => {
                             // 5. Iniciar loop solo cuando Loading desaparece
                             console.log("OSIRIS ENGINE: Systems Online. Starting game loop.");
+                            updateCursorVisibility(); // Ocultar cursor al empezar
                             requestAnimationFrame(loop);
                         });
                     } catch (e) {
@@ -90,6 +91,9 @@ function init() {
         setupGameCore();
         requestAnimationFrame(loop);
     }
+
+    // Registrar manejadores de eventos nada más arrancar (para permitir ESC en splash)
+    setupEventHandlers();
 }
 
 /**
@@ -180,7 +184,7 @@ function setupGameCore() {
     });
 
     // Event listeners
-    setupEventHandlers();
+    // setupEventHandlers(); // Movido a init() para responder desde el splash
 }
 
 /**
@@ -198,33 +202,33 @@ function setupEventHandlers() {
             setControls('ARROWS');
         }
 
-        if (uiManager.isDiscoveryModalOpen) {
+        if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
             uiManager.macroManager.state.keys[e.code] = true;
             uiManager.macroManager.state.keys[e.key] = true;
         }
 
         if (e.code === 'Space') {
-            if (uiManager.isDiscoveryModalOpen) {
+            if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
                 uiManager.macroManager.toggleLight();
-            } else {
+            } else if (typeof player !== 'undefined' && player) {
                 player.toggleLight();
             }
         }
 
         if (e.key === '<') {
-            uiTelemetry.toggle();
+            if (typeof uiTelemetry !== 'undefined' && uiTelemetry) uiTelemetry.toggle();
         }
 
         if (e.code === 'KeyE') {
-            if (player.activateSonar()) {
-                uiManager.createSonarUIWaves();
+            if (typeof player !== 'undefined' && player && player.activateSonar()) {
+                if (typeof uiManager !== 'undefined' && uiManager) uiManager.createSonarUIWaves();
                 GlobalAudioPool.play('sonar', 1.0);
             }
         }
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
-            if (uiManager.isScanModalOpen) {
+            if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
             } else {
                 toggleMenu();
@@ -232,21 +236,23 @@ function setupEventHandlers() {
         }
 
         if (e.code === 'Enter') {
-            if (uiManager.isScanModalOpen) {
-                uiManager.toggleScanModal();
-            } else if (uiManager.isDiscoveryModalOpen) {
-                uiManager.macroManager.onEnter();
-            } else if (nearPOI) {
-                uiManager.toggleDiscoveryModal(nearPOI.specieId);
-            } else if (scannableTarget) {
-                uiManager.toggleScanModal(scannableTarget);
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                if (uiManager.isScanModalOpen) {
+                    uiManager.toggleScanModal();
+                } else if (uiManager.isDiscoveryModalOpen) {
+                    uiManager.macroManager.onEnter();
+                } else if (typeof nearPOI !== 'undefined' && nearPOI) {
+                    uiManager.toggleDiscoveryModal(nearPOI.specieId);
+                } else if (typeof scannableTarget !== 'undefined' && scannableTarget) {
+                    uiManager.toggleScanModal(scannableTarget);
+                }
             }
         }
     });
 
     window.addEventListener('keyup', e => {
         keys[e.code] = false;
-        if (uiManager.isDiscoveryModalOpen) {
+        if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
             uiManager.macroManager.state.keys[e.code] = false;
             uiManager.macroManager.state.keys[e.key] = false;
         }
@@ -297,7 +303,7 @@ function loop(timestamp) {
     lastTime = timestamp;
 
     // Limit dt to prevent massive jumps (e.g., when switching tabs)
-    if (dt > 100) dt = 16.666; 
+    if (dt > 100) dt = 16.666;
     const dtMult = dt / 16.666;
 
     update(dtMult);
@@ -435,6 +441,7 @@ function findScannableTarget() {
     let target = null;
 
     fishes.forEach(f => {
+        if (!f.isSimulated) return; // Optimizando iteración solo a peces renderizados
         const dSq = distanceSq(f.x, f.y, player.x, player.y + WORLD.lightOffsetY);
 
         if (dSq < minDistSq) {
@@ -453,6 +460,11 @@ function findScannableTarget() {
     return target;
 }
 
+let bgCache = {
+    color: [0, 0, 0],
+    lastDepth: -9999
+};
+
 /**
  * [ES] Renderiza el canvas completo en orden de Z-Index (Fondo -> Partículas -> POIs -> Entidades -> HUD).
  * [EN] Renders the entire canvas in Z-Index order (Background -> Particles -> POIs -> Entities -> HUD).
@@ -460,28 +472,33 @@ function findScannableTarget() {
 function draw() {
     // --- CÁLCULO DE COLOR DE FONDO Y LUZ AMBIENTAL ---
     const depthMeters = player.y / WORLD.depthScale;
-    let bg = [0, 0, 0];
 
-    // Encontrar el segmento de zona actual para interpolar el color
-    let zoneIndex = 0;
-    for (let i = 0; i < WORLD.zones.length - 1; i++) {
-        if (depthMeters >= WORLD.zones[i].depth) {
-            zoneIndex = i;
+    if (Math.abs(bgCache.lastDepth - depthMeters) > 0.5) {
+        let bg = [0, 0, 0];
+        let zoneIndex = 0;
+        for (let i = 0; i < WORLD.zones.length - 1; i++) {
+            if (depthMeters >= WORLD.zones[i].depth) {
+                zoneIndex = i;
+            }
         }
+
+        const currentZone = WORLD.zones[zoneIndex];
+        const nextZone = WORLD.zones[zoneIndex + 1] || currentZone;
+
+        if (currentZone === nextZone) {
+            bg = currentZone.color;
+        } else {
+            const range = nextZone.depth - currentZone.depth;
+            const progress = Math.min(1, (depthMeters - currentZone.depth) / range);
+            // Asegurarse de que lerpColor existe o se usará fallback
+            bg = lerpColor(currentZone.color, nextZone.color, progress);
+        }
+
+        bgCache.color = bg;
+        bgCache.lastDepth = depthMeters;
     }
 
-    const currentZone = WORLD.zones[zoneIndex];
-    const nextZone = WORLD.zones[zoneIndex + 1] || currentZone;
-
-    if (currentZone === nextZone) {
-        bg = currentZone.color;
-    } else {
-        const range = nextZone.depth - currentZone.depth;
-        const progress = Math.min(1, (depthMeters - currentZone.depth) / range);
-        bg = lerpColor(currentZone.color, nextZone.color, progress);
-    }
-
-    ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
+    ctx.fillStyle = `rgb(${bgCache.color[0]},${bgCache.color[1]},${bgCache.color[2]})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Alpha ambiental basado en zonas científicas:
@@ -651,6 +668,7 @@ function toggleMenu() {
     const menu = document.getElementById('esc-menu');
     if (menu) {
         menu.classList.toggle('hidden', !isMenuOpen);
+        updateCursorVisibility();
         if (isMenuOpen) updateSettingsUI();
     }
 }
@@ -791,7 +809,20 @@ document.addEventListener('fullscreenchange', updateSettingsUI);
 if (typeof window !== 'undefined') {
     window.setControls = setControls;
     window.toggleFullscreen = toggleFullscreen;
-    window.toggleMusicMute = toggleMusicMute;
-    window.toggleMenu = toggleMenu;
     window.setQuality = setQuality;
+    window.updateCursorVisibility = updateCursorVisibility;
+}
+
+/**
+ * [ES] Actualiza la visibilidad del cursor según si hay menús activos.
+ */
+function updateCursorVisibility() {
+    // Si no ha cargado el uiManager aún, no ocultamos (splash/loading)
+    if (typeof uiManager === 'undefined' || !uiManager) return;
+
+    const isScanOpen = uiManager.isScanModalOpen || false;
+    const isDiscoveryOpen = uiManager.isDiscoveryModalOpen || false;
+    const shouldHide = !isMenuOpen && !isScanOpen && !isDiscoveryOpen;
+    
+    document.body.classList.toggle('hide-cursor', shouldHide);
 }

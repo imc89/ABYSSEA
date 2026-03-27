@@ -144,6 +144,10 @@ class MacroManager {
 
         // Inicializar minijuego (asíncrono para dejar que el modal se pinte)
         setTimeout(() => this.init(specieId), 100);
+
+        if (typeof window.updateCursorVisibility === 'function') {
+            window.updateCursorVisibility();
+        }
     }
 
     _clearSpecieUI() {
@@ -204,6 +208,10 @@ class MacroManager {
 
         this.state.revealed = false;
         this.currentSpecieId = null;
+
+        if (typeof window.updateCursorVisibility === 'function') {
+            window.updateCursorVisibility();
+        }
     }
 
     /**

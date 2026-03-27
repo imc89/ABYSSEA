@@ -38,6 +38,13 @@ class SplashScreen {
                 <div id="splash-particles-near" class="absolute inset-0 opacity-80 blur-[1px]"></div>
             </div>
 
+            <!-- Botón de Configuración Superior Derecha -->
+            <div class="absolute top-8 right-8 z-[600]">
+                <button id="splash-config-btn" class="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all group pointer-events-auto">
+                    <i data-lucide="settings" class="w-6 h-6 text-cyan-400 group-hover:rotate-90 transition-transform duration-500"></i>
+                </button>
+            </div>
+
             <!-- Capa Decorativa de Datos (HUD Readout) -->
             <div class="absolute inset-0 pointer-events-none p-10 font-mono text-[7px] text-cyan-500/40 hidden md:block">
                 <div class="flex flex-col gap-1 animate-[fadeIn_2s_ease-out]">
@@ -93,8 +100,9 @@ class SplashScreen {
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
                             
                             <div class="flex items-center justify-center gap-3">
-                                <i data-lucide="power" class="w-4 h-4 text-cyan-400 transition-transform duration-500"></i>
-                                <span class="text-white font-bold uppercase tracking-[0.3em] text-sm">Iniciar Inmersión</span>
+                                <i data-lucide="power" class="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform duration-500 mb-0.5"></i>
+                                <span class="text-white font-bold uppercase tracking-[0.2em] -mr-[0.2em] text-sm leading-none">Iniciar Inmersión</span>
+                                <span class="px-1.5 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/5 text-[7px] text-cyan-400/80 font-mono leading-none shadow-[0_0_10px_rgba(6,182,212,0.1)]">ENTER</span>
                             </div>
                         </button>
                         
@@ -123,6 +131,24 @@ class SplashScreen {
 
         const btn = document.getElementById('start-mission-btn');
         if (btn) btn.addEventListener('click', () => this.hide());
+
+        const configBtn = document.getElementById('splash-config-btn');
+        if (configBtn) configBtn.addEventListener('click', () => {
+            if (typeof toggleMenu === 'function') {
+                toggleMenu();
+            }
+        });
+
+        // Manejador de teclado para Enter (Mission Start)
+        this._handleKeyDown = (e) => {
+            if (e.code === 'Enter') {
+                // Solo si el menú no está abierto
+                if (typeof isMenuOpen !== 'undefined' && !isMenuOpen) {
+                    this.hide();
+                }
+            }
+        };
+        window.addEventListener('keydown', this._handleKeyDown);
     }
 
     injectStyles() {
@@ -195,6 +221,10 @@ class SplashScreen {
     }
 
     hide() {
+        if (this._handleKeyDown) {
+            window.removeEventListener('keydown', this._handleKeyDown);
+        }
+
         this.container.classList.add('opacity-0');
         if (this.onStart) this.onStart();
 

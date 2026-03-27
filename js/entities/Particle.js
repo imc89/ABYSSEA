@@ -44,15 +44,17 @@ class Particle {
      * [ES] Actualiza la posición aplicando el patrón de movimiento: caída lenta, oscilación senoidal y deriva.
      * [EN] Updates position applying the movement pattern: slow fall, sine oscillation and drift.
      */
-    update(player, canvas, camera) {
+    update(player, canvas, camera, dtMult = 1.0) {
         const time = Date.now();
         
         // Cálculo de oscilación horizontal (Seno con desfase)
         const oscillation = Math.sin(time * this.oscSpeed + this.oscOffset) * this.oscMagnitude;
         
         // Movimiento final: (Oscilación + Deriva + Parallax) | (Caída Lenta + Parallax)
-        this.x += (oscillation + this.constantDriftX) - player.vx * this.parallax;
-        this.y += (this.speedY) - player.vy * this.parallax;
+        // Nota: player.vx y player.vy ya están afectados indirectamente por el ciclo del jugador, 
+        // pero la componente de partícula propia sí debe multiplicarse.
+        this.x += ((oscillation + this.constantDriftX) - player.vx * this.parallax) * dtMult;
+        this.y += (this.speedY - player.vy * this.parallax) * dtMult;
 
         // Envolvimiento de pantalla (Screen Wrapping)
         const margin = 20;

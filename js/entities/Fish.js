@@ -97,7 +97,7 @@ class Fish {
      * [ES] Lógica iterativa del espécimen. Calcula comportamiento grupal (cohesión, alineación, separación), huida del cazador y colisión de bordes oceánicos.
      * [EN] Iterative logic of the specimen. Calculates group behavior (cohesion, alignment, separation), hunter fleeing, and ocean border collision.
      */
-    update(others, player, canvas) {
+    update(others, player, canvas, dtMult = 1.0) {
         const PERCEPTION = 180;  // Radio de percepción del vecindario
         const SEP_RADIUS = 45;   // Radio de separación personal
         const MAX_FORCE = 0.04; // Fuerza máxima de dirección por tick
@@ -177,14 +177,14 @@ class Fish {
                 }
             }
 
-            this.vx += this._steerX;
-            this.vy += this._steerY;
+            this.vx += this._steerX * dtMult;
+            this.vy += this._steerY * dtMult;
         }
 
         // FUERZA DE WANDER orgánica — oscilación suave independiente para cada pez
         const t = (Date.now() * 0.0008) + this.timeOffset;
-        this.vx += Math.sin(t * 1.3) * 0.008;
-        this.vy += Math.cos(t * 0.97) * 0.005;
+        this.vx += Math.sin(t * 1.3) * 0.008 * dtMult;
+        this.vy += Math.cos(t * 0.97) * 0.005 * dtMult;
 
         // EVITAR AL JUGADOR
         if (this.config.huyeDelJugador !== false) {
@@ -192,7 +192,7 @@ class Fish {
             if (dSqPlayer < 40000) { // 200 * 200
                 const dPlayer = Math.sqrt(dSqPlayer);
                 const ang = Math.atan2(this.y - player.y, this.x - player.x);
-                const fleeStr = Math.max(0, 1 - dPlayer / 200) * 0.4;
+                const fleeStr = Math.max(0, 1 - dPlayer / 200) * 0.4 * dtMult;
                 this.vx += Math.cos(ang) * fleeStr;
                 this.vy += Math.sin(ang) * fleeStr;
 
@@ -211,7 +211,7 @@ class Fish {
         const effectiveMinProf = Math.max(this.minProf, absoluteRoof);
 
         if (this.y < effectiveMinProf) {
-            const strength = (effectiveMinProf - this.y) * 0.05;
+            const strength = (effectiveMinProf - this.y) * 0.05 * dtMult;
             this.vy += Math.min(strength, 1.0);
             if (this.y < absoluteRoof) {
                 this.y = absoluteRoof;
@@ -219,7 +219,7 @@ class Fish {
             }
         }
         if (this.y > this.maxProf) {
-            const strength = (this.y - this.maxProf) * 0.01;
+            const strength = (this.y - this.maxProf) * 0.01 * dtMult;
             this.vy -= Math.min(strength, 0.5);
         }
 
@@ -229,11 +229,11 @@ class Fish {
         const maxForce = 0.4;
 
         if (this.x < edgeMargin) {
-            this.vx += ((edgeMargin - this.x) / edgeMargin) * maxForce;
+            this.vx += ((edgeMargin - this.x) / edgeMargin) * maxForce * dtMult;
             if (this.x < 0) { this.x = 0; this.vx = Math.abs(this.vx) * 0.5; }
         }
         if (this.x > canvasWidth - edgeMargin) {
-            this.vx -= ((this.x - (canvasWidth - edgeMargin)) / edgeMargin) * maxForce;
+            this.vx -= ((this.x - (canvasWidth - edgeMargin)) / edgeMargin) * maxForce * dtMult;
             if (this.x > canvasWidth) { this.x = canvasWidth; this.vx = -Math.abs(this.vx) * 0.5; }
         }
 
@@ -256,8 +256,8 @@ class Fish {
         }
 
         // ACTUALIZAR POSICIÓN
-        this.x += this.vx;
-        this.y += this.vy;
+        this.x += this.vx * dtMult;
+        this.y += this.vy * dtMult;
 
         // DETECCIÓN POR SÓNAR
         if (player.sonarActive) {
@@ -272,7 +272,7 @@ class Fish {
                  }
             }
         }
-        this.sonarDetection *= 0.96;  // Decaimiento del efecto
+        this.sonarDetection *= Math.pow(0.96, dtMult);  // Decaimiento del efecto
     }
 
     /**
