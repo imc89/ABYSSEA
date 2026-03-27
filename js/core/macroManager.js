@@ -183,12 +183,23 @@ class MacroManager {
         const mTitle = document.getElementById('macro-discovery-title');
         const mGenus = document.getElementById('macro-discovery-genus');
         const mDesc = document.getElementById('macro-discovery-desc');
+        const mTargetUI = document.getElementById('macro-target-ui');
+        const mTargetName = document.getElementById('macro-target-name');
+        const mTargetGenus = document.getElementById('macro-target-genus');
 
         // Vaciado total para prevenir el "flash" de información antigua
         if (mImg) mImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
         if (mTitle) mTitle.innerHTML = "";
         if (mGenus) mGenus.innerHTML = "";
         if (mDesc) mDesc.innerHTML = "";
+        
+        // Limpiar UI de objetivo
+        if (mTargetUI) {
+            mTargetUI.style.display = 'flex';
+            mTargetUI.style.opacity = '0.8';
+        }
+        if (mTargetName) mTargetName.innerText = "---";
+        if (mTargetGenus) mTargetGenus.innerText = "---";
     }
 
     close() {
@@ -315,6 +326,12 @@ class MacroManager {
             });
         }
 
+        // --- ACTUALIZAR UI DE OBJETIVO ---
+        const mTargetName = document.getElementById('macro-target-name');
+        const mTargetGenus = document.getElementById('macro-target-genus');
+        if (mTargetName) mTargetName.innerText = macroData.nombre || "Desconocido";
+        if (mTargetGenus) mTargetGenus.innerText = macroData.cientifico || "Incertae sedis";
+
         this.state.lastTime = 0;
         this.state.crosshairX = this.state.canvas.width / 2;
         this.state.crosshairY = this.state.canvas.height / 2;
@@ -386,18 +403,22 @@ class MacroManager {
         const ty = c.y - c.h / 2;
         img.style.transform = `translate(${tx}px, ${ty}px) scale(${breathingScale})`;
 
-        if (!this.state.lightOn) {
+        const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
+        const radius = revealed ? 600 : 130; // Radio reducido para mayor dificultad
+        
+        // Visibilidad estricta: solo si está dentro del radio de luz
+        if (dist > radius) {
             img.style.opacity = '0';
             img.style.filter  = '';
             return;
         }
 
-        img.style.opacity = revealed ? '1' : '0.7';
+        // Opacidad degradada según distancia para un efecto más natural
+        const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
+        img.style.opacity = revealed ? '1' : (0.1 + 0.9 * opacityMult).toFixed(2);
 
         // Brightness sutil según distancia al haz de la linterna
-        const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
-        const radius = revealed ? 600 : 220;
-        const bright = 0.6 + 0.8 * Math.max(0, Math.min(1, 1 - dist / radius));
+        const bright = 0.6 + 0.8 * opacityMult;
         img.style.filter = `brightness(${bright.toFixed(2)})`;
     }
 
@@ -564,7 +585,13 @@ class MacroManager {
                 ctx.translate(c.x, c.y);
                 const w = c.w * breathingScale;
                 const h = c.h * breathingScale;
-                ctx.globalAlpha = revealed ? 1.0 : 0.7;
+                
+                // Visibilidad basada en distancia antes de la máscara (para coherencia con GIFs)
+                const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
+                const radius = revealed ? 600 : 130;
+                const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
+                
+                ctx.globalAlpha = revealed ? 1.0 : (0.1 + 0.9 * opacityMult);
 
                 if (creatureImg.complete && creatureImg.naturalWidth > 0) {
                     ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
@@ -587,7 +614,7 @@ class MacroManager {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-in';
         if (lightOn) {
-            const radius = revealed ? 600 : 220;
+            const radius = revealed ? 600 : 130; // Radio reducido
             const lightGrad = ctx.createRadialGradient(crosshairX, crosshairY, 20, crosshairX, crosshairY, radius);
             lightGrad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
             lightGrad.addColorStop(0.3, 'rgba(0, 0, 0, 0.9)');
@@ -712,6 +739,10 @@ class MacroManager {
                     exitBtn.style.setProperty('opacity', '1', 'important');
                     exitBtn.style.setProperty('pointer-events', 'auto', 'important');
                 }
+
+                // Ocultar UI de objetivo al tener éxito
+                const mTargetUI = document.getElementById('macro-target-ui');
+                if (mTargetUI) mTargetUI.style.display = 'none';
             }
         }, 500);
     }

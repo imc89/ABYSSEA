@@ -686,9 +686,16 @@
                 </div>
 
                 <div class="discovery-content pointer-events-none">
-                    <div
-                        class="hud-glass p-2 px-6 rounded-full text-cyan-400 text-[10px] font-bold tracking-[0.3em] uppercase mb-16 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
-                        MODO DE OBSERVACIÓN MACRO ACTIVADO
+                    <div class="flex flex-col items-center">
+                        <div class="hud-glass p-2 px-6 rounded-full text-cyan-400 text-[10px] font-bold tracking-[0.3em] uppercase mb-2 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]">
+                            MODO DE OBSERVACIÓN MACRO ACTIVADO
+                        </div>
+                        <!-- Target Indicator -->
+                        <div id="macro-target-ui" class="flex flex-col items-center opacity-80 pt-4">
+                            <p class="text-[9px] text-white/40 uppercase tracking-[0.2em] mb-1">Buscando espécimen:</p>
+                            <h4 id="macro-target-name" class="text-white text-xl font-bold uppercase tracking-tight">---</h4>
+                            <p id="macro-target-genus" class="text-cyan-400 font-mono italic text-[10px]">---</p>
+                        </div>
                     </div>
 
                     <!-- Success UI (Initially Hidden) -->

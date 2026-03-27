@@ -9,7 +9,7 @@ const MACRO_CATALOG = {
         id: 'eurythenes',
         nombre: 'Eurythenes gryllus',
         cientifico: 'Anfípodo Gigante Abisal',
-        imagen: 'img/little/Eurythenes.png',
+        imagen: 'img/little/EURYTHENES/EURYTHENES.gif',
         descripcion: 'Este carroñero abisal es capaz de detectar restos orgánicos a kilómetros de distancia. Su presencia indica una zona de afloramiento rocoso con alta actividad biológica en microescala.',
 
         // --- PARÁMETROS VISUALES ---
