@@ -95,7 +95,7 @@ class SplashScreen {
                 <!-- Panel de Inicio (Mission Control UI) -->
                 <div class="bg-[#000a14]/60 backdrop-blur-2xl p-1 rounded-2xl border border-white/5 shadow-2xl group/panel transition-transform duration-700 hover:scale-[1.02]">
                     <div class="bg-gradient-to-b from-cyan-500/10 to-transparent p-6 rounded-2xl flex flex-col items-center gap-6 w-80">
-                        <button id="start-mission-btn" class="group relative w-full py-5 bg-cyan-400/5 border border-cyan-400/30 rounded-xl transition-all duration-500 hover:bg-cyan-400/15 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden">
+                        <button id="start-mission-btn" class="animate-heartbeat group relative w-full py-5 bg-cyan-400/5 border border-cyan-400/30 rounded-xl transition-all duration-500 hover:bg-cyan-400/15 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden">
                             <!-- Barra de Escaneo en Hover -->
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
                             
@@ -188,6 +188,37 @@ class SplashScreen {
             @keyframes caustics {
                 0% { background-position: 0% 0%; }
                 100% { background-position: 100% 100%; }
+            }
+            @keyframes heartbeat {
+                0%, 100% { 
+                    transform: scale(1); 
+                    opacity: 0.6;
+                    filter: drop-shadow(0 0 0px rgba(0, 242, 255, 0));
+                }
+                50% { 
+                    transform: scale(1.04); 
+                    opacity: 1;
+                    filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.8)) drop-shadow(0 0 20px rgba(0, 242, 255, 0.4));
+                }
+            }
+            .animate-heartbeat {
+                animation: heartbeat 6s ease-in-out infinite;
+                will-change: transform, opacity, filter;
+            }
+            #start-mission-btn i {
+                transition: all 0.5s ease;
+            }
+            #start-mission-btn:hover i {
+                filter: drop-shadow(0 0 10px rgba(0, 242, 255, 1)) drop-shadow(0 0 25px rgba(0, 242, 255, 0.6)) !important;
+                transform: scale(1.15) !important;
+            }
+            #start-mission-btn:hover {
+                animation-play-state: paused;
+                transform: scale(1.02);
+                background: rgba(6, 182, 212, 0.25);
+                border-color: rgba(6, 182, 212, 1);
+                box-shadow: 0 0 40px rgba(6, 182, 212, 0.5);
+                opacity: 1 !important;
             }
             #caustics-overlay {
                 background: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0% 2%, transparent 2% 4%);

@@ -50,7 +50,7 @@ class MacroManager {
             canvas: null,
             ctx: null,
             creatureImg: new Image(),
-            gifOverlayEl: null,    // Elemento <img> DOM para GIFs animados
+            gifOverlayEls: [],    // Lista de elementos <img> DOM para GIFs animados
             particles: [],
             rocks: [],
 
@@ -352,22 +352,24 @@ class MacroManager {
         this._removeGifOverlay(); // Limpiar el anterior si existe
 
         const modal = document.getElementById('discovery-modal');
-        if (!modal) return;
+        if (!modal || !this.state.creatures.length) return;
 
-        const img = document.createElement('img');
-        img.src = src;
-        img.style.position = 'absolute';
-        img.style.top = '0';              // CRÍTICO: anclar al origen del modal para que translate() sea correcto
-        img.style.left = '0';             // CRÍTICO: sin esto, la posición base es indefinida en flex
-        img.style.width = w + 'px';
-        img.style.height = h + 'px';
-        img.style.opacity = '0';          // Empieza invisible; _syncGifOverlay lo actualiza cada frame
-        img.style.pointerEvents = 'none';
-        img.style.zIndex = '3';           // Sobre el canvas (z-index: 1) pero bajo el crosshair (z-index: 10)
-        img.style.transformOrigin = 'top left'; // Origen correcto para translate desde (0,0)
-        img.style.willChange = 'transform, opacity, filter';
-        modal.appendChild(img);
-        this.state.gifOverlayEl = img;
+        this.state.creatures.forEach((c, index) => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.style.position = 'absolute';
+            img.style.top = '0';
+            img.style.left = '0';
+            img.style.width = w + 'px';
+            img.style.height = h + 'px';
+            img.style.opacity = '0';
+            img.style.pointerEvents = 'none';
+            img.style.zIndex = '3';
+            img.style.transformOrigin = 'center'; // Cambiado a center para facilitar scaleX flipping
+            img.style.willChange = 'transform, opacity, filter';
+            modal.appendChild(img);
+            this.state.gifOverlayEls.push(img);
+        });
     }
 
     /**
@@ -375,9 +377,9 @@ class MacroManager {
      * [EN] Removes the GIF overlay from the DOM and clears the reference.
      */
     _removeGifOverlay() {
-        if (this.state.gifOverlayEl) {
-            this.state.gifOverlayEl.remove();
-            this.state.gifOverlayEl = null;
+        if (this.state.gifOverlayEls && this.state.gifOverlayEls.length > 0) {
+            this.state.gifOverlayEls.forEach(el => el.remove());
+            this.state.gifOverlayEls = [];
         }
     }
 
@@ -390,36 +392,44 @@ class MacroManager {
      *      A soft CSS brightness hint reinforces the flashlight without hiding the creature.
      */
     _syncGifOverlay(breathingScale) {
-        const img = this.state.gifOverlayEl;
-        if (!img || !this.state.creatures.length) return;
+        if (!this.state.gifOverlayEls.length || !this.state.creatures.length) return;
 
-        const c        = this.state.creatures[0];
         const revealed = this.state.revealed;
 
-        // Con transformOrigin = 'top left', el translate mueve la esquina superior-izquierda del img.
-        // Para que el CENTRO VISUAL quede en (c.x, c.y), compensamos con la mitad del tamaño BASE.
-        // El scale() luego se expande desde esa esquina, manteniendo el centro correctamente.
-        const tx = c.x - c.w / 2;
-        const ty = c.y - c.h / 2;
-        img.style.transform = `translate(${tx}px, ${ty}px) scale(${breathingScale})`;
+        this.state.creatures.forEach((c, i) => {
+            const img = this.state.gifOverlayEls[i];
+            if (!img) return;
 
-        const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
-        const radius = revealed ? 600 : 130; // Radio reducido para mayor dificultad
-        
-        // Visibilidad estricta: solo si está dentro del radio de luz
-        if (dist > radius) {
-            img.style.opacity = '0';
-            img.style.filter  = '';
-            return;
-        }
+            // Flipping según dirección horizontal (vx)
+            // Si vx > 0 mira a la derecha (scaleX 1), si vx < 0 mira a la izquierda (scaleX -1)
+            const flip = c.vx < 0 ? -1 : 1;
 
-        // Opacidad degradada según distancia para un efecto más natural
-        const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
-        img.style.opacity = revealed ? '1' : (0.1 + 0.9 * opacityMult).toFixed(2);
+            // Ajuste de traslación para centrar el img en (c.x, c.y)
+            const tx = c.x - c.w / 2;
+            const ty = c.y - c.h / 2;
+            img.style.transform = `translate(${tx}px, ${ty}px) scaleX(${flip * breathingScale}) scaleY(${breathingScale})`;
 
-        // Brightness sutil según distancia al haz de la linterna
-        const bright = 0.6 + 0.8 * opacityMult;
-        img.style.filter = `brightness(${bright.toFixed(2)})`;
+            if (!this.state.lightOn) {
+                img.style.opacity = '0';
+                img.style.filter  = '';
+                return;
+            }
+
+            const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
+            const radius = revealed ? 600 : 130; 
+            
+            if (dist > radius) {
+                img.style.opacity = '0';
+                img.style.filter  = '';
+                return;
+            }
+
+            const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
+            img.style.opacity = revealed ? '1' : (0.1 + 0.9 * opacityMult).toFixed(2);
+
+            const bright = 0.6 + 0.8 * opacityMult;
+            img.style.filter = `brightness(${bright.toFixed(2)})`;
+        });
     }
 
     // ---------------------------------------------------------------------------
@@ -583,6 +593,11 @@ class MacroManager {
             creatures.forEach(c => {
                 ctx.save();
                 ctx.translate(c.x, c.y);
+                
+                // Flipping horizontal según dirección
+                const flip = c.vx < 0 ? -1 : 1;
+                ctx.scale(flip, 1);
+
                 const w = c.w * breathingScale;
                 const h = c.h * breathingScale;
                 
@@ -727,10 +742,9 @@ class MacroManager {
                 successUI.style.setProperty('opacity', '1', 'important');
                 successUI.classList.add('active');
 
-                // Ocultar el overlay GIF del canvas cuando se muestra el panel de éxito
-                // (la imagen ya está en el panel, no necesitamos duplicarla)
-                if (this.isGif && this.state.gifOverlayEl) {
-                    this.state.gifOverlayEl.style.opacity = '0';
+                // Ocultar los overlays GIF del canvas cuando se muestra el panel de éxito
+                if (this.isGif && this.state.gifOverlayEls.length > 0) {
+                    this.state.gifOverlayEls.forEach(el => el.style.opacity = '0');
                 }
 
                 const exitBtn = document.getElementById('macro-exit-btn');
@@ -750,9 +764,9 @@ class MacroManager {
     toggleLight() {
         this.state.lightOn = !this.state.lightOn;
 
-        // Si se apaga la luz, ocultar también el overlay GIF (para coherencia visual)
-        if (this.isGif && this.state.gifOverlayEl) {
-            this.state.gifOverlayEl.style.opacity = this.state.lightOn ? '' : '0';
+        // Si se apaga la luz, ocultar también los overlays GIF
+        if (this.isGif && this.state.gifOverlayEls.length > 0) {
+            this.state.gifOverlayEls.forEach(el => el.style.opacity = this.state.lightOn ? '' : '0');
         }
 
         GlobalAudioPool.play('light', 0.3);

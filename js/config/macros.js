@@ -14,7 +14,7 @@ const MACRO_CATALOG = {
 
         // --- PARÁMETROS VISUALES ---
         ancho: 120,           // Ancho visual de la criatura en píxeles (base)
-        alto: 80,             // Alto visual de la criatura en píxeles (base)
+        alto: 60,             // Alto visual de la criatura en píxeles (base)
         minEspecimenes: 1,    // Mínimo de ejemplares visibles
         maxEspecimenes: 3,    // Máximo de ejemplares visibles
 
