@@ -27,25 +27,25 @@ class Bubble {
      * [ES] Aplica la física de la burbuja en cada frame: sube por el agua, reduce velocidad horizontal, se agranda y finalmente desaparece (muere).
      * [EN] Applies bubble physics every frame: it rises through water, lowers horizontal speed, grows, and finally vanishes (dies).
      */
-    update() {
+    update(dtMult = 1.0) {
         // Aplicar resistencia del agua
-        this.vx *= PHYSICS.bubbleVelocityDamping.x;
-        this.vy *= PHYSICS.bubbleVelocityDamping.y;
+        this.vx *= Math.pow(PHYSICS.bubbleVelocityDamping.x, dtMult);
+        this.vy *= Math.pow(PHYSICS.bubbleVelocityDamping.y, dtMult);
 
         // Flotabilidad - las burbujas suben
-        this.vy -= this.buoyancy;
+        this.vy -= this.buoyancy * dtMult;
 
         // Actualizar posición
-        this.x += this.vx;
-        this.y += this.vy;
+        this.x += this.vx * dtMult;
+        this.y += this.vy * dtMult;
 
         // Crecimiento de la burbuja
         if (this.size < this.maxSize) {
-            this.size += PHYSICS.bubbleGrowthRate;
+            this.size += PHYSICS.bubbleGrowthRate * dtMult;
         }
 
         // Desgaste de vida
-        this.life -= this.decay;
+        this.life -= this.decay * dtMult;
     }
 
     /**

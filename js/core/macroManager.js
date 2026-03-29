@@ -2,6 +2,16 @@
  * MACRO MANAGER
  * [ES] Gestiona el minijuego de observación a micro-escala. Instancia un ecosistema procedural para examinar criaturas diminutas.
  * [EN] Manages the micro-scale observation minigame. Instantiates a procedural ecosystem to examine tiny creatures.
+ *
+ * CHANGELOG (Performance + GIF fix):
+ *  - Bucle usa timestamp nativo de requestAnimationFrame (no Date.now())
+ *  - cancelAnimationFrame() al cerrar el modal para evitar loop fantasma
+ *  - dt clampeado a 3 para evitar saltos si la pestaña pierde foco
+ *  - Flicker de partículas pre-calculado con offset sinusoidal (sin Math.random() en draw)
+ *  - GIF: si la imagen de la criatura es un .gif, se usa un <img> DOM superpuesto
+ *    en lugar de ctx.drawImage (el canvas congela el primer frame de los GIFs)
+ *  - breathingScale usa el timestamp acumulado en lugar de Date.now() extra
+ *  - Crosshair DOM actualizado con transform en vez de left/top (evita layout thrashing)
  */
 
 class MacroManager {
@@ -20,10 +30,13 @@ class MacroManager {
 
     constructor() {
         this.isOpen = false;
+        this.rafId = null;          // ID del requestAnimationFrame activo
+        this.isGif = false;         // ¿La criatura actual es un GIF?
+
         this.state = {
             // Posición y movimiento de las criaturas
             creatures: [],
-            breathingScale: 1,
+            elapsedMs: 0,           // Tiempo acumulado (ms) para animaciones deterministas
 
             // Estado del minijuego
             revealed: false,
@@ -37,6 +50,7 @@ class MacroManager {
             canvas: null,
             ctx: null,
             creatureImg: new Image(),
+            gifOverlayEls: [],    // Lista de elementos <img> DOM para GIFs animados
             particles: [],
             rocks: [],
 
@@ -59,7 +73,7 @@ class MacroManager {
         if (isLit) {
             // 1. ANILLO ÚNICO ELEGANTE (Solo si está iluminado)
             const layerPulse = (pulse + 0.8) % (Math.PI * 2);
-            const scale = 18 * (0.9 + Math.sin(layerPulse) * 0.1); // Radio reducido de 25 a 18
+            const scale = 18 * (0.9 + Math.sin(layerPulse) * 0.1);
             const alpha = 0.4 * (0.5 + Math.sin(layerPulse) * 0.5);
 
             ctx.beginPath();
@@ -70,7 +84,7 @@ class MacroManager {
 
             // 2. RESPLANDOR EXTERIOR (Glow suave)
             const corePulse = Math.sin(pulse) * 0.2 + 0.8;
-            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 20 * corePulse); // Radio reducido de 30 a 20
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, 20 * corePulse);
             gradient.addColorStop(0, config.accentColor.replace('0.8', (0.4 * corePulse).toFixed(2)));
             gradient.addColorStop(1, 'transparent');
 
@@ -125,13 +139,15 @@ class MacroManager {
         const modal = document.getElementById('discovery-modal');
         if (modal) modal.classList.add('active');
 
-        // Audio AL ENTRAR (como pidió el usuario)
+        // Audio AL ENTRAR
         GlobalAudioPool.play('macro', 0.5);
 
-        // Inicializar minijuego (asíncrono)
+        // Inicializar minijuego (asíncrono para dejar que el modal se pinte)
         setTimeout(() => this.init(specieId), 100);
 
-
+        if (typeof window.updateCursorVisibility === 'function') {
+            window.updateCursorVisibility();
+        }
     }
 
     _clearSpecieUI() {
@@ -146,10 +162,12 @@ class MacroManager {
             this.state.ctx.fillRect(0, 0, this.state.canvas.width, this.state.canvas.height);
         }
 
+        // NOTA: el ciclo de vida del gifOverlay se gestiona de forma explícita en init() y close()
+        // No lo eliminamos aquí para no destruirlo cuando _clearSpecieUI es llamado desde init()
+
         const successUI = document.getElementById('macro-success-ui');
         if (successUI) {
             successUI.classList.remove('active');
-            // Forzar ocultación inmediata y absoluta por estilo
             successUI.style.setProperty('display', 'none', 'important');
             successUI.style.setProperty('opacity', '0', 'important');
             successUI.style.setProperty('pointer-events', 'none', 'important');
@@ -165,16 +183,33 @@ class MacroManager {
         const mTitle = document.getElementById('macro-discovery-title');
         const mGenus = document.getElementById('macro-discovery-genus');
         const mDesc = document.getElementById('macro-discovery-desc');
+        const mTargetUI = document.getElementById('macro-target-ui');
+        const mTargetName = document.getElementById('macro-target-name');
+        const mTargetGenus = document.getElementById('macro-target-genus');
 
         // Vaciado total para prevenir el "flash" de información antigua
         if (mImg) mImg.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
         if (mTitle) mTitle.innerHTML = "";
         if (mGenus) mGenus.innerHTML = "";
         if (mDesc) mDesc.innerHTML = "";
+        
+        // Limpiar UI de objetivo
+        if (mTargetUI) {
+            mTargetUI.style.display = 'flex';
+            mTargetUI.style.opacity = '0.8';
+        }
+        if (mTargetName) mTargetName.innerText = "---";
+        if (mTargetGenus) mTargetGenus.innerText = "---";
     }
 
     close() {
         this.isOpen = false;
+
+        // *** Cancelar el bucle de animación para no seguir consumiendo recursos ***
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
 
         // Limpiar UI inmediatamente
         this._clearSpecieUI();
@@ -184,13 +219,23 @@ class MacroManager {
 
         this.state.revealed = false;
         this.currentSpecieId = null;
+
+        if (typeof window.updateCursorVisibility === 'function') {
+            window.updateCursorVisibility();
+        }
     }
 
     /**
-     * [ES] Inicia y prepara el minijuego Macro. Limpia el estado anterior y genera el entorno submarino en el canvas secundario.
-     * [EN] Initializes and prepares the Macro minigame. Clears previous state and generates the submarine environment in the secondary canvas.
+     * [ES] Inicia y prepara el minijuego Macro.
+     * [EN] Initializes and prepares the Macro minigame.
      */
     init(specieId = null) {
+        // Cancelar cualquier RAF previo antes de iniciar uno nuevo
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+
         this.state.canvas = document.getElementById('macro-canvas');
         if (!this.state.canvas) return;
         this.state.ctx = this.state.canvas.getContext('2d');
@@ -201,7 +246,8 @@ class MacroManager {
         this.state.canvas.height = modal.offsetHeight;
 
         this.state.revealed = false;
-        this.state.keys = {}; // Reset de controles
+        this.state.keys = {};
+        this.state.elapsedMs = 0;
 
         // Usar la especie pasada o fallback a eurythenes
         const sId = specieId || this.currentSpecieId || 'eurythenes';
@@ -209,7 +255,7 @@ class MacroManager {
         // --- CONFIGURACIÓN DE DATOS ---
         const macroData = window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : {
             id: 'fallback',
-            imagen: './img/little/Eurythenes.png',
+            imagen: 'img/little/Eurythenes.png',
             ancho: 120,
             alto: 80,
             velocidadX: 1.5,
@@ -217,6 +263,9 @@ class MacroManager {
             minEspecimenes: 1,
             maxEspecimenes: 1
         };
+
+        // Detectar si la imagen es un GIF animado
+        this.isGif = typeof macroData.imagen === 'string' && macroData.imagen.toLowerCase().endsWith('.gif');
 
         // --- POSICIONAMIENTO DE CRIATURAS ---
         this.state.creatures = [];
@@ -234,48 +283,158 @@ class MacroManager {
             });
         }
 
-        this.state.breathingScale = 1;
         this.state.lightOn = true;
 
-        // Carga de textura principal
+        // Carga de imagen
         this.state.creatureImg.src = macroData.imagen;
 
+        // --- RESET DE INTERFAZ HTML (ANTES de crear el overlay GIF) ---
+        // CRÍTICO: debe ir ANTES de _createGifOverlay; si fuera después,
+        // _clearSpecieUI podría eliminar el overlay recién creado.
+        this._clearSpecieUI();
+
+        // --- OVERLAY GIF: crear un <img> DOM encima del canvas ---
+        // Siempre limpiar el overlay anterior antes de crear uno nuevo
+        this._removeGifOverlay();
+        if (this.isGif) {
+            this._createGifOverlay(macroData.imagen, macroData.ancho, macroData.alto);
+        }
+
         // --- GENERACIÓN DEL ENTORNO (FONDO) ---
-        // Generamos rocas exclusivamente en la parte inferior para simular el lecho marino
         this.state.rocks = [];
         for (let i = 0; i < 40; i++) {
             this.state.rocks.push({
                 x: Math.random() * this.state.canvas.width,
                 y: this.state.canvas.height - (Math.random() * 60),
-                size: 20 + Math.random() * 100, // Variedad de tamaños para profundidad visual
+                size: 20 + Math.random() * 100,
                 color: `rgba(${10 + Math.random() * 10}, ${10 + Math.random() * 10}, ${20 + Math.random() * 10}, 1)`,
-                segments: this.generateRockShape() // Forma procedural simplificada
+                segments: this.generateRockShape()
             });
         }
 
-        // Generamos partículas de "nieve marina" para añadir atmósfera
+        // Partículas con offset pre-calculado para flicker determinista (sin Math.random en draw)
         this.state.particles = [];
         for (let i = 0; i < 150; i++) {
             this.state.particles.push({
                 x: Math.random() * this.state.canvas.width,
                 y: Math.random() * this.state.canvas.height,
-                z: 0.5 + Math.random() * 2.5, // Profundidad simulada (radio de la partícula)
+                z: 0.5 + Math.random() * 2.5,
                 vx: (Math.random() - 0.5) * 0.4,
-                vy: (Math.random() - 0.5) * 0.3 + 0.2 // Tendencia a caer lentamente
+                vy: (Math.random() - 0.5) * 0.3 + 0.2,
+                flickerOffset: Math.random() * Math.PI * 2,
+                flickerSpeed: 3 + Math.random() * 5
             });
         }
 
-        this.state.lastTime = Date.now();
-        // Empezar con la luz en el centro de la pantalla
+        // --- ACTUALIZAR UI DE OBJETIVO ---
+        const mTargetName = document.getElementById('macro-target-name');
+        const mTargetGenus = document.getElementById('macro-target-genus');
+        if (mTargetName) mTargetName.innerText = macroData.nombre || "Desconocido";
+        if (mTargetGenus) mTargetGenus.innerText = macroData.cientifico || "Incertae sedis";
+
+        this.state.lastTime = 0;
         this.state.crosshairX = this.state.canvas.width / 2;
         this.state.crosshairY = this.state.canvas.height / 2;
 
-        // --- RESET DE INTERFAZ HTML ---
-        this._clearSpecieUI();
-
-        // Iniciar el bucle de renderizado
-        this.loop();
+        // Iniciar el bucle de renderizado con timestamp nativo de rAF
+        this.rafId = requestAnimationFrame(ts => this.loop(ts));
     }
+
+    // ---------------------------------------------------------------------------
+    // GIF DOM OVERLAY
+    // ---------------------------------------------------------------------------
+
+    /**
+     * [ES] Crea (o recicla) un elemento <img> posicionado en el modal del canvas para renderizar GIFs animados.
+     * [EN] Creates (or recycles) a positioned <img> element in the canvas modal to render animated GIFs.
+     */
+    _createGifOverlay(src, w, h) {
+        this._removeGifOverlay(); // Limpiar el anterior si existe
+
+        const modal = document.getElementById('discovery-modal');
+        if (!modal || !this.state.creatures.length) return;
+
+        this.state.creatures.forEach((c, index) => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.style.position = 'absolute';
+            img.style.top = '0';
+            img.style.left = '0';
+            img.style.width = w + 'px';
+            img.style.height = h + 'px';
+            img.style.opacity = '0';
+            img.style.pointerEvents = 'none';
+            img.style.zIndex = '3';
+            img.style.transformOrigin = 'center'; // Cambiado a center para facilitar scaleX flipping
+            img.style.willChange = 'transform, opacity, filter';
+            modal.appendChild(img);
+            this.state.gifOverlayEls.push(img);
+        });
+    }
+
+    /**
+     * [ES] Elimina el overlay GIF del DOM y limpia la referencia.
+     * [EN] Removes the GIF overlay from the DOM and clears the reference.
+     */
+    _removeGifOverlay() {
+        if (this.state.gifOverlayEls && this.state.gifOverlayEls.length > 0) {
+            this.state.gifOverlayEls.forEach(el => el.remove());
+            this.state.gifOverlayEls = [];
+        }
+    }
+
+    /**
+     * [ES] Actualiza la posición del overlay GIF sincronizándola con la lógica de la criatura.
+     *      El GIF es SIEMPRE visible (el canvas ya aplica la oscuridad ambiental encima mediante
+     *      destination-in). Solo se usa un CSS brightness suave para reforzar la linterna.
+     * [EN] Updates the GIF overlay position in sync with the creature logic.
+     *      The GIF is ALWAYS visible (the canvas already applies ambient darkness via destination-in).
+     *      A soft CSS brightness hint reinforces the flashlight without hiding the creature.
+     */
+    _syncGifOverlay(breathingScale) {
+        if (!this.state.gifOverlayEls.length || !this.state.creatures.length) return;
+
+        const revealed = this.state.revealed;
+
+        this.state.creatures.forEach((c, i) => {
+            const img = this.state.gifOverlayEls[i];
+            if (!img) return;
+
+            // Flipping según dirección horizontal (vx)
+            // Si vx > 0 mira a la derecha (scaleX 1), si vx < 0 mira a la izquierda (scaleX -1)
+            const flip = c.vx < 0 ? -1 : 1;
+
+            // Ajuste de traslación para centrar el img en (c.x, c.y)
+            const tx = c.x - c.w / 2;
+            const ty = c.y - c.h / 2;
+            img.style.transform = `translate(${tx}px, ${ty}px) scaleX(${flip * breathingScale}) scaleY(${breathingScale})`;
+
+            if (!this.state.lightOn) {
+                img.style.opacity = '0';
+                img.style.filter  = '';
+                return;
+            }
+
+            const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
+            const radius = revealed ? 600 : 130; 
+            
+            if (dist > radius) {
+                img.style.opacity = '0';
+                img.style.filter  = '';
+                return;
+            }
+
+            const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
+            img.style.opacity = revealed ? '1' : (0.1 + 0.9 * opacityMult).toFixed(2);
+
+            const bright = 0.6 + 0.8 * opacityMult;
+            img.style.filter = `brightness(${bright.toFixed(2)})`;
+        });
+    }
+
+    // ---------------------------------------------------------------------------
+    // BUCLE PRINCIPAL
+    // ---------------------------------------------------------------------------
 
     /**
      * [ES] Genera una serie aleatoria de vértices para dibujar una forma de roca irregular procedural.
@@ -293,24 +452,33 @@ class MacroManager {
     }
 
     /**
-     * [ES] Bucle principal de animación nativo del minijuego balanceando el timestep a 60fps.
-     * [EN] Native animation main loop for the minigame balancing timestep to 60fps.
+     * [ES] Bucle principal de animación. Recibe el timestamp nativo de rAF para máxima precisión.
+     *      El dt se clampea a un máximo de 3 para evitar saltos grandes si la pestaña pierde foco.
+     * [EN] Main animation loop. Receives the native rAF timestamp for maximum accuracy.
+     *      dt is clamped to a maximum of 3 to prevent large jumps if the tab loses focus.
      */
-    loop() {
+    loop(timestamp) {
         if (!this.isOpen) return;
-        const now = Date.now();
-        const dt = (now - this.state.lastTime) / 16.67; // Normalización a 60fps
-        this.state.lastTime = now;
+
+        // Primer tick: inicializar lastTime
+        if (this.state.lastTime === 0) {
+            this.state.lastTime = timestamp;
+        }
+
+        const rawDt = (timestamp - this.state.lastTime) / 16.67; // Normalizado a 60fps
+        const dt = Math.min(rawDt, 3); // Clamp: evitar saltos si el tab pierde foco
+        this.state.lastTime = timestamp;
+        this.state.elapsedMs = timestamp; // Usar timestamp absoluto para senos deterministas
 
         this.update(dt);
         this.draw();
 
-        requestAnimationFrame(() => this.loop());
+        this.rafId = requestAnimationFrame(ts => this.loop(ts));
     }
 
     /**
-     * [ES] Actualiza la lógica espacial (posición de linterna, de criaturas sueltas y de partículas suspendidas).
-     * [EN] Updates spatial logic (flashlight position, free creatures, and suspended particles).
+     * [ES] Actualiza la lógica espacial (posición de linterna, criaturas y partículas).
+     * [EN] Updates spatial logic (flashlight, creatures, and particles positions).
      */
     update(dt) {
         const { canvas, keys } = this.state;
@@ -326,7 +494,8 @@ class MacroManager {
         this.state.crosshairX = Math.max(0, Math.min(canvas.width, this.state.crosshairX));
         this.state.crosshairY = Math.max(0, Math.min(canvas.height, this.state.crosshairY));
 
-        // Actualizar posición del elemento DOM del cursor (crosshair visual decorativo)
+        // Actualizar posición del crosshair visual (left/top es correcto aquí porque el CSS
+        // animation usa transform: translate(-50%,-50%) para centrado; mezclar ambos causaría conflicto)
         const ch = document.getElementById('macro-crosshair');
         if (ch) {
             ch.style.left = `${this.state.crosshairX}px`;
@@ -343,28 +512,42 @@ class MacroManager {
             if (c.y < 50 || c.y > canvas.height - 50) c.vy *= -1;
         });
 
-        // Efecto de respiración (multiplicador relativo)
-        this.state.breathingScale = 1 + Math.sin(Date.now() * 0.001) * 0.03;
+        // Efecto de respiración usando el timestamp acumulado (determinista, sin Date.now() extra)
+        const breathingScale = 1 + Math.sin(this.state.elapsedMs * 0.001) * 0.03;
+
+        // Sincronizar GIF overlay si aplica
+        if (this.isGif) {
+            this._syncGifOverlay(breathingScale);
+        }
 
         // 3. MOVIMIENTO DE PARTÍCULAS
         this.state.particles.forEach(p => {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
-            // Wrap-around (reaparecen por el lado opuesto)
+            // Wrap-around
             if (p.x < 0) p.x = canvas.width;
             if (p.x > canvas.width) p.x = 0;
             if (p.y < 0) p.y = canvas.height;
             if (p.y > canvas.height) p.y = 0;
         });
+
+        return breathingScale;
     }
 
     /**
-     * [ES] Pinta las capas del minijuego (fondo, partículas, siluetas, y la rica simulación de luz de linterna).
-     * [EN] Paints the minigame layers (background, particles, silhouettes, and the heavily stylized flashlight simulation).
+     * [ES] Pinta las capas del minijuego.
+     *      Las partículas usan offsetFlicker determinista en vez de Math.random() por frame.
+     *      Si la criatura es GIF, se omite ctx.drawImage (el overlay DOM se ocupa de renderizarla).
+     * [EN] Paints the minigame layers.
+     *      Particles use deterministic flicker offset instead of per-frame Math.random().
+     *      If creature is a GIF, ctx.drawImage is skipped (DOM overlay handles rendering).
      */
     draw() {
-        const { ctx, canvas, creatures, creatureImg, revealed, crosshairX, crosshairY, rocks, particles, breathingScale, lightOn } = this.state;
+        const { ctx, canvas, creatures, creatureImg, revealed, crosshairX, crosshairY, rocks, particles, lightOn, elapsedMs } = this.state;
         if (!ctx) return;
+
+        const breathingScale = 1 + Math.sin(elapsedMs * 0.001) * 0.03;
+        const timeS = elapsedMs * 0.001; // Tiempo en segundos para senos
 
         // Limpiar fondo
         ctx.fillStyle = '#020205';
@@ -389,40 +572,64 @@ class MacroManager {
             ctx.restore();
         });
 
-        // Partículas mejoradas con brillo
+        // Partículas con flicker determinista (sin Math.random por frame)
         particles.forEach(p => {
-            const flicker = 0.7 + Math.random() * 0.3;
-            ctx.fillStyle = `rgba(200, 240, 255, ${0.4 * flicker})`;
+            const flicker = 0.7 + 0.3 * (0.5 + 0.5 * Math.sin(timeS * p.flickerSpeed + p.flickerOffset));
+            ctx.fillStyle = `rgba(200, 240, 255, ${(0.4 * flicker).toFixed(3)})`;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.z, 0, Math.PI * 2);
             ctx.fill();
 
-            // Halo sutil para partículas más grandes
             if (p.z > 1.5) {
-                ctx.fillStyle = `rgba(0, 255, 255, ${0.05 * flicker})`;
+                ctx.fillStyle = `rgba(0, 255, 255, ${(0.05 * flicker).toFixed(3)})`;
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.z * 3, 0, Math.PI * 2);
                 ctx.fill();
             }
         });
 
-        // Dibujar criaturas
-        creatures.forEach(c => {
-            ctx.save();
-            ctx.translate(c.x, c.y);
-            const w = c.w * breathingScale;
-            const h = c.h * breathingScale;
-            ctx.globalAlpha = revealed ? 1.0 : 0.7;
+        // Dibujar criaturas (solo si NO es GIF; para GIF se usa el overlay DOM)
+        if (!this.isGif) {
+            creatures.forEach(c => {
+                ctx.save();
+                ctx.translate(c.x, c.y);
+                
+                // Flipping horizontal según dirección
+                const flip = c.vx < 0 ? -1 : 1;
+                ctx.scale(flip, 1);
 
-            ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
-            ctx.restore();
-        });
+                const w = c.w * breathingScale;
+                const h = c.h * breathingScale;
+                
+                // Visibilidad basada en distancia antes de la máscara (para coherencia con GIFs)
+                const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
+                const radius = revealed ? 600 : 130;
+                const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
+                
+                ctx.globalAlpha = revealed ? 1.0 : (0.1 + 0.9 * opacityMult);
+
+                if (creatureImg.complete && creatureImg.naturalWidth > 0) {
+                    ctx.drawImage(creatureImg, -w / 2, -h / 2, w, h);
+                } else {
+                    // Fallback visual en caso de error de carga
+                    ctx.fillStyle = revealed ? 'rgba(0, 255, 255, 0.5)' : 'rgba(0, 255, 255, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, w / 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'cyan';
+                    ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
+                    ctx.stroke();
+                }
+                ctx.restore();
+            });
+        }
 
         // MÁSCARA DE LUZ (Linterna Atmosférica)
         ctx.save();
         ctx.globalCompositeOperation = 'destination-in';
         if (lightOn) {
-            const radius = revealed ? 600 : 220;
+            const radius = revealed ? 600 : 130; // Radio reducido
             const lightGrad = ctx.createRadialGradient(crosshairX, crosshairY, 20, crosshairX, crosshairY, radius);
             lightGrad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
             lightGrad.addColorStop(0.3, 'rgba(0, 0, 0, 0.9)');
@@ -464,7 +671,7 @@ class MacroManager {
         if (lightOn && !revealed) {
             const isNear = creatures.some(c => {
                 const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
-                return dist < 100; // Radio del hint
+                return dist < 100;
             });
 
             if (isNear) {
@@ -481,20 +688,17 @@ class MacroManager {
     }
 
     /**
-     * [ES] Gestiona el intento de análisis. Comprueba si la luz recae sobre una criatura esquiva al clickear/Enter.
-     * [EN] Manages the scan attempt. Checks if light overlaps an elusive creature when clicked/Enter.
+     * [ES] Gestiona el intento de análisis al pulsar Enter o hacer click.
+     * [EN] Manages the scan attempt on Enter press or click.
      */
     onEnter() {
         const { lightOn, revealed, crosshairX, crosshairY, creatures } = this.state;
         if (revealed) {
-            // --- LIMPIEZA AGRESIVA ---
-            // Limpiar ANTES de cerrar para evitar que la info se vea un solo frame
             this._clearSpecieUI();
             this.close();
             return;
         }
         if (lightOn) {
-            // Verificar si alguna criatura está cerca del cursor
             const isNear = creatures.some(c => {
                 const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
                 return dist < c.rangoDeteccion;
@@ -508,29 +712,25 @@ class MacroManager {
     }
 
     /**
-     * [ES] Accionado al iluminar con precisión una criatura. Despliega la UI de éxito extrayendo biografía del Macro Catalog.
-     * [EN] Triggered upon precisely illuminating a creature. Deploys success UI extracting biography from the Macro Catalog.
+     * [ES] Accionado al iluminar con precisión una criatura. Despliega la UI de éxito.
+     * [EN] Triggered upon precisely illuminating a creature. Deploys success UI.
      */
     onSuccess() {
         this.state.revealed = true;
 
-        // Obtener datos del catálogo
         const sId = this.currentSpecieId || 'eurythenes';
         const macroData = window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : null;
-
-        // NO cargamos los datos aquí. Los cargamos DENTRO del timeout 
-        // para que no haya ni un frame de información vieja.
 
         this.state.successTimeout = setTimeout(() => {
             const successUI = document.getElementById('macro-success-ui');
             if (successUI && this.isOpen) {
-                // Poblamos los datos síncronamente JUSTO antes de mostrar la UI
                 if (macroData) {
                     const mImg = document.getElementById('macro-discovery-img');
                     const mTitle = document.getElementById('macro-discovery-title');
                     const mGenus = document.getElementById('macro-discovery-genus');
                     const mDesc = document.getElementById('macro-discovery-desc');
 
+                    // Para GIFs: asignar src directamente; el <img> del panel SÍ reproduce GIFs animados
                     if (mImg) mImg.src = macroData.imagen;
                     if (mTitle) mTitle.innerText = macroData.nombre;
                     if (mGenus) mGenus.innerText = macroData.cientifico;
@@ -542,6 +742,11 @@ class MacroManager {
                 successUI.style.setProperty('opacity', '1', 'important');
                 successUI.classList.add('active');
 
+                // Ocultar los overlays GIF del canvas cuando se muestra el panel de éxito
+                if (this.isGif && this.state.gifOverlayEls.length > 0) {
+                    this.state.gifOverlayEls.forEach(el => el.style.opacity = '0');
+                }
+
                 const exitBtn = document.getElementById('macro-exit-btn');
                 if (exitBtn) {
                     exitBtn.classList.remove('opacity-0', 'pointer-events-none');
@@ -549,13 +754,21 @@ class MacroManager {
                     exitBtn.style.setProperty('pointer-events', 'auto', 'important');
                 }
 
-                // NO sonido aquí (el usuario pidió que el sonido macro.mp3 solo suene al entrar)
+                // Ocultar UI de objetivo al tener éxito
+                const mTargetUI = document.getElementById('macro-target-ui');
+                if (mTargetUI) mTargetUI.style.display = 'none';
             }
         }, 500);
     }
 
     toggleLight() {
         this.state.lightOn = !this.state.lightOn;
+
+        // Si se apaga la luz, ocultar también los overlays GIF
+        if (this.isGif && this.state.gifOverlayEls.length > 0) {
+            this.state.gifOverlayEls.forEach(el => el.style.opacity = this.state.lightOn ? '' : '0');
+        }
+
         GlobalAudioPool.play('light', 0.3);
     }
 

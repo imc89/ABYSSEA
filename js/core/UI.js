@@ -256,6 +256,10 @@ class UIManager {
 
             if (modal) modal.classList.add('active');
         }
+
+        if (typeof window.updateCursorVisibility === 'function') {
+            window.updateCursorVisibility();
+        }
     }
 
     /**

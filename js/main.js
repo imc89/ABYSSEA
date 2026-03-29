@@ -38,16 +38,68 @@ let discoveryPoints = [];
 let nearPOI = null;
 
 /**
- * [ES] Inicialización del juego. Configura el lienzo, inicializa clases principales, carga audio/imágenes y genera el mundo.
- * [EN] Game initialization. Sets up the canvas, initializes main classes, loads audio/images, and generates the world.
+ * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
+ * [EN] Game initialization. Sets up the canvas, manages start screens and loads the world.
  */
 function init() {
-    canvas = document.getElementById('gameCanvas');
-    ctx = canvas.getContext('2d');
+    // 1. Mostrar Pantalla Splash inmediatamente
+    try {
+        new SplashScreen(() => {
+            // 2. Al interactuar con Splash, iniciar Loading inmediatamente
+            const loading = new LoadingScreen();
 
-    // Configurar tamaño del canvas
-    resize();
+            // 3. Inicializar el contexto de renderizado durante "Loading"
+            // Esto evita cualquier flash de canvas antes de tiempo
+            canvas = document.getElementById('gameCanvas');
+            if (canvas) {
+                ctx = canvas.getContext('2d', { alpha: false });
+                resize();
+            }
 
+            // Simular o realizar carga real de assets (Ralentizado para disfrutar consola)
+            let progress = 0;
+            const loadInterval = setInterval(() => {
+                progress += Math.random() * 2.5 + 0.5; // Incremento más pequeño
+                loading.update(progress);
+
+                if (progress >= 100) {
+                    clearInterval(loadInterval);
+
+                    // 4. Inicializar sistemas reales (Físicas, Audio, Entidades)
+                    try {
+                        setupGameCore();
+                        loading.finish(() => {
+                            // 5. Iniciar loop solo cuando Loading desaparece
+                            console.log("OSIRIS ENGINE: Systems Online. Starting game loop.");
+                            updateCursorVisibility(); // Ocultar cursor al empezar
+                            requestAnimationFrame(loop);
+                        });
+                    } catch (e) {
+                        console.error("Error during setupGameCore:", e);
+                    }
+                }
+            }, 100);
+        });
+    } catch (e) {
+        console.error("Error initializing SplashScreen:", e);
+        // Fallback de emergencia
+        canvas = document.getElementById('gameCanvas');
+        if (canvas) {
+            ctx = canvas.getContext('2d');
+            resize();
+        }
+        setupGameCore();
+        requestAnimationFrame(loop);
+    }
+
+    // Registrar manejadores de eventos nada más arrancar (para permitir ESC en splash)
+    setupEventHandlers();
+}
+
+/**
+ * [ES] Configuración del núcleo del juego una vez superadas las pantallas de carga.
+ */
+function setupGameCore() {
     // Inicializar sistemas
     camera = new Camera();
     player = new Player();
@@ -57,86 +109,71 @@ function init() {
     player.x = canvas.width / 2;
     player.y = PLAYER_CONFIG.startY;
     player.lockY = player.y;
-    player.isLocked = true; // Forzar inicio bloqueado por seguridad
+    player.isLocked = true;
 
     // Limpiar capa nativa de DOM de peces
     const fishLayer = document.getElementById('fish-layer');
-    if (fishLayer) {
-        fishLayer.innerHTML = '';
-    }
+    if (fishLayer) fishLayer.innerHTML = '';
 
     uiManager = new UIManager();
     uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
 
-    // Inicializar audio de burbujas (motor)
+    // Inicializar audio
     bubblesAudio = new Audio('audio/bubbles.mp3');
     bubblesAudio.loop = true;
     bubblesAudio.volume = 0.4;
 
-    // Inicializar música de fondo
     bgMusic = new Audio('audio/sound.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
 
-    // Inicializar audio de batería baja
     lowBatteryAudio = new Audio('audio/battery-off.mp3');
     lowBatteryAudio.loop = true;
     lowBatteryAudio.volume = 0.6;
 
-    // Precargar Audios en el Pool Global
+    // Precargar Audios
     GlobalAudioPool.initPool('fish_escape', 'audio/fish_escape.mp3', 5);
     GlobalAudioPool.initPool('light', 'audio/light.mp3', 2);
     GlobalAudioPool.initPool('sonar', 'audio/sonar.mp3', 2);
     GlobalAudioPool.initPool('hook', 'audio/hook.mp3', 1);
     GlobalAudioPool.initPool('macro', 'audio/macro.mp3', 1);
 
-    // Cargar imagen del jugador (necesaria para player.draw())
+    // Cargar imagen del jugador
     imageCache.load('player', PLAYER_CONFIG.image);
 
-    // Generar partículas de nieve marina (esparcidas por el mundo inicial)
+    // Generar partículas de nieve marina (ahora en espacio de pantalla)
     for (let i = 0; i < WORLD.particleCount; i++) {
-        const p = new Particle();
-        p.y = Math.random() * 2000;
-        marineSnow.push(p);
+        marineSnow.push(new Particle());
     }
 
-    // Generar peces según el catálogo
+    // Generar peces
     FISH_CATALOG.forEach(specie => {
         for (let g = 0; g < specie.cantidadGrupos; g++) {
-            // CONVERSIÓN AUTOMÁTICA: metros → game units (×10)
             const minGameUnits = specie.minProf * WORLD.depthScale;
             const maxGameUnits = specie.maxProf * WORLD.depthScale;
-
             const centerX = Math.random() * canvas.width;
             const centerY = minGameUnits + Math.random() * (maxGameUnits - minGameUnits);
 
             for (let i = 0; i < specie.pecesPorGrupo; i++) {
                 const f = new Fish(specie, g);
-
-                // Distribuir peces alrededor del centro del grupo
-                // Mantener dentro del rango de profundidad configurado
                 const offsetX = (Math.random() - 0.5) * 300;
-                const offsetY = (Math.random() - 0.5) * 200; // Offset vertical más pequeño
-
+                const offsetY = (Math.random() - 0.5) * 200;
                 f.x = Math.max(0, Math.min(canvas.width, centerX + offsetX));
-                // CRITICAL: Asegurar que el offset NO saque al pez de su rango de profundidad
                 f.y = Math.max(minGameUnits, Math.min(maxGameUnits, centerY + offsetY));
-
                 fishes.push(f);
             }
         }
     });
 
-    // Inicializar Puntos de Descubrimiento (POIs) dinámicamente desde MACRO_CATALOG
+    // Puntos de Descubrimiento (POIs)
     Object.values(MACRO_CATALOG).forEach(specie => {
         for (let i = 0; i < (specie.cantidadPoints || 0); i++) {
             const minGameUnits = specie.minProf * WORLD.depthScale;
             const maxGameUnits = specie.maxProf * WORLD.depthScale;
-
             discoveryPoints.push({
                 id: `${specie.id}_${i}`,
-                specieId: specie.id, // Guardar ID de la especie para el minijuego
+                specieId: specie.id,
                 x: 100 + Math.random() * (canvas.width - 200),
                 y: minGameUnits + Math.random() * (maxGameUnits - minGameUnits),
                 radius: 40,
@@ -147,10 +184,7 @@ function init() {
     });
 
     // Event listeners
-    setupEventHandlers();
-
-    // Iniciar loop del juego
-    requestAnimationFrame(loop);
+    // setupEventHandlers(); // Movido a init() para responder desde el splash
 }
 
 /**
@@ -168,33 +202,33 @@ function setupEventHandlers() {
             setControls('ARROWS');
         }
 
-        if (uiManager.isDiscoveryModalOpen) {
+        if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
             uiManager.macroManager.state.keys[e.code] = true;
             uiManager.macroManager.state.keys[e.key] = true;
         }
 
         if (e.code === 'Space') {
-            if (uiManager.isDiscoveryModalOpen) {
+            if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
                 uiManager.macroManager.toggleLight();
-            } else {
+            } else if (typeof player !== 'undefined' && player) {
                 player.toggleLight();
             }
         }
 
         if (e.key === '<') {
-            uiTelemetry.toggle();
+            if (typeof uiTelemetry !== 'undefined' && uiTelemetry) uiTelemetry.toggle();
         }
 
         if (e.code === 'KeyE') {
-            if (player.activateSonar()) {
-                uiManager.createSonarUIWaves();
+            if (typeof player !== 'undefined' && player && player.activateSonar()) {
+                if (typeof uiManager !== 'undefined' && uiManager) uiManager.createSonarUIWaves();
                 GlobalAudioPool.play('sonar', 1.0);
             }
         }
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
-            if (uiManager.isScanModalOpen) {
+            if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
             } else {
                 toggleMenu();
@@ -202,21 +236,23 @@ function setupEventHandlers() {
         }
 
         if (e.code === 'Enter') {
-            if (uiManager.isScanModalOpen) {
-                uiManager.toggleScanModal();
-            } else if (uiManager.isDiscoveryModalOpen) {
-                uiManager.macroManager.onEnter();
-            } else if (nearPOI) {
-                uiManager.toggleDiscoveryModal(nearPOI.specieId);
-            } else if (scannableTarget) {
-                uiManager.toggleScanModal(scannableTarget);
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                if (uiManager.isScanModalOpen) {
+                    uiManager.toggleScanModal();
+                } else if (uiManager.isDiscoveryModalOpen) {
+                    uiManager.macroManager.onEnter();
+                } else if (typeof nearPOI !== 'undefined' && nearPOI) {
+                    uiManager.toggleDiscoveryModal(nearPOI.specieId);
+                } else if (typeof scannableTarget !== 'undefined' && scannableTarget) {
+                    uiManager.toggleScanModal(scannableTarget);
+                }
             }
         }
     });
 
     window.addEventListener('keyup', e => {
         keys[e.code] = false;
-        if (uiManager.isDiscoveryModalOpen) {
+        if (typeof uiManager !== 'undefined' && uiManager && uiManager.isDiscoveryModalOpen) {
             uiManager.macroManager.state.keys[e.code] = false;
             uiManager.macroManager.state.keys[e.key] = false;
         }
@@ -233,12 +269,10 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Regenerar partículas al cambiar tamaño (Dándoles profundidad aleatoria en el mundo)
+    // Regenerar partículas al cambiar tamaño (Espacio de pantalla)
     marineSnow = [];
     for (let i = 0; i < WORLD.particleCount; i++) {
-        const p = new Particle();
-        p.y = Math.random() * (WORLD.depthScale * 2000); // Esparcirlas un poco si se reinician
-        marineSnow.push(p);
+        marineSnow.push(new Particle());
     }
 
     // Re-centrar jugador horizontalmente si está enganchado en la base
@@ -262,8 +296,17 @@ function setControls(mode) {
  * [ES] Bucle recursivo nativo manejado por requestAnimationFrame a 60FPS constantes.
  * [EN] Native recursive loop handled by requestAnimationFrame at a constant 60FPS.
  */
-function loop() {
-    update();
+let lastTime = 0;
+function loop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    let dt = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Limit dt to prevent massive jumps (e.g., when switching tabs)
+    if (dt > 100) dt = 16.666;
+    const dtMult = dt / 16.666;
+
+    update(dtMult);
     draw();
     requestAnimationFrame(loop);
 }
@@ -272,11 +315,11 @@ function loop() {
  * [ES] Lógica principal de actualización (sin pintar). Calcula físicas, colisiones, eventos musicales y de descubrimiento.
  * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
-function update() {
+function update(dtMult = 1.0) {
     if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
 
     // Actualizar jugador (pasar canvas para límites dinámicos)
-    const moving = player.update(keys, controlScheme, WORLD, canvas);
+    const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);
 
     // Lógica de desenganche de la base (S en WASD o ArrowDown)
     if (player.isLocked) {
@@ -329,7 +372,7 @@ function update() {
 
     // Actualizar burbujas y filtrar las muertas
     bubbles = bubbles.filter(b => b.life > 0);
-    bubbles.forEach(b => b.update());
+    bubbles.forEach(b => b.update(dtMult));
 
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
@@ -361,7 +404,7 @@ function update() {
     });
 
     // Actualizar partículas (ahora son world-space y necesitan la cámara para culling)
-    marineSnow.forEach(p => p.update(player, canvas, camera));
+    marineSnow.forEach(p => p.update(player, canvas, camera, dtMult));
 
     // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
     telemetryData.activeFishes = 0;
@@ -378,7 +421,7 @@ function update() {
     });
 
     // Solo actualizar IA y Posiciones locales de los que están simulados usando la lista truncada proximateFishes
-    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas));
+    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas, dtMult));
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
     scannableTarget = findScannableTarget();
@@ -398,6 +441,7 @@ function findScannableTarget() {
     let target = null;
 
     fishes.forEach(f => {
+        if (!f.isSimulated) return; // Optimizando iteración solo a peces renderizados
         const dSq = distanceSq(f.x, f.y, player.x, player.y + WORLD.lightOffsetY);
 
         if (dSq < minDistSq) {
@@ -416,6 +460,11 @@ function findScannableTarget() {
     return target;
 }
 
+let bgCache = {
+    color: [0, 0, 0],
+    lastDepth: -9999
+};
+
 /**
  * [ES] Renderiza el canvas completo en orden de Z-Index (Fondo -> Partículas -> POIs -> Entidades -> HUD).
  * [EN] Renders the entire canvas in Z-Index order (Background -> Particles -> POIs -> Entities -> HUD).
@@ -423,28 +472,33 @@ function findScannableTarget() {
 function draw() {
     // --- CÁLCULO DE COLOR DE FONDO Y LUZ AMBIENTAL ---
     const depthMeters = player.y / WORLD.depthScale;
-    let bg = [0, 0, 0];
 
-    // Encontrar el segmento de zona actual para interpolar el color
-    let zoneIndex = 0;
-    for (let i = 0; i < WORLD.zones.length - 1; i++) {
-        if (depthMeters >= WORLD.zones[i].depth) {
-            zoneIndex = i;
+    if (Math.abs(bgCache.lastDepth - depthMeters) > 0.5) {
+        let bg = [0, 0, 0];
+        let zoneIndex = 0;
+        for (let i = 0; i < WORLD.zones.length - 1; i++) {
+            if (depthMeters >= WORLD.zones[i].depth) {
+                zoneIndex = i;
+            }
         }
+
+        const currentZone = WORLD.zones[zoneIndex];
+        const nextZone = WORLD.zones[zoneIndex + 1] || currentZone;
+
+        if (currentZone === nextZone) {
+            bg = currentZone.color;
+        } else {
+            const range = nextZone.depth - currentZone.depth;
+            const progress = Math.min(1, (depthMeters - currentZone.depth) / range);
+            // Asegurarse de que lerpColor existe o se usará fallback
+            bg = lerpColor(currentZone.color, nextZone.color, progress);
+        }
+
+        bgCache.color = bg;
+        bgCache.lastDepth = depthMeters;
     }
 
-    const currentZone = WORLD.zones[zoneIndex];
-    const nextZone = WORLD.zones[zoneIndex + 1] || currentZone;
-
-    if (currentZone === nextZone) {
-        bg = currentZone.color;
-    } else {
-        const range = nextZone.depth - currentZone.depth;
-        const progress = Math.min(1, (depthMeters - currentZone.depth) / range);
-        bg = lerpColor(currentZone.color, nextZone.color, progress);
-    }
-
-    ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
+    ctx.fillStyle = `rgb(${bgCache.color[0]},${bgCache.color[1]},${bgCache.color[2]})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Alpha ambiental basado en zonas científicas:
@@ -598,7 +652,12 @@ function draw() {
 }
 
 // Iniciar el juego cuando cargue la página
-window.onload = init;
+// Iniciar el juego cuando cargue la página
+if (document.readyState === 'complete') {
+    init();
+} else {
+    window.addEventListener('load', init);
+}
 
 /**
  * [ES] Abre o cierra el menú de ajustes ingame (Pausa conceptual).
@@ -609,6 +668,7 @@ function toggleMenu() {
     const menu = document.getElementById('esc-menu');
     if (menu) {
         menu.classList.toggle('hidden', !isMenuOpen);
+        updateCursorVisibility();
         if (isMenuOpen) updateSettingsUI();
     }
 }
@@ -749,7 +809,20 @@ document.addEventListener('fullscreenchange', updateSettingsUI);
 if (typeof window !== 'undefined') {
     window.setControls = setControls;
     window.toggleFullscreen = toggleFullscreen;
-    window.toggleMusicMute = toggleMusicMute;
-    window.toggleMenu = toggleMenu;
     window.setQuality = setQuality;
+    window.updateCursorVisibility = updateCursorVisibility;
+}
+
+/**
+ * [ES] Actualiza la visibilidad del cursor según si hay menús activos.
+ */
+function updateCursorVisibility() {
+    // Si no ha cargado el uiManager aún, no ocultamos (splash/loading)
+    if (typeof uiManager === 'undefined' || !uiManager) return;
+
+    const isScanOpen = uiManager.isScanModalOpen || false;
+    const isDiscoveryOpen = uiManager.isDiscoveryModalOpen || false;
+    const shouldHide = !isMenuOpen && !isScanOpen && !isDiscoveryOpen;
+    
+    document.body.classList.toggle('hide-cursor', shouldHide);
 }
