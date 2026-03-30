@@ -11,6 +11,7 @@ let player;
 let uiManager;
 let uiTelemetry;
 let imageCache;
+let splashScreen;
 
 let fishes = [];
 let marineSnow = [];
@@ -41,10 +42,15 @@ let nearPOI = null;
  * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
  * [EN] Game initialization. Sets up the canvas, manages start screens and loads the world.
  */
-function init() {
+async function init() {
+    // 0. Inicializar Pool de Audio Crítico para la UI (disponible desde el Splash)
+    if (typeof GlobalAudioPool !== 'undefined') {
+        GlobalAudioPool.initPool('toggle', 'audio/toggle.mp3', 3);
+    }
+
     // 1. Mostrar Pantalla Splash inmediatamente
     try {
-        new SplashScreen(() => {
+        splashScreen = new SplashScreen(() => {
             // 2. Al interactuar con Splash, iniciar Loading inmediatamente
             const loading = new LoadingScreen();
 
@@ -127,6 +133,7 @@ function setupGameCore() {
     bgMusic = new Audio('audio/sound.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
+    bgMusic.muted = isMusicMuted;
 
     lowBatteryAudio = new Audio('audio/battery-off.mp3');
     lowBatteryAudio.loop = true;
@@ -678,6 +685,7 @@ function toggleMenu() {
  * [EN] Toggle native browser fullscreen mode preventing conflict with the ESC key.
  */
 function toggleFullscreen() {
+    GlobalAudioPool.play('toggle', 0.8);
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen()
             .then(() => {
@@ -709,8 +717,10 @@ function toggleFullscreen() {
  * [EN] Mute/Unmute the background audio track and update the UI button.
  */
 function toggleMusicMute() {
+    GlobalAudioPool.play('toggle', 0.8);
     isMusicMuted = !isMusicMuted;
     if (bgMusic) bgMusic.muted = isMusicMuted;
+    if (splashScreen && splashScreen.splashMusic) splashScreen.splashMusic.muted = isMusicMuted;
 
     updateSettingsUI();
 }
@@ -823,6 +833,6 @@ function updateCursorVisibility() {
     const isScanOpen = uiManager.isScanModalOpen || false;
     const isDiscoveryOpen = uiManager.isDiscoveryModalOpen || false;
     const shouldHide = !isMenuOpen && !isScanOpen && !isDiscoveryOpen;
-    
+
     document.body.classList.toggle('hide-cursor', shouldHide);
 }

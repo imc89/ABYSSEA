@@ -40,7 +40,7 @@ class UITelemetry {
                 <h1 class="text-purple-400 text-[9px] font-bold tracking-[0.2em] uppercase opacity-80">
                     SISTEMA DE TELEMETRÍA
                 </h1>
-                <span class="text-[8px] text-purple-500/50 font-mono">v1.2.0</span>
+                <span class="app-version-display text-[8px] text-purple-500/50 font-mono">${window.ABYSS_VERSION || 'v1.0.0'}</span>
             </div>
             
             <div class="space-y-2 text-[10px] font-mono">
