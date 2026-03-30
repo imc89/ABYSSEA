@@ -8,7 +8,61 @@ class SplashScreen {
     constructor(onStart) {
         this.onStart = onStart;
         this.container = null;
+        this.version = window.ABYSS_VERSION || 'v1.0.0';
+        this._initAudio();
         this.init();
+    }
+
+    _initAudio() {
+        this.splashMusic = new Audio('audio/abyssea.mp3');
+        this.splashMusic.loop = true;
+        this.splashMusic.volume = 0.5;
+
+        // --- MODAL DE BRIEFING FUTURISTA (Desbloqueador de Audio) ---
+        const startPortal = document.createElement('div');
+        startPortal.id = 'start-mission-portal';
+        startPortal.className = 'fixed inset-0 z-[3000] flex items-center justify-center bg-black/80 backdrop-blur-xl transition-opacity duration-700';
+        startPortal.innerHTML = `
+            <style>
+                @keyframes futuristic-pulse {
+                    0%, 100% { border-color: rgba(6, 182, 212, 0.3); box-shadow: 0 0 20px rgba(6, 182, 212, 0.1); }
+                    50% { border-color: rgba(34, 211, 238, 1); box-shadow: 0 0 40px rgba(6, 182, 212, 0.4); }
+                }
+                .futuristic-border {
+                    animation: futuristic-pulse 3s infinite ease-in-out;
+                }
+            </style>
+            <div class="bg-[#000a12]/95 border-2 border-cyan-500/30 p-10 rounded-2xl max-w-md w-full mx-6 flex flex-col gap-8 font-mono relative overflow-hidden text-center futuristic-border">
+                <!-- Sutil Resplandor de Fondo -->
+                <div class="absolute -top-32 -left-32 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl opacity-40"></div>
+                
+                <div class="flex flex-col items-center gap-2 relative z-10">
+                    <h2 class="text-cyan-400 text-3xl font-bold tracking-[0.4em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.4)]">ABYSSEA</h2>
+                    <span class="app-version-display text-[10px] text-cyan-500/50 tracking-[0.2em] uppercase">${this.version}</span>
+                </div>
+                
+                <div class="text-white/80 text-[13px] leading-relaxed font-light opacity-95 relative z-10 ">
+                    <p>Este juego está destinado a ofrecer una pequeña visión de la asombrosa diversidad de vida que habita en los rincones más profundos de nuestro planeta. Su propósito es enseñar criaturas fascinantes que prosperan en la oscuridad total, permitiéndote descubrir la belleza de un ecosistema tan vital como desconocido.</p>
+                </div>
+
+                <div class="flex flex-col items-center gap-6 relative z-10">
+                    <button id="modal-start-btn" class="px-12 bg-cyan-500/5 border border-cyan-400/30 py-3 text-cyan-400 text-[11px] tracking-[0.4em] font-bold uppercase hover:bg-cyan-400 hover:text-black hover:scale-105 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                        COMENZAR
+                    </button>
+                    <span class="text-[9px] text-cyan-500/30 tracking-[0.3em] uppercase">Creado por IMC89</span>
+                </div>
+            </div>
+        `;
+
+        startPortal.onclick = (e) => {
+            if (e.target.closest('#modal-start-btn')) {
+                if (this.splashMusic) this.splashMusic.play().catch(() => { });
+                startPortal.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => startPortal.remove(), 700);
+            }
+        };
+
+        setTimeout(() => this.container.appendChild(startPortal), 50);
     }
     init() {
         // Crear el contenedor principal
@@ -72,7 +126,7 @@ class SplashScreen {
                     <!-- Decoración Superior HUD -->
                     <div class="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 whitespace-nowrap">
                         <div class="h-[1px] w-6 bg-cyan-500/30"></div>
-                        <span class="text-cyan-400 text-[8px] uppercase tracking-[0.6em] font-bold">Deep Sea Mission Control</span>
+                        <span class="text-cyan-400 text-[8px] uppercase tracking-[0.6em] font-bold">Deep Sea Exploration</span>
                         <div class="h-[1px] w-6 bg-cyan-500/30"></div>
                     </div>
 
@@ -106,8 +160,8 @@ class SplashScreen {
                             </div>
                         </button>
                         
-                        <div class="flex flex-col items-center gap-3">
-                            <span class="text-[8px] text-cyan-400/50 uppercase tracking-[0.4em] font-mono"> v1.0.0</span>
+                        <div class="text-center mt-4">
+                            <span class="app-version-display text-[8px] text-cyan-400/50 uppercase tracking-[0.4em] font-mono">${this.version}</span>
                         </div>
                     </div>
                 </div>
@@ -254,6 +308,24 @@ class SplashScreen {
     hide() {
         if (this._handleKeyDown) {
             window.removeEventListener('keydown', this._handleKeyDown);
+        }
+
+        // Remover el listener si el splash se cierra antes de interactuar (por ejemplo, vía consola)
+        window.removeEventListener('click', this._unlockAudio);
+
+        // --- FADE-OUT DE AUDIO ---
+        if (this.splashMusic) {
+            const fadeInterval = setInterval(() => {
+                if (this.splashMusic && this.splashMusic.volume > 0.05) {
+                    this.splashMusic.volume -= 0.05;
+                } else {
+                    clearInterval(fadeInterval);
+                    if (this.splashMusic) {
+                        this.splashMusic.pause();
+                        this.splashMusic = null;
+                    }
+                }
+            }, 50);
         }
 
         this.container.classList.add('opacity-0');

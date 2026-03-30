@@ -54,21 +54,32 @@
         }
 
         /* Mostrar Cursor solo en Menús, Splash y Modales */
-        #splash-screen, #splash-screen *,
-        #esc-menu, #esc-menu *,
-        #scan-modal, #scan-modal *,
-        #discovery-modal, #discovery-modal *,
-        #controls-menu, #controls-menu *,
-        #splash-config-btn, #splash-config-btn * {
+        #splash-screen,
+        #splash-screen *,
+        #esc-menu,
+        #esc-menu *,
+        #scan-modal,
+        #scan-modal *,
+        #discovery-modal,
+        #discovery-modal *,
+        #controls-menu,
+        #controls-menu *,
+        #splash-config-btn,
+        #splash-config-btn * {
             cursor: url('./img/cursor/cursor.cur'), auto !important;
         }
 
         /* Hover states en Menús y Splash */
-        #splash-screen button:hover, #splash-screen button *:hover,
-        #esc-menu button:hover, #esc-menu button *:hover,
-        #scan-modal button:hover, #scan-modal *:hover,
-        #discovery-modal button:hover, #discovery-modal *:hover,
-        #controls-menu button:hover, #controls-menu *:hover,
+        #splash-screen button:hover,
+        #splash-screen button *:hover,
+        #esc-menu button:hover,
+        #esc-menu button *:hover,
+        #scan-modal button:hover,
+        #scan-modal *:hover,
+        #discovery-modal button:hover,
+        #discovery-modal *:hover,
+        #controls-menu button:hover,
+        #controls-menu *:hover,
         #splash-config-btn:hover {
             cursor: url('./img/cursor/cursor_hover.cur'), auto !important;
         }
@@ -865,6 +876,7 @@
       [EN] Loading of game scripts split and matched by responsibilities. 
     -->
     <!-- Módulos de configuración -->
+    <script src="js/config/version.js"></script>
     <script src="js/config/constants.js"></script>
     <script src="js/config/fishes.js"></script>
     <script src="js/config/macros.js"></script>

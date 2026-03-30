@@ -36,7 +36,7 @@ class LoadingScreen {
                     <div class="flex flex-col gap-1">
                         <div class="flex items-center gap-2">
                             <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i>
-                            <span class="text-cyan-400 text-[10px] font-bold uppercase tracking-[0.4em]">Sub-Surface Command OS v4.2</span>
+                            <span class="text-cyan-400 text-[10px] font-bold uppercase tracking-[0.4em]">Sub-Surface Command OS <span class="app-version-display ml-1">${window.ABYSS_VERSION || 'v1.0.0'}</span></span>
                         </div>
                         <span class="text-cyan-500/30 text-[7px] uppercase tracking-widest pl-6">Deep Water Exploration Protocol // Mariana Trench</span>
                     </div>
