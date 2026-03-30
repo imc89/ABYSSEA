@@ -17,6 +17,7 @@ class SplashScreen {
         this.splashMusic = new Audio('audio/abyssea.mp3');
         this.splashMusic.loop = true;
         this.splashMusic.volume = 0.5;
+        this.splashMusic.muted = window.isMusicMuted || false;
 
         // --- MODAL DE BRIEFING FUTURISTA (Desbloqueador de Audio) ---
         const startPortal = document.createElement('div');
@@ -30,6 +31,12 @@ class SplashScreen {
                 }
                 .futuristic-border {
                     animation: futuristic-pulse 3s infinite ease-in-out;
+                    transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                .portal-dissolve {
+                    opacity: 0 !important;
+                    filter: blur(20px) !important;
+                    transform: scale(1.1) translateY(-10px) !important;
                 }
             </style>
             <div class="bg-[#000a12]/95 border-2 border-cyan-500/30 p-10 rounded-2xl max-w-md w-full mx-6 flex flex-col gap-8 font-mono relative overflow-hidden text-center futuristic-border">
@@ -56,14 +63,30 @@ class SplashScreen {
 
         startPortal.onclick = (e) => {
             if (e.target.closest('#modal-start-btn')) {
-                if (this.splashMusic) this.splashMusic.play().catch(() => { });
-                startPortal.classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => startPortal.remove(), 700);
+                this._closeStartPortal();
             }
         };
 
         setTimeout(() => this.container.appendChild(startPortal), 50);
     }
+
+    _closeStartPortal() {
+        const portal = document.getElementById('start-mission-portal');
+        if (portal) {
+            if (this.splashMusic) this.splashMusic.play().catch(() => { });
+            
+            const modalContent = portal.querySelector('.futuristic-border');
+            portal.classList.add('opacity-0', 'pointer-events-none');
+            if (modalContent) {
+                modalContent.classList.add('portal-dissolve');
+            }
+
+            setTimeout(() => portal.remove(), 800);
+            return true;
+        }
+        return false;
+    }
+
     init() {
         // Crear el contenedor principal
         this.container = document.createElement('div');
@@ -148,8 +171,8 @@ class SplashScreen {
 
                 <!-- Panel de Inicio (Mission Control UI) -->
                 <div class="bg-[#000a14]/60 backdrop-blur-2xl p-1 rounded-2xl border border-white/5 shadow-2xl group/panel transition-transform duration-700 hover:scale-[1.02]">
-                    <div class="bg-gradient-to-b from-cyan-500/10 to-transparent p-6 rounded-2xl flex flex-col items-center gap-6 w-80">
-                        <button id="start-mission-btn" class="animate-heartbeat group relative w-full py-5 bg-cyan-400/5 border border-cyan-400/30 rounded-xl transition-all duration-500 hover:bg-cyan-400/15 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden">
+                    <div class="bg-gradient-to-b from-cyan-500/10 to-transparent p-3 rounded-2xl flex flex-col items-center gap-2 w-80">
+                        <button id="start-mission-btn" class="animate-heartbeat group relative w-full py-4 bg-cyan-400/5 border border-cyan-400/30 rounded-xl transition-all duration-500 hover:bg-cyan-400/15 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden">
                             <!-- Barra de Escaneo en Hover -->
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
                             
@@ -160,7 +183,7 @@ class SplashScreen {
                             </div>
                         </button>
                         
-                        <div class="text-center mt-4">
+                        <div class="text-center mt-1">
                             <span class="app-version-display text-[8px] text-cyan-400/50 uppercase tracking-[0.4em] font-mono">${this.version}</span>
                         </div>
                     </div>
@@ -193,9 +216,12 @@ class SplashScreen {
             }
         });
 
-        // Manejador de teclado para Enter (Mission Start)
+        // Manejador de teclado para Enter (Mission Start / Close Portal)
         this._handleKeyDown = (e) => {
             if (e.code === 'Enter') {
+                // Si la modal de información está abierta, cerrarla y no iniciar el juego aún
+                if (this._closeStartPortal()) return;
+
                 // Solo si el menú no está abierto
                 if (typeof isMenuOpen !== 'undefined' && !isMenuOpen) {
                     this.hide();

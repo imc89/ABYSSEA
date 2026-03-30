@@ -11,6 +11,7 @@ let player;
 let uiManager;
 let uiTelemetry;
 let imageCache;
+let splashScreen;
 
 let fishes = [];
 let marineSnow = [];
@@ -49,7 +50,7 @@ async function init() {
 
     // 1. Mostrar Pantalla Splash inmediatamente
     try {
-        new SplashScreen(() => {
+        splashScreen = new SplashScreen(() => {
             // 2. Al interactuar con Splash, iniciar Loading inmediatamente
             const loading = new LoadingScreen();
 
@@ -132,6 +133,7 @@ function setupGameCore() {
     bgMusic = new Audio('audio/sound.mp3');
     bgMusic.loop = true;
     bgMusic.volume = 0.4;
+    bgMusic.muted = isMusicMuted;
 
     lowBatteryAudio = new Audio('audio/battery-off.mp3');
     lowBatteryAudio.loop = true;
@@ -718,6 +720,7 @@ function toggleMusicMute() {
     GlobalAudioPool.play('toggle', 0.8);
     isMusicMuted = !isMusicMuted;
     if (bgMusic) bgMusic.muted = isMusicMuted;
+    if (splashScreen && splashScreen.splashMusic) splashScreen.splashMusic.muted = isMusicMuted;
 
     updateSettingsUI();
 }
