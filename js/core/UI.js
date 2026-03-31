@@ -13,6 +13,9 @@ class UIManager {
 
         // Gestor del minijuego Macro (decoupled)
         this.macroManager = new MacroManager();
+
+        // Gestor de Gestión del Submarino
+        this.subManager = new SubManagementManager();
     }
 
     // El getter isDiscoveryModalOpen ahora se maneja directamente viendo el estado de macroManager
@@ -20,11 +23,15 @@ class UIManager {
         return this.macroManager.isOpen;
     }
 
+    get isSubManagementOpen() {
+        return this.subManager.isOpen;
+    }
+
     /**
      * [ES] Ciclo de actualización unificado de la interfaz. Coordina la sincronización de datos físicos con elementos visuales en pantalla.
      * [EN] Unified UI update cycle. Coordinates the synchronization of physical data with on-screen visual elements.
      */
-    update(player, scannableTarget, fishCatalog, nearPOI) {
+    update(player, scannableTarget, fishCatalog, nearPOI, camera) {
         this.frameCount++;
 
         // Actualizar telemetría de profundidad
@@ -44,6 +51,120 @@ class UIManager {
 
         // Actualizar indicadores de especies por profundidad
         this.updateDepthSpeciesIndicators(player, fishCatalog);
+
+        // Actualizar mini HUD de filtros (Dropdown V)
+        this.updateScrubberHUD(player);
+
+        // Actualizar ventana de gestión interna si está abierta
+        this.subManager.update(player);
+
+        // Actualizar posición del contador de veneno si es necesario
+        if (camera) {
+            this.updatePoisonCountdownPos(player, camera);
+        }
+    }
+
+    /**
+     * [ES] Posiciona el contador de CO2 crítico sobre el submarino.
+     */
+    updatePoisonCountdownPos(player, camera) {
+        const countdown = document.getElementById('co2-critical-countdown');
+        if (!countdown || countdown.classList.contains('hidden')) return;
+
+        const screenPos = camera.worldToScreen(player.x, player.y);
+        
+        // Colocar un poco por encima del centro del submarino
+        countdown.style.left = `${screenPos.x}px`;
+        countdown.style.top = `${screenPos.y - 120}px`;
+        countdown.style.transform = 'translateX(-50%)';
+    }
+
+    /**
+     * [ES] Abre o cierra la ventana de gestión técnica del submarino.
+     * [EN] Opens or closes the submarine's technical management window.
+     */
+    toggleSubManagement() {
+        this.subManager.toggle();
+    }
+
+    /**
+     * [ES] Abre o cierra el mini-menú desplegable de filtros en el HUD principal.
+     */
+    toggleScrubberHUD() {
+        const dropdown = document.getElementById('scrubber-hud-dropdown');
+        const chevron = document.getElementById('v-chevron');
+        if (dropdown) {
+            const isVisible = dropdown.classList.contains('opacity-100');
+            if (isVisible) {
+                dropdown.classList.replace('opacity-100', 'opacity-0');
+                dropdown.classList.replace('visible', 'invisible');
+                dropdown.classList.add('-translate-y-4', 'scale-95', 'pointer-events-none');
+                if (chevron) chevron.style.transform = 'rotate(0deg)';
+            } else {
+                dropdown.classList.replace('opacity-0', 'opacity-100');
+                dropdown.classList.replace('invisible', 'visible');
+                dropdown.classList.remove('-translate-y-4', 'scale-95', 'pointer-events-none');
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+            }
+        }
+    }
+
+    /**
+     * [ES] Actualiza en tiempo real los valores de los filtros en el mini desplegable del HUD.
+     */
+    updateScrubberHUD(player) {
+        player.scrubbers.forEach((s, i) => {
+            const bar = document.getElementById(`hud-scrub-bar-${i}`);
+            const val = document.getElementById(`hud-scrub-val-${i}`);
+            const dot = document.getElementById(`hud-scrub-dot-${i}`);
+
+            if (bar) {
+                bar.style.width = `${s.percentage}%`;
+                // Cambio de color según carga
+                if (s.percentage <= 25) {
+                    bar.className = "h-full bg-red-500 shadow-[0_0_8px_#ef4444] transition-all duration-300";
+                } else if (s.percentage <= 60) {
+                    bar.className = "h-full bg-amber-500 shadow-[0_0_8px_#f59e0b] transition-all duration-300";
+                } else {
+                    bar.className = "h-full bg-emerald-500 shadow-[0_0_8px_#10b981] transition-all duration-300";
+                }
+            }
+
+            if (val) {
+                val.innerText = `${Math.floor(s.percentage)}%`;
+                // Resaltar el activo
+                if (player.activeScrubberIndex === i) {
+                    val.classList.remove('text-white/20');
+                    val.classList.add('text-emerald-400');
+                } else {
+                    val.classList.add('text-white/20');
+                    val.classList.remove('text-emerald-400');
+                }
+            }
+
+            if (dot) {
+                if (player.activeScrubberIndex === i) {
+                    dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981] animate-pulse";
+                } else {
+                    dot.className = "w-1.5 h-1.5 rounded-full bg-white/10";
+                }
+            }
+        });
+
+        // Estatus de atmosfera en el mini HUD
+        const atmosStatus = document.getElementById('hud-atmos-status');
+        if (atmosStatus) {
+            if (player.co2 < 40) {
+                atmosStatus.innerText = "ATM: NOMINAL";
+                atmosStatus.className = "text-[7px] text-emerald-500/60 uppercase font-bold tracking-widest font-mono";
+            } else if (player.co2 < 80) {
+                atmosStatus.innerText = "ATM: WARNING";
+                atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono";
+            } else {
+                atmosStatus.innerText = "ATM: CRITICAL";
+                atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse";
+            }
+        }
     }
 
     /**

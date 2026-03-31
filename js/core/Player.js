@@ -32,6 +32,17 @@ class Player {
 
         this.energy = 100;
 
+        // Sistema de Soporte Vital
+        this.oxygen = 100;
+        this.co2 = 0;
+        this.poisonTimer = 0;
+        this.isDead = false;
+        this.activeScrubberIndex = 0; // 0 o 1
+        this.scrubbers = [
+            { percentage: 100, needsReplacement: false, replacementTimer: 0 },
+            { percentage: 100, needsReplacement: false, replacementTimer: 0 }
+        ];
+
         // Estado inicial: acoplado a la base
         this.isLocked = true;
         this.lockY = this.y;
@@ -165,6 +176,162 @@ class Player {
         }
 
         return moving;
+    }
+
+    /**
+     * [ES] Gestiona los sistemas de soporte vital: oxígeno, CO2 y filtros de cal sodada (scrubbers).
+     * [EN] Manages life support systems: oxygen, CO2, and soda lime filters (scrubbers).
+     */
+    updateLifeSupport(dtMult) {
+        const isMenuOpenGlobal = (typeof isMenuOpen !== 'undefined' ? isMenuOpen : false);
+        const canSimulate = !this.isLocked && !isMenuOpenGlobal;
+
+        // Factores de conversión: (100% / (minutos * 60s * 60fps))
+        const o2DrainPerTick = (100 / (FILTER_CONFIG.oxygenDuration * 60 * 60));
+        const co2ProdPerTick = (100 / (FILTER_CONFIG.co2BuildUpTime * 60 * 60));
+        const scrubberDrainPerTick = (100 / (FILTER_CONFIG.scrubberDuration * 60 * 60));
+        const scrubberEfficiency = co2ProdPerTick * 2.5; // Limpia 2.5 veces más rápido de lo que se ensucia
+
+        if (canSimulate) {
+            // Consumo de Oxígeno
+            this.oxygen -= o2DrainPerTick * dtMult;
+            if (this.oxygen < 0) this.oxygen = 0;
+
+            // Producción de CO2
+            this.co2 += co2ProdPerTick * dtMult;
+
+            // Filtrado de CO2 (Scrubber activo)
+            const activeScrubber = this.scrubbers[this.activeScrubberIndex];
+            if (activeScrubber.percentage > 0) {
+                activeScrubber.percentage -= scrubberDrainPerTick * dtMult;
+                if (activeScrubber.percentage < 0) activeScrubber.percentage = 0;
+
+                // Eliminar CO2 (Solo si el filtro tiene carga)
+                this.co2 -= scrubberEfficiency * dtMult;
+            }
+        }
+
+        // Recuperar el scrubber activo fuera del if para la lógica de intoxicación
+        const activeScrubber = this.scrubbers[this.activeScrubberIndex];
+
+        // Lógica de intoxicación por CO2
+        const overlay = document.getElementById('co2-poison-overlay');
+        const grace = FILTER_CONFIG.co2PoisoningGracePeriod;
+
+        if (activeScrubber.percentage <= 0 && !this.isDead) {
+            // Solo descontar vida si el submarino se ha movido (desbloqueado) y el menú no está abierto
+            const canPoison = !this.isLocked && (typeof isMenuOpen !== 'undefined' ? !isMenuOpen : true);
+            
+            if (canPoison) {
+                this.poisonTimer += (1 / 60) * dtMult; // Incrementar segundos
+            }
+            
+            // Efecto visual progresivo (nublado) e interfaz
+            const countdown = document.getElementById('co2-critical-countdown');
+            const timerVal = document.getElementById('co2-timer-value');
+            
+            // Ocultar contador si hay algún menú abierto para no solapar
+            const isMenuOrModalOpen = (typeof isMenuOpen !== 'undefined' && isMenuOpen) || 
+                                     (typeof uiManager !== 'undefined' && (uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen));
+
+            if (countdown) {
+                if (isMenuOrModalOpen) countdown.classList.add('hidden');
+                else countdown.classList.remove('hidden');
+            }
+
+            if (timerVal) {
+                const remaining = Math.max(0, grace - this.poisonTimer);
+                timerVal.innerText = remaining.toFixed(1);
+            }
+
+            if (overlay) {
+                const progress = Math.min(1, this.poisonTimer / grace);
+                overlay.style.opacity = progress.toString();
+                overlay.style.backdropFilter = `blur(${progress * 15}px)`;
+            }
+
+            // Muerte tras el periodo de gracia
+            if (this.poisonTimer >= grace) {
+                this.triggerGameOver();
+            }
+        } else if (activeScrubber.percentage > 0 && !this.isDead) {
+            // Recuperación si hay aire
+            if (this.poisonTimer > 0) {
+                this.poisonTimer -= (2 / 60) * dtMult; // Recuperación rápida
+                const countdown = document.getElementById('co2-critical-countdown');
+
+                if (this.poisonTimer <= 0) {
+                    this.poisonTimer = 0;
+                    if (countdown) countdown.classList.add('hidden');
+                }
+
+                if (overlay) {
+                    const progress = this.poisonTimer / grace;
+                    overlay.style.opacity = progress.toString();
+                    overlay.style.backdropFilter = `blur(${progress * 15}px)`;
+                }
+            } else {
+                const countdown = document.getElementById('co2-critical-countdown');
+                if (countdown && !countdown.classList.contains('hidden')) countdown.classList.add('hidden');
+            }
+        }
+
+        // Gestionar temporizadores de mantenimiento para los inactivos QUE NO ESTÉN LLENOS
+        this.scrubbers.forEach((s, idx) => {
+            // Un filtro está listo para mantenimiento si NO es el activo y NO está al 100%
+            if (idx !== this.activeScrubberIndex && s.percentage < 100) {
+                // Iniciar contador si no estaba ya en marcha o si acaba de ser desconectado
+                if (!s.needsReplacement) {
+                    s.needsReplacement = true;
+                    s.replacementTimer = FILTER_CONFIG.scrubberReplacementTime * 60;
+                }
+
+                // Descontar tiempo
+                if (s.replacementTimer > 0) {
+                    s.replacementTimer -= (1 / 60) * dtMult;
+                    if (s.replacementTimer < 0) s.replacementTimer = 0;
+                }
+            } else if (idx === this.activeScrubberIndex) {
+                // ...
+            }
+        });
+
+        // CO2 no puede ser negativo y se limita a 100
+        this.co2 = Math.max(0, Math.min(100, this.co2));
+    }
+
+    /**
+     * [ES] Activa la secuencia de fin de juego por intoxicación.
+     */
+    triggerGameOver() {
+        if (this.isDead) return;
+        this.isDead = true;
+
+        if (typeof endGame !== 'undefined' && endGame) {
+            endGame.show('INTOXICACIÓN POR CO2');
+        } else {
+            // Fallback de seguridad
+            location.reload();
+        }
+    }
+
+    switchScrubber(index) {
+        if (index >= 0 && index < this.scrubbers.length) {
+            this.activeScrubberIndex = index;
+            if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('toggle', 0.5);
+        }
+    }
+
+    replaceScrubber(index) {
+        const s = this.scrubbers[index];
+        if (s.needsReplacement && s.replacementTimer <= 0) {
+            s.percentage = 100;
+            s.needsReplacement = false;
+            s.replacementTimer = 0;
+            if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('hook', 0.6);
+            return true;
+        }
+        return false;
     }
 
     /**

@@ -10,6 +10,7 @@ let camera;
 let player;
 let uiManager;
 let uiTelemetry;
+let endGame;
 let imageCache;
 let splashScreen;
 
@@ -122,6 +123,7 @@ function setupGameCore() {
     if (fishLayer) fishLayer.innerHTML = '';
 
     uiManager = new UIManager();
+    endGame = new EndGame();
     uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
 
@@ -233,10 +235,24 @@ function setupEventHandlers() {
             }
         }
 
+        if (e.code === 'KeyC') {
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                uiManager.toggleSubManagement();
+            }
+        }
+
+        if (e.code === 'KeyV') {
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                uiManager.toggleScrubberHUD();
+            }
+        }
+
         if (e.code === 'Escape' || e.code === 'KeyP') {
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
             if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
+            } else if (typeof uiManager !== 'undefined' && uiManager && uiManager.isSubManagementOpen) {
+                uiManager.toggleSubManagement();
             } else {
                 toggleMenu();
             }
@@ -314,6 +330,20 @@ function loop(timestamp) {
     const dtMult = dt / 16.666;
 
     update(dtMult);
+    
+    // El Soporte Vital y la UI siempre se actualizan, incluso si el juego está pausado por menús
+    if (typeof player !== 'undefined' && player) {
+        player.updateLifeSupport(dtMult);
+    }
+    if (typeof uiManager !== 'undefined' && uiManager) {
+        uiManager.update(player, 
+            typeof scannableTarget !== 'undefined' ? scannableTarget : null, 
+            typeof FISH_CATALOG !== 'undefined' ? FISH_CATALOG : null, 
+            typeof nearPOI !== 'undefined' ? nearPOI : null,
+            typeof camera !== 'undefined' ? camera : null
+        );
+    }
+
     draw();
     requestAnimationFrame(loop);
 }
@@ -323,7 +353,7 @@ function loop(timestamp) {
  * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
 function update(dtMult = 1.0) {
-    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
+    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen) return;
 
     // Actualizar jugador (pasar canvas para límites dinámicos)
     const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);
@@ -832,7 +862,16 @@ function updateCursorVisibility() {
 
     const isScanOpen = uiManager.isScanModalOpen || false;
     const isDiscoveryOpen = uiManager.isDiscoveryModalOpen || false;
-    const shouldHide = !isMenuOpen && !isScanOpen && !isDiscoveryOpen;
+    const isSubManagementOpen = uiManager.isSubManagementOpen || false;
+    const isGameOverOpen = (typeof endGame !== 'undefined' && endGame && endGame.isOpen);
+    const isDead = (typeof player !== 'undefined' && player && player.isDead);
+    
+    // Si cualquiera de estas condiciones se cumple, el cursor DEBE verse
+    const anyModalOpen = isMenuOpen || isScanOpen || isDiscoveryOpen || isSubManagementOpen || isGameOverOpen || isDead;
+    const shouldHide = !anyModalOpen;
 
     document.body.classList.toggle('hide-cursor', shouldHide);
+    if (!shouldHide) {
+        document.body.style.cursor = 'default';
+    }
 }

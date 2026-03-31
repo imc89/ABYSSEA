@@ -62,8 +62,11 @@
         #scan-modal *,
         #discovery-modal,
         #discovery-modal *,
-        #controls-menu,
         #controls-menu *,
+        #sub-management-modal,
+        #sub-management-modal *,
+        #end-game-screen,
+        #end-game-screen *,
         #splash-config-btn,
         #splash-config-btn * {
             cursor: url('./img/cursor/cursor.cur'), auto !important;
@@ -80,6 +83,10 @@
         #discovery-modal *:hover,
         #controls-menu button:hover,
         #controls-menu *:hover,
+        #sub-management-modal button:hover,
+        #sub-management-modal *:hover,
+        #end-game-screen button:hover,
+        #end-game-screen button *:hover,
         #splash-config-btn:hover {
             cursor: url('./img/cursor/cursor_hover.cur'), auto !important;
         }
@@ -515,6 +522,132 @@
         #macro-discovery-img:hover {
             transform: scale(1.05);
         }
+
+        /* Submarine Management Modal - PREMIUM DESIGN */
+        #sub-management-modal {
+            position: fixed;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 90%;
+            max-width: 1000px;
+            height: 74%;
+            background: linear-gradient(135deg, #0a1118 0%, #050a0f 100%);
+            backdrop-filter: blur(25px);
+            border: 2px solid rgba(6, 182, 212, 0.2);
+            border-radius: 32px;
+            z-index: 250;
+            display: none;
+            flex-direction: column;
+            padding: 10px 30px;
+            box-shadow: 0 0 150px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(6, 182, 212, 0.05);
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            opacity: 0;
+            pointer-events: auto;
+        }
+
+        #sub-management-modal.active {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Cylindrical Tank Styling */
+        .tank-body {
+            width: 180px;
+            height: 340px;
+            position: relative;
+            background: #111;
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tank-metal-cap {
+            height: 45px;
+            background: linear-gradient(to right, #2a2a2a 0%, #444 20%, #222 50%, #444 80%, #2a2a2a 100%);
+            border-bottom: 2px solid rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .tank-metal-cap-top {
+            border-radius: 10px 10px 4px 4px;
+        }
+
+        .tank-metal-cap-bottom {
+            border-radius: 4px 4px 10px 10px;
+            border-top: 2px solid rgba(0, 0, 0, 0.3);
+            border-bottom: none;
+        }
+
+        .tank-glass {
+            flex: 1;
+            background: rgba(10, 20, 25, 0.8);
+            border-left: 2px solid rgba(0, 0, 0, 0.5);
+            border-right: 2px solid rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .tank-glass::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10%;
+            width: 25%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        /* SVG Gauges */
+        .gauge-container {
+            position: absolute;
+            top: 40px;
+            right: -100px;
+            width: 90px;
+            height: 90px;
+        }
+
+        /* Lights */
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+
+        .light-active {
+            background: #10b981;
+            box-shadow: 0 0 15px #10b981;
+            border-color: #34d399;
+        }
+
+        .light-alert {
+            background: #ef4444;
+            box-shadow: 0 0 15px #ef4444;
+            border-color: #f87171;
+        }
+
+        /* Timer Indicator */
+        .timer-badge {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            color: #06b6d4;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-family: monospace;
+            letter-spacing: 1px;
+        }
+
+        /* Knob Animation */
+        #filter-knob {
+            transform-origin: center;
+        }
     </style>
 </head>
 
@@ -590,7 +723,7 @@
                         </div>
                     </div>
 
-                    <div class="hud-glass p-3 pr-5 rounded-lg border-r-4 border-r-yellow-500 w-[200px]">
+                    <div class="hud-glass p-3 pr-5 rounded-lg border-r-4 border-r-yellow-500 w-[200px] mb-4">
                         <div class="flex items-center justify-between gap-4 mb-2">
                             <p class="text-yellow-500 text-[10px] font-bold uppercase tracking-widest">Batería Faro</p>
                             <span id="battery-percent" class="text-white text-[10px] font-mono">100%</span>
@@ -599,6 +732,75 @@
                             <div id="battery-bar"
                                 class="h-full bg-yellow-500 transition-all duration-300 shadow-[0_0_8px_#eab308]"
                                 style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <!-- CONTROLADORES "V" -->
+                    <div class="relative self-end">
+                        <div id="v-controller-indicator" onclick="uiManager.toggleScrubberHUD()"
+                            class="hud-glass p-2 px-4 rounded-lg flex items-center justify-between cursor-pointer hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all border-r-4 border-cyan-500/40 group w-[200px]">
+                            <p
+                                class="text-cyan-400 text-[9px] font-bold uppercase tracking-[0.2em] group-hover:text-cyan-300">
+                                Controladores</p>
+                            <div class="flex items-center gap-2">
+                                <span
+                                    class="text-white bg-cyan-700/50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-cyan-400/30">V</span>
+                                <i data-lucide="chevron-down" id="v-chevron"
+                                    class="w-3 h-3 text-cyan-400 transition-transform duration-300"></i>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown de Filtros (Mini HUD) -->
+                        <div id="scrubber-hud-dropdown"
+                            class="absolute top-12 right-0 w-64 hud-glass p-4 rounded-xl border border-cyan-500/20 shadow-[0_20px_50px_rgba(0,0,0,0.8)] transition-all duration-500 opacity-0 invisible -translate-y-4 scale-95 z-50">
+                            <p
+                                class="text-white/40 text-[8px] uppercase tracking-[0.3em] font-bold mb-3 border-b border-white/5 pb-2">
+                                Filtros Activos [CO2]</p>
+                            <div class="flex flex-col gap-4">
+                                <!-- Filter A Mini -->
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex justify-between items-end">
+                                        <div class="flex items-center gap-2">
+                                            <div id="hud-scrub-dot-0" class="w-1.5 h-1.5 rounded-full bg-emerald-500">
+                                            </div>
+                                            <span
+                                                class="text-[9px] text-white/80 font-bold uppercase tracking-widest">Filtro
+                                                A</span>
+                                        </div>
+                                        <span id="hud-scrub-val-0"
+                                            class="text-[10px] text-emerald-400 font-mono font-bold">100%</span>
+                                    </div>
+                                    <div class="w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
+                                        <div id="hud-scrub-bar-0"
+                                            class="h-full bg-emerald-500 shadow-[0_0_8px_#10b981] transition-all duration-300"
+                                            style="width: 100%"></div>
+                                    </div>
+                                </div>
+                                <!-- Filter B Mini -->
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex justify-between items-end">
+                                        <div class="flex items-center gap-2">
+                                            <div id="hud-scrub-dot-1" class="w-1.5 h-1.5 rounded-full bg-white/10">
+                                            </div>
+                                            <span
+                                                class="text-[9px] text-white/80 font-bold uppercase tracking-widest">Filtro
+                                                B</span>
+                                        </div>
+                                        <span id="hud-scrub-val-1"
+                                            class="text-[10px] text-white/20 font-mono font-bold">100%</span>
+                                    </div>
+                                    <div class="w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
+                                        <div id="hud-scrub-bar-1" class="h-full bg-white/20 transition-all duration-300"
+                                            style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-2 border-t border-white/5 flex justify-between items-center">
+                                <span id="hud-atmos-status"
+                                    class="text-[7px] text-emerald-500/60 uppercase font-bold tracking-widest font-mono">ATM:
+                                    NOMINAL</span>
+                                <span class="text-white/10 text-[7px] font-mono uppercase">sys_v7</span>
+                            </div>
                         </div>
                     </div>
 
@@ -776,6 +978,272 @@
                 <div class="absolute top-6 right-6 text-white/20 font-mono text-[8px] uppercase">Sens: HIGH_MACRO</div>
             </div>
 
+            <!-- 
+              [ES] Modal de Gestión Interna del Submarino (Soporte Vital). 
+              [EN] Submarine Internal Management Modal (Life Support). 
+            -->
+            <div id="sub-management-backdrop"
+                class="fixed inset-0 z-[249] bg-cover bg-center opacity-0 pointer-events-none transition-all duration-700 hidden">
+            </div>
+
+            <div id="sub-management-modal">
+                <div class="flex flex-col h-full bg-[#050a0f]/40 rounded-[28px] overflow-hidden">
+
+                    <!-- Header Bar -->
+                    <div class="flex justify-between items-center px-8 py-4 border-b border-white/5 bg-black/20">
+                        <div class="flex flex-col">
+                            <h2 class="text-white/60 text-[10px] font-bold tracking-[0.4em] uppercase">Gestión
+                                Específica</h2>
+                            <h3 class="text-white text-lg font-bold tracking-tight">Soporte Vital y Scrubbers</h3>
+                        </div>
+                        <div class="flex items-center gap-6">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]">
+                                </div>
+                                <span class="text-white/40 text-[9px] uppercase tracking-widest font-bold">ATMÓSFERA
+                                    ESTABLE</span>
+                            </div>
+                            <button onclick="uiManager.toggleSubManagement()"
+                                class="p-2 hover:bg-white/5 rounded-full transition-colors">
+                                <i data-lucide="x" class="text-white/40 w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main System Area -->
+                    <div class="flex-1 flex items-center justify-around px-20">
+
+                        <!-- FILTRO A (Izquierdo) -->
+                        <div class="flex flex-col items-center gap-6 group">
+                            <div class="tank-body flex flex-col">
+                                <div class="tank-metal-cap tank-metal-cap-top">
+                                    <div
+                                        class="absolute top-[-10px] left-1/2 -translate-x-1/2 w-8 h-4 bg-[#222] border border-white/5 rounded-t-sm">
+                                    </div>
+                                </div>
+                                <div class="tank-glass">
+                                    <canvas id="scrubber-canvas-0" class="w-full h-full"></canvas>
+                                </div>
+                                <div class="tank-metal-cap tank-metal-cap-bottom">
+                                    <div
+                                        class="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-6 h-4 bg-[#222] border border-white/5 rounded-b-sm">
+                                    </div>
+                                </div>
+
+                                <!-- SVG gauge A -->
+                                <div class="gauge-container">
+                                    <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-2xl">
+                                        <circle cx="50" cy="50" r="45" fill="#111" stroke="#333" stroke-width="4" />
+                                        <!-- Fondo del arco -->
+                                        <path d="M 20 75 A 40 40 0 1 1 80 75" fill="none" stroke="#222" stroke-width="8"
+                                            stroke-linecap="round" />
+                                        <!-- Arco que se rellena dinámicamente -->
+                                        <path id="gauge-path-0" d="M 20 75 A 40 40 0 1 1 80 75" fill="none"
+                                            stroke="url(#gaugeGradient)" stroke-width="8" stroke-linecap="round"
+                                            style="stroke-dasharray: 167; stroke-dashoffset: 0; transition: stroke-dashoffset 0.5s ease-out;" />
+                                        <defs>
+                                            <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stop-color="#ef4444" />
+                                                <stop offset="60%" stop-color="#f59e0b" />
+                                                <stop offset="100%" stop-color="#10b981" />
+                                            </linearGradient>
+                                        </defs>
+                                        <line id="gauge-needle-0" x1="50" y1="50" x2="50" y2="20" stroke="white"
+                                            stroke-width="2" stroke-linecap="round"
+                                            class="transition-transform duration-500"
+                                            style="transform-origin: 50px 50px; transform: rotate(-120deg)" />
+                                        <circle cx="50" cy="50" r="4" fill="#666" />
+                                    </svg>
+                                    <div
+                                        class="absolute inset-0 flex flex-col items-center justify-end pb-4 pointer-events-none">
+                                        <span class="text-[8px] text-white/20 font-bold">SCRUB_L</span>
+                                    </div>
+                                </div>
+
+                                <!-- Status Lights A -->
+                                <div class="absolute top-1/2 -left-12 -translate-y-1/2 flex flex-col gap-4">
+                                    <div id="light-a-ok" class="status-light light-active"></div>
+                                    <div id="light-a-fail" class="status-light"></div>
+                                </div>
+                            </div>
+
+                            <div class="text-center h-48 flex flex-col items-center justify-start gap-3">
+                                <p class="text-white/80 font-bold text-sm tracking-widest uppercase">Filtro A</p>
+
+                                <button id="scrubber-replace-0" onclick="player.replaceScrubber(0)"
+                                    class="z-10 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/20 rounded-md transition-all hidden">
+                                    Recargar Filtro
+                                </button>
+
+                                <div class="flex flex-col items-center gap-1">
+                                    <div id="timer-box-0" class="timer-badge opacity-0 transition-opacity mb-1">05:00
+                                    </div>
+                                    <p id="scrubber-status-0" class="text-emerald-500 text-[10px] font-bold uppercase">
+                                        Activo [OK]</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selector Central -->
+                        <div class="flex flex-col items-center gap-8">
+                            <div class="relative w-28 h-28 flex items-center justify-center">
+                                <svg class="absolute inset-0 w-full h-full text-white/5">
+                                    <circle cx="56" cy="56" r="54" fill="none" stroke="currentColor"
+                                        stroke-dasharray="4 4" />
+                                </svg>
+                                <div id="filter-knob"
+                                    class="relative w-24 h-24 rounded-full bg-gradient-to-br from-[#2a2a2a] to-[#0a0a0a] border-4 border-[#333] shadow-2xl cursor-pointer hover:border-cyan-500/50 transition-all duration-700"
+                                    onclick="player.switchScrubber(player.activeScrubberIndex === 0 ? 1 : 0)">
+                                    <div
+                                        class="absolute top-3 left-1/2 -translate-x-1/2 w-2 h-8 bg-white/60 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                                    </div>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="w-1 h-1 bg-white/20 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div class="absolute -left-12 top-1/2 -translate-y-1/2 text-cyan-500/20 font-bold">A
+                                </div>
+                                <div class="absolute -right-12 top-1/2 -translate-y-1/2 text-cyan-500/20 font-bold">B
+                                </div>
+                            </div>
+                            <span class="text-white/20 text-[9px] uppercase font-bold tracking-[0.3em]">Conmutador
+                                Principal</span>
+                        </div>
+
+                        <!-- FILTRO B (Derecho) -->
+                        <div class="flex flex-col items-center gap-6 group">
+                            <div class="tank-body flex flex-col">
+                                <div class="tank-metal-cap tank-metal-cap-top">
+                                    <div
+                                        class="absolute top-[-10px] left-1/2 -translate-x-1/2 w-8 h-4 bg-[#222] border border-white/5 rounded-t-sm">
+                                    </div>
+                                </div>
+                                <div class="tank-glass">
+                                    <canvas id="scrubber-canvas-1" class="w-full h-full"></canvas>
+                                </div>
+                                <div class="tank-metal-cap tank-metal-cap-bottom">
+                                    <div
+                                        class="absolute bottom-[-8px] left-1/2 -translate-x-1/2 w-6 h-4 bg-[#222] border border-white/5 rounded-b-sm">
+                                    </div>
+                                </div>
+
+                                <!-- SVG gauge B -->
+                                <div class="gauge-container">
+                                    <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-2xl">
+                                        <circle cx="50" cy="50" r="45" fill="#111" stroke="#333" stroke-width="4" />
+                                        <!-- Fondo del arco -->
+                                        <path d="M 20 75 A 40 40 0 1 1 80 75" fill="none" stroke="#222" stroke-width="8"
+                                            stroke-linecap="round" />
+                                        <!-- Arco que se rellena dinámicamente -->
+                                        <path id="gauge-path-1" d="M 20 75 A 40 40 0 1 1 80 75" fill="none"
+                                            stroke="url(#gaugeGradient)" stroke-width="8" stroke-linecap="round"
+                                            style="stroke-dasharray: 167; stroke-dashoffset: 0; transition: stroke-dashoffset 0.5s ease-out;" />
+                                        <line id="gauge-needle-1" x1="50" y1="50" x2="50" y2="20" stroke="white"
+                                            stroke-width="2" stroke-linecap="round"
+                                            class="transition-transform duration-500"
+                                            style="transform-origin: 50px 50px; transform: rotate(-120deg)" />
+                                        <circle cx="50" cy="50" r="4" fill="#666" />
+                                    </svg>
+                                    <div
+                                        class="absolute inset-0 flex flex-col items-center justify-end pb-4 pointer-events-none">
+                                        <span class="text-[8px] text-white/20 font-bold">SCRUB_R</span>
+                                    </div>
+                                </div>
+
+                                <!-- Status Lights B -->
+                                <div class="absolute top-1/2 -left-12 -translate-y-1/2 flex flex-col gap-4">
+                                    <div id="light-b-ok" class="status-light"></div>
+                                    <div id="light-b-fail" class="status-light"></div>
+                                </div>
+                            </div>
+
+                            <div class="text-center h-48 flex flex-col items-center justify-start gap-3">
+                                <p class="text-white/80 font-bold text-sm tracking-widest uppercase">Filtro B</p>
+
+                                <button id="scrubber-replace-1" onclick="player.replaceScrubber(1)"
+                                    class="z-10 px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/20 rounded-md transition-all hidden">
+                                    Recargar Filtro
+                                </button>
+
+                                <div class="flex flex-col items-center gap-1">
+                                    <div id="timer-box-1" class="timer-badge opacity-0 transition-opacity mb-1">05:00
+                                    </div>
+                                    <p id="scrubber-status-1" class="text-white/30 text-[10px] font-bold uppercase">
+                                        Inactivo</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Footer Data (Technical Instrumentation) -->
+                    <div
+                        class="px-12 py-10 flex flex-col items-center bg-[#050a0f]/80 border-t border-white/5 relative">
+                        <!-- Decorative tactical line -->
+                        <div
+                            class="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent">
+                        </div>
+
+                        <div class="flex items-center justify-between w-full max-w-4xl">
+
+                            <!-- O2 Monitor -->
+                            <div class="flex flex-col gap-2 w-64">
+                                <div class="flex justify-between items-end">
+                                    <span class="text-[9px] text-white/40 uppercase tracking-[0.2em] font-bold">Reserva
+                                        de O2</span>
+                                    <span id="mgmt-o2-value"
+                                        class="text-white font-mono text-xs font-bold leading-none">100.0%</span>
+                                </div>
+                                <div
+                                    class="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/10 p-[1px]">
+                                    <div id="mgmt-o2-bar"
+                                        class="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-300"
+                                        style="width: 100%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Decorative Center Element -->
+                            <div class="flex items-center gap-1 opacity-20">
+                                <div class="w-1 h-1 bg-white rounded-full"></div>
+                                <div class="h-px w-20 bg-white"></div>
+                                <div class="w-1 h-1 bg-white rounded-full"></div>
+                            </div>
+
+                            <!-- CO2 Instrumentation -->
+                            <div
+                                class="flex items-center gap-6 bg-black/60 px-8 py-4 rounded-xl border border-white/10 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-[9px] text-white/30 font-bold tracking-[0.2em] uppercase mb-1">Atmósfera
+                                        CO2</span>
+                                    <div class="flex items-baseline gap-1">
+                                        <span id="mgmt-co2-display"
+                                            class="text-cyan-400 font-mono text-3xl tracking-tighter drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]">0.025</span>
+                                        <span class="text-cyan-600 text-[10px] font-bold">% VOL</span>
+                                    </div>
+                                </div>
+
+                                <!-- Alert LED System -->
+                                <div class="flex flex-col gap-1 pr-2">
+                                    <div id="mgmt-co2-leds" class="flex gap-1">
+                                        <div class="w-1 h-3 bg-emerald-500 rounded-sm shadow-[0_0_5px_#10b981]"></div>
+                                        <div class="w-1 h-3 bg-emerald-500/10 rounded-sm"></div>
+                                        <div class="w-1 h-3 bg-emerald-500/10 rounded-sm"></div>
+                                    </div>
+                                    <div class="h-px w-full bg-white/5 mt-1"></div>
+                                    <span id="mgmt-co2-led-status"
+                                        class="text-[7px] text-emerald-500/40 font-bold uppercase text-center">Nominal</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Disclaimer text -->
+                        <p class="mt-6 text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Life
+                            Support Systems - Model VII</p>
+                    </div>
+                </div>
+            </div>
+
             <div class="flex justify-center">
                 <div
                     class="hud-glass px-8 py-4 rounded-full flex items-center gap-8 text-white/50 text-[11px] font-bold uppercase tracking-widest pointer-events-auto border-b-2 border-b-cyan-500/20">
@@ -871,6 +1339,23 @@
     -->
     <canvas id="gameCanvas"></canvas>
 
+    <!-- EFECTO DE INTOXICACIÓN POR CO2 (NUBRADO Y ALARMA ROJA) -->
+    <div id="co2-poison-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0" style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.5) 50%, rgba(0,0,0,0.95) 100%); transition: backdrop-filter 0.5s ease;"></div>
+
+    <!-- CUENTA ATRÁS CRÍTICA (REFINADA Y PEQUEÑA) -->
+    <div id="co2-critical-countdown" class="absolute z-[1000] pointer-events-none hidden flex flex-col items-center">
+        <div class="relative flex items-center justify-center">
+            <svg class="w-14 h-14">
+                <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(239,68,68,0.2)" stroke-width="4"></circle>
+                <circle cx="28" cy="28" r="24" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="150" style="stroke-dashoffset: 0; transition: stroke-dashoffset 0.1s linear;"></circle>
+            </svg>
+            <div id="co2-timer-value" class="absolute inset-0 flex items-center justify-center text-white text-lg font-black font-mono drop-shadow-[0_0_10px_#ef4444]">3.0</div>
+        </div>
+        <span class="text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30">EMERGENCIA CO2</span>
+    </div>
+
+    <!-- PANTALLA DE GAME OVER (Gestionada dinámicamente por EndGame.js) -->
+
     <!-- 
       [ES] Carga de scripts del juego dividida y organizada por responsabilidades. 
       [EN] Loading of game scripts split and matched by responsibilities. 
@@ -880,6 +1365,7 @@
     <script src="js/config/constants.js"></script>
     <script src="js/config/fishes.js"></script>
     <script src="js/config/macros.js"></script>
+    <script src="js/config/filters.js"></script>
 
     <!-- Módulos de utilidades -->
     <script src="js/utils/helpers.js"></script>
@@ -896,6 +1382,8 @@
     <script src="js/core/SplashScreen.js"></script>
     <script src="js/core/LoadingScreen.js"></script>
     <script src="js/core/macroManager.js"></script>
+    <script src="js/core/SubManagementManager.js"></script>
+    <script src="js/core/EndGame.js"></script>
     <script src="js/core/UI.js"></script>
     <script src="js/core/UITelemetry.js"></script>
 
