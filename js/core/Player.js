@@ -53,6 +53,11 @@ class Player {
      * [EN] Main physics and logic loop for the player. Handles inputs, physics, battery drain, and collisions against level boundaries.
      */
     update(keys, controlScheme, world, canvas, dtMult = 1.0) {
+        // Pausa TOTAL si el menú de ESC está abierto
+        if (typeof isMenuOpen !== 'undefined' && isMenuOpen) {
+            return false; // No hay movimiento
+        }
+
         // Actualizar sónar
         if (this.sonarActive) {
             this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
@@ -242,6 +247,16 @@ class Player {
             if (timerVal) {
                 const remaining = Math.max(0, grace - this.poisonTimer);
                 timerVal.innerText = remaining.toFixed(1);
+                
+                // Actualizar animacion visual del anillo rojo
+                if (countdown) {
+                    const timerCircle = countdown.querySelector('svg circle:nth-child(2)');
+                    if (timerCircle) {
+                        // El stroke-dasharray base es 150, calculamos el porcentaje consumido
+                        const progress = Math.min(1, this.poisonTimer / grace);
+                        timerCircle.style.strokeDashoffset = (progress * 150).toString();
+                    }
+                }
             }
 
             if (overlay) {

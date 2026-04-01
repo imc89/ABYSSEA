@@ -13,17 +13,20 @@ class SubManagementManager {
 
     generateParticles(index) {
         this.particles[index] = [];
-        const count = 3000; // Máxima densidad para aspecto de "piedras"
+        const count = 3500; // Densidad para rellenar mejor
         for (let i = 0; i < count; i++) {
-            const gray = 100 + Math.random() * 80;
+            // Un tono más natural para el químico (pellets blancos/grises)
+            const isDark = Math.random() > 0.85;
+            const baseColor = isDark ? 100 + Math.random() * 30 : 190 + Math.random() * 50;
+
             this.particles[index].push({
                 x: Math.random() * 100,
                 y: Math.random() * 100,
-                size: 0.6 + Math.random() * 2.8,
+                size: 1.0 + Math.random() * 3.5, // Ligeramente más grandes
                 angle: Math.random() * Math.PI * 2,
-                sides: 3 + Math.floor(Math.random() * 5), // Polígonos variados
-                color: `rgba(${gray}, ${gray + 2}, ${gray + 8}, 0.95)`,
-                rotSpeed: (Math.random() - 0.5) * 0.015
+                sides: 4 + Math.floor(Math.random() * 4), // Entre 4 y 7 lados, formato "pellets"
+                color: `rgba(${baseColor}, ${baseColor + 5}, ${baseColor + 15}, 0.95)`, // Ligero tinte frío
+                rotSpeed: (Math.random() - 0.5) * 0.01
             });
         }
     }
@@ -97,13 +100,38 @@ class SubManagementManager {
 
         // Actualizar fondo de la ESCENA tras la modal
         const backdrop = document.getElementById('sub-management-backdrop');
+        const atmoLed = document.getElementById('simple-atmo-led');
+        const atmoText = document.getElementById('simple-atmo-text');
+
         if (backdrop) {
             const isOn = player.lightOn;
-            const bgImg = isOn ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
+            // Si hay emergencia, usamos la de alarma pase lo que pase con la luz
+            let bgImg;
+            if (player.poisonTimer > 0) {
+                bgImg = 'img/controls/alarm.jpg';
+            } else {
+                bgImg = isOn ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
+            }
+            
             backdrop.style.backgroundImage = `url(${bgImg})`;
 
             // Ajuste dinámico de brillo para mayor claridad
-            backdrop.style.filter = isOn ? 'brightness(0.9) contrast(1.1)' : 'brightness(0.9) contrast(1.1)';
+            backdrop.style.filter = 'brightness(0.9) contrast(1.1)';
+        }
+
+        // Lógica visual para el indicador de atmósfera
+        if (atmoLed && atmoText) {
+            if (player.poisonTimer > 0) {
+                // Modo Emergencia
+                atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-red-500 shadow-[0_0_12px_#ef4444]";
+                atmoText.innerText = "ATMÓSFERA CRÍTICA";
+                atmoText.className = "text-red-500 text-[9px] uppercase tracking-widest font-black transition-colors duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]";
+            } else {
+                // Modo Normal
+                atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-emerald-500 shadow-[0_0_8px_#10b981]";
+                atmoText.innerText = "ATMÓSFERA ESTABLE";
+                atmoText.className = "text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300";
+            }
         }
 
         this.updateLifeSupportUI(player);
@@ -199,14 +227,17 @@ class SubManagementManager {
 
             // Luces de estado
             if (lightOk && lightFail) {
-                if (player.activeScrubberIndex === i) {
+                // Luz OK: solo enciende si es el filtro activo Y le queda carga útil
+                if (player.activeScrubberIndex === i && s.percentage > 0) {
                     lightOk.classList.add('light-active');
-                    lightFail.classList.remove('light-alert');
-                } else if (s.percentage <= 0) {
-                    lightOk.classList.remove('light-active');
-                    lightFail.classList.add('light-alert');
                 } else {
                     lightOk.classList.remove('light-active');
+                }
+
+                // Luz FAIL: enciende de alerta siempre que el filtro esté agotado
+                if (s.percentage <= 0 || (s.needsReplacement && s.replacementTimer > 0)) {
+                    lightFail.classList.add('light-alert');
+                } else {
                     lightFail.classList.remove('light-alert');
                 }
             }
@@ -264,27 +295,65 @@ class SubManagementManager {
         this.firstUpdate = false;
     }
 
-    drawScrubber(canvas, percentage, index) {
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
+    getOverlayCache(w, h) {
+        if (!this.overlayCache || this.overlayCache.width !== w || this.overlayCache.height !== h) {
+            const oc = document.createElement('canvas');
+            oc.width = w; oc.height = h;
+            const ctx = oc.getContext('2d');
+            
+            // Reflejo principal
+            const glassGrad1 = ctx.createLinearGradient(0, 0, w, 0);
+            glassGrad1.addColorStop(0, 'rgba(255,255,255,0)');
+            glassGrad1.addColorStop(0.1, 'rgba(255,255,255,0.02)');
+            glassGrad1.addColorStop(0.18, 'rgba(255,255,255,0.45)');
+            glassGrad1.addColorStop(0.25, 'rgba(255,255,255,0.1)');
+            glassGrad1.addColorStop(0.35, 'rgba(255,255,255,0)');
+            ctx.fillStyle = glassGrad1; ctx.fillRect(0, 0, w, h);
 
-        ctx.clearRect(0, 0, w, h);
+            // Reflejo secundario
+            const glassGrad2 = ctx.createLinearGradient(0, 0, w, 0);
+            glassGrad2.addColorStop(0.7, 'rgba(255,255,255,0)');
+            glassGrad2.addColorStop(0.82, 'rgba(255,255,255,0.15)');
+            glassGrad2.addColorStop(0.92, 'rgba(255,255,255,0)');
+            ctx.fillStyle = glassGrad2; ctx.fillRect(0, 0, w, h);
 
-        const pList = this.particles[index];
-        const fillY = h * (1 - (percentage / 100));
+            // Reflejos cyan
+            const innerShadow = ctx.createLinearGradient(0, 0, w, 0);
+            innerShadow.addColorStop(0, 'rgba(6,182,212,0.15)');
+            innerShadow.addColorStop(0.08, 'transparent');
+            innerShadow.addColorStop(0.92, 'transparent');
+            innerShadow.addColorStop(1, 'rgba(6,182,212,0.1)');
+            ctx.fillStyle = innerShadow; ctx.fillRect(0, 0, w, h);
 
-        ctx.save();
-        pList.forEach(p => {
-            const px = (p.x / 100) * w;
-            const py = (p.y / 100) * h;
+            // Sombra casquillos
+            const capShadow = ctx.createLinearGradient(0, 0, 0, h);
+            capShadow.addColorStop(0, 'rgba(0,0,0,0.9)');
+            capShadow.addColorStop(0.12, 'transparent');
+            capShadow.addColorStop(0.88, 'transparent');
+            capShadow.addColorStop(1, 'rgba(0,0,0,0.9)');
+            ctx.fillStyle = capShadow; ctx.fillRect(0, 0, w, h);
 
-            if (py >= fillY) {
+            this.overlayCache = oc;
+        }
+        return this.overlayCache;
+    }
+
+    getParticleCache(index, w, h) {
+        if (!this.particleCache) this.particleCache = [];
+        if (!this.particleCache[index] || this.particleCache[index].width !== w || this.particleCache[index].height !== h) {
+            const oc = document.createElement('canvas');
+            oc.width = w; oc.height = h;
+            const ctx = oc.getContext('2d');
+            
+            // Dibujar TODOS los químicos
+            this.particles[index].forEach(p => {
+                const px = (p.x / 100) * w;
+                const py = (p.y / 100) * h;
+                
                 ctx.save();
                 ctx.translate(px, py);
-                p.angle += p.rotSpeed;
-                ctx.rotate(p.angle);
-
+                ctx.rotate(p.angle); // Ángulo estático, más realista para pellets amontonados
+                
                 ctx.beginPath();
                 for (let s = 0; s < p.sides; s++) {
                     const angle = (s / p.sides) * Math.PI * 2;
@@ -294,19 +363,62 @@ class SubManagementManager {
                     else ctx.lineTo(rx, ry);
                 }
                 ctx.closePath();
-                ctx.fillStyle = p.color;
-                ctx.fill();
+                ctx.fillStyle = p.color; ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.5; ctx.stroke();
                 ctx.restore();
-            }
-        });
+            });
+            
+            // Sombra multiplicada pre-calculada
+            ctx.globalCompositeOperation = 'multiply';
+            const shadowGrad = ctx.createLinearGradient(0, 0, w, 0);
+            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
+            shadowGrad.addColorStop(0.2, 'rgba(210, 210, 210, 1)');
+            shadowGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+            shadowGrad.addColorStop(0.8, 'rgba(160, 160, 160, 1)');
+            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+            ctx.fillStyle = shadowGrad;
+            ctx.fillRect(0, 0, w, h);
+            ctx.globalCompositeOperation = 'source-over';
+            
+            this.particleCache[index] = oc;
+        }
+        return this.particleCache[index];
+    }
 
-        const grad = ctx.createLinearGradient(0, fillY, 0, fillY + 15);
-        grad.addColorStop(0, 'rgba(0,0,0,0.6)');
-        grad.addColorStop(1, 'transparent');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, fillY, w, 15);
+    drawScrubber(canvas, percentage, index) {
+        const ctx = canvas.getContext('2d', { alpha: false }); // Optimización
+        const w = canvas.width;
+        const h = canvas.height;
 
-        ctx.restore();
+        const fillY = h * (1 - (percentage / 100));
+
+        // 1. DIBUJAR FONDO CILÍNDRICO DEL CRISTAL (Profundidad) - Optimizado caché
+        if (!this.bgGradCache || this.bgGradCache.w !== w) {
+            this.bgGradCache = { w: w, grad: ctx.createLinearGradient(0, 0, w, 0) };
+            this.bgGradCache.grad.addColorStop(0, 'rgba(5, 10, 15, 0.95)');
+            this.bgGradCache.grad.addColorStop(0.15, 'rgba(15, 25, 35, 1)');
+            this.bgGradCache.grad.addColorStop(0.5, 'rgba(20, 30, 40, 1)');
+            this.bgGradCache.grad.addColorStop(0.85, 'rgba(15, 25, 35, 1)');
+            this.bgGradCache.grad.addColorStop(1, 'rgba(5, 10, 15, 0.95)');
+        }
+        ctx.fillStyle = this.bgGradCache.grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // 2 + 3. DIBUJAR PARTÍCULAS CACHEADAS SEGÚN ALTURA
+        const pCache = this.getParticleCache(index, w, h);
+        ctx.drawImage(pCache, 0, fillY, w, h - fillY, 0, fillY, w, h - fillY);
+
+        // 4. SOMBRA EN LA PARTE SUPERIOR DE LA MASA
+        if (percentage > 0) {
+            const topGrad = ctx.createLinearGradient(0, fillY, 0, fillY + 30);
+            topGrad.addColorStop(0, 'rgba(0,0,0,0.85)');
+            topGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = topGrad;
+            ctx.fillRect(0, fillY, w, 30);
+        }
+
+        // 5. CACHÉ DE EFECTOS CRISTAL
+        ctx.drawImage(this.getOverlayCache(w, h), 0, 0);
     }
 }
 

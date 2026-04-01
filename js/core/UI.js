@@ -32,6 +32,9 @@ class UIManager {
      * [EN] Unified UI update cycle. Coordinates the synchronization of physical data with on-screen visual elements.
      */
     update(player, scannableTarget, fishCatalog, nearPOI, camera) {
+        // Bloquear actualizaciones de HUD si el menú de settings está abierto
+        if (typeof isMenuOpen !== 'undefined' && isMenuOpen) return;
+
         this.frameCount++;
 
         // Actualizar telemetría de profundidad

@@ -202,6 +202,12 @@ function setupGameCore() {
  */
 function setupEventHandlers() {
     window.addEventListener('keydown', e => {
+        // El menú de settings tiene prioridad absoluta y bloquea el acceso a otros controles del juego
+        if (typeof isMenuOpen !== 'undefined' && isMenuOpen) {
+            // Permitir solo cerrar el menú con Escape o P
+            if (e.code !== 'Escape' && e.code !== 'KeyP') return;
+        }
+
         keys[e.code] = true;
 
         // Auto-detectar esquema de control según tecla usada
