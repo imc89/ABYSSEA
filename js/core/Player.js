@@ -226,18 +226,18 @@ class Player {
         if (activeScrubber.percentage <= 0 && !this.isDead) {
             // Solo descontar vida si el submarino se ha movido (desbloqueado) y el menú no está abierto
             const canPoison = !this.isLocked && (typeof isMenuOpen !== 'undefined' ? !isMenuOpen : true);
-            
+
             if (canPoison) {
                 this.poisonTimer += (1 / 60) * dtMult; // Incrementar segundos
             }
-            
+
             // Efecto visual progresivo (nublado) e interfaz
             const countdown = document.getElementById('co2-critical-countdown');
             const timerVal = document.getElementById('co2-timer-value');
-            
+
             // Ocultar contador si hay algún menú abierto para no solapar
-            const isMenuOrModalOpen = (typeof isMenuOpen !== 'undefined' && isMenuOpen) || 
-                                     (typeof uiManager !== 'undefined' && (uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen));
+            const isMenuOrModalOpen = (typeof isMenuOpen !== 'undefined' && isMenuOpen) ||
+                (typeof uiManager !== 'undefined' && (uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen));
 
             if (countdown) {
                 if (isMenuOrModalOpen) countdown.classList.add('hidden');
@@ -247,7 +247,7 @@ class Player {
             if (timerVal) {
                 const remaining = Math.max(0, grace - this.poisonTimer);
                 timerVal.innerText = remaining.toFixed(1);
-                
+
                 // Actualizar animacion visual del anillo rojo
                 if (countdown) {
                     const timerCircle = countdown.querySelector('svg circle:nth-child(2)');

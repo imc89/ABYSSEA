@@ -13,11 +13,11 @@ class SubManagementManager {
 
     generateParticles(index) {
         this.particles[index] = [];
-        // 2200 pellets para empaquetamiento total y denso
-        const count = 2200;
+        // Aumento masivo para relleno total y compactación absoluta
+        const count = 3200;
         for (let i = 0; i < count; i++) {
-            const r = 1.4 + Math.random() * 1.6;
-            const halfLen = r * (0.7 + Math.random() * 1.0);
+            const r = 2.0 + Math.random() * 1.8;
+            const halfLen = r * (0.8 + Math.random() * 0.9);
             const base = 215 + Math.random() * 35;
 
             this.particles[index].push({
@@ -469,146 +469,132 @@ class SubManagementManager {
 
     drawScrubber(canvas, percentage, index) {
         const ctx = canvas.getContext('2d', { alpha: false });
-        const w = canvas.width;
-        const h = canvas.height;
+
+        // --- SOPORTE HIGH DPI (Nitidez extrema) ---
+        const dpr = window.devicePixelRatio || 1;
+        const cw = canvas.clientWidth || canvas.width;
+        const ch = canvas.clientHeight || canvas.height;
+
+        if (canvas.width !== cw * dpr || canvas.height !== ch * dpr) {
+            canvas.width = cw * dpr;
+            canvas.height = ch * dpr;
+        }
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        ctx.imageSmoothingEnabled = false;
+        // -------------------------------------------
 
         const saturation = 1 - (percentage / 100);
-        const now = Date.now();
 
-        // 1. FONDO (Oscuridad central)
-        if (!this.bgGradCache || this.bgGradCache.w !== w) {
-            this.bgGradCache = { w: w, grad: ctx.createLinearGradient(0, 0, w, 0) };
-            this.bgGradCache.grad.addColorStop(0, '#020406');
-            this.bgGradCache.grad.addColorStop(0.5, '#080c10');
-            this.bgGradCache.grad.addColorStop(1, '#020406');
+        // 1. FONDO (Gris mineral oscuro)
+        ctx.fillStyle = '#1c1e24';
+        ctx.fillRect(0, 0, cw, ch);
+
+        // 2. PRE-RENDER DE PELLET MAESTRO (Relieve Mineral y Volumen)
+        if (!this._pelletMaster || this._pelletMaster.dpr !== dpr) {
+            const createMaster = (color, shadowColor, isSat) => {
+                const pc = document.createElement('canvas');
+                pc.width = 40 * dpr; pc.height = 40 * dpr;
+                const pctx = pc.getContext('2d');
+                pctx.scale(dpr * 2, dpr * 2);
+
+                const x = 2, y = 2, w = 11, h = 7, r = 1.8;
+                pctx.fillStyle = 'rgba(0,0,0,0.45)';
+                pctx.beginPath(); pctx.roundRect(x + 0.5, y + 1.5, w, h, r); pctx.fill();
+
+                // Cuerpo Mineral
+                const grad = pctx.createLinearGradient(x, y, x, y + h);
+                if (!isSat) {
+                    grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.3, color); grad.addColorStop(1, '#b0aca2');
+                } else {
+                    // PÉRDIDA DE POROSIDAD (Pétreo y liso)
+                    grad.addColorStop(0, '#a78bfa'); grad.addColorStop(0.3, color); grad.addColorStop(1, '#4c1d95');
+                }
+                pctx.fillStyle = grad;
+                pctx.beginPath(); pctx.roundRect(x, y, w, h, r); pctx.fill();
+
+                pctx.strokeStyle = `rgba(0,0,0,${isSat ? 0.4 : 0.2})`;
+                pctx.lineWidth = 0.4; pctx.stroke();
+
+                // Brillo Especular (Mate vs Pétreo)
+                pctx.fillStyle = isSat ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)';
+                pctx.fillRect(x + 1, y + 1, isSat ? 2 : 6, 1);
+
+                // SUDOR QUÍMICO INTEGRADO (Micro-gotas en el gránulo)
+                if (isSat) {
+                    pctx.fillStyle = 'rgba(255,255,255,0.7)';
+                    pctx.beginPath(); pctx.arc(x + 8, y + 2, 0.6, 0, Math.PI * 2); pctx.fill();
+                    pctx.beginPath(); pctx.arc(x + 3, y + 5, 0.4, 0, Math.PI * 2); pctx.fill();
+                }
+
+                return pc;
+            };
+            this._pelletMaster = createMaster('#eae7df', 'rgba(0,0,0,0.4)', false);
+            this._pelletViolet = createMaster('#8022d9', 'rgba(0,0,0,0.6)', true);
+            this._pelletMaster.dpr = dpr;
         }
-        ctx.fillStyle = this.bgGradCache.grad;
-        ctx.fillRect(0, 0, w, h);
 
-        // 2. DIBUJAR PELLETS (Fase química y petrificación)
+        // 3. DIBUJAR PELLETS (Imagen estática nítida)
         this.particles[index].forEach(p => {
-            const px = (p.x / 100) * w;
+            const px = Math.floor((p.x / 100) * cw);
             const pyPerc = (p.y / 100);
-            const py = pyPerc * h;
+            const py = Math.floor(pyPerc * ch);
 
-            // Frente de saturación violeta
-            const edgeEffect = Math.max(0, 1 - Math.abs(pyPerc - 0.5) * 2);
-            const pSat = Math.max(0, Math.min(1, (saturation * 1.6 * p.reactivity) - (edgeEffect * 0.45)));
+            const edgeEffect = Math.max(0, 1 - Math.abs(pyPerc - 0.5) * 2.2);
+            const pSat = Math.max(0, Math.min(1, (saturation * 2.2 * p.reactivity) - (edgeEffect * 0.5)));
 
             ctx.save();
             ctx.translate(px, py);
             ctx.rotate(p.angle);
 
-            // Forma Cápsula
-            ctx.beginPath();
-            ctx.moveTo(-p.halfLen, -p.r); ctx.lineTo(p.halfLen, -p.r);
-            ctx.arc(p.halfLen, 0, p.r, -Math.PI / 2, Math.PI / 2);
-            ctx.lineTo(-p.halfLen, p.r);
-            ctx.arc(-p.halfLen, 0, p.r, Math.PI / 2, 3 * Math.PI / 2);
-            ctx.closePath();
+            const size = p.r * 4.5;
+            ctx.globalAlpha = 1.0;
+            ctx.drawImage(this._pelletMaster, -size / 2, -size / 2, size, size);
 
-            // Lógica de color: Blanco Poroso -> Violeta Pétreo
-            // Fresco (mate/tiza): 230, 225, 215 | Saturado (liso/denso): 85, 30, 145
-            const targetR = 85; const targetG = 25; const targetB = 145;
-            const rVal = p.base * (1 - pSat) + (targetR * pSat);
-            const gVal = p.base * (1 - pSat) + (targetG * pSat);
-            const bVal = (p.base - 10) * (1 - pSat) + (targetB * pSat);
-
-            const grad = ctx.createLinearGradient(0, -p.r, 0, p.r);
-            if (pSat < 0.2) {
-                // ESTADO FRESCO: Gradiente mate, muy suave, textura tiza
-                grad.addColorStop(0, `rgb(${Math.min(255, rVal + 10)},${Math.min(255, gVal + 10)},${Math.min(255, bVal + 8)})`);
-                grad.addColorStop(0.6, `rgb(${rVal},${gVal},${bVal})`);
-                grad.addColorStop(1, `rgb(${Math.max(0, rVal - 15)},${Math.max(0, gVal - 15)},${Math.max(0, bVal - 18)})`);
-            } else {
-                // ESTADO PETRIFICADO: Brillo nítido y especular (piedra lisa/carbonato)
-                const shine = Math.min(255, rVal + 60);
-                grad.addColorStop(0, `rgb(${shine},${Math.min(255, gVal + 15)},${Math.min(255, bVal + 50)})`);
-                grad.addColorStop(0.3, `rgb(${rVal},${gVal},${bVal})`);
-                grad.addColorStop(1, `rgb(${Math.max(0, rVal - 50)},${Math.max(0, gVal - 50)},${Math.max(0, bVal - 55)})`);
+            if (pSat > 0.05) {
+                ctx.globalAlpha = pSat;
+                ctx.drawImage(this._pelletViolet, -size / 2, -size / 2, size, size);
             }
-
-            ctx.fillStyle = grad;
-            ctx.fill();
-
-            // 3. SUDOR QUÍMICO (Humedad por reacción exotérmica)
-            // Solo visible en la fase de cambio activa (pSat entre 0.2 y 0.8)
-            if (pSat > 0.15 && pSat < 0.85) {
-                const sweatAlpha = Math.min(0.6, Math.sin(now / 500 + p.sweatSeed * 10) * 0.3 + 0.3) * (1 - Math.abs(pSat - 0.5) * 2);
-                if (sweatAlpha > 0.1) {
-                    ctx.fillStyle = `rgba(255,255,255,${sweatAlpha})`;
-                    ctx.beginPath();
-                    ctx.arc(p.halfLen * 0.4, -p.r * 0.5, 0.6, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.arc(-p.halfLen * 0.2, -p.r * 0.7, 0.4, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            // Borde denso (Petrificación)
-            ctx.strokeStyle = pSat > 0.7 ? `rgba(0,0,0,0.5)` : `rgba(0,0,0,0.2)`;
-            ctx.lineWidth = pSat > 0.7 ? 0.6 : 0.4;
-            ctx.stroke();
-
             ctx.restore();
         });
 
-        // 4. CONDENSACIÓN EN EL CRISTAL (Acumulación progresiva de humedad)
-        // Aparece gradualmente según la saturación (0% al 100%)
-        if (saturation > 0.05) {
+        // 4. CONDENSACIÓN, VAPOR Y POLVO RESIDUAL
+        if (saturation > 0.1) {
             ctx.save();
-            
-            // VAHO DINÁMICO: El cristal se empaña por el calor
-            // Opacidad escala de 0 a 0.35 máx.
-            const fogAlpha = Math.min(0.35, saturation * 0.45);
-            const fogGrad = ctx.createLinearGradient(0, 0, 0, h);
-            fogGrad.addColorStop(0, `rgba(255,255,255,${fogAlpha * 1.2})`);
-            fogGrad.addColorStop(0.5, `rgba(255,255,255,${fogAlpha * 0.5})`);
-            fogGrad.addColorStop(1, `rgba(255,255,255,${fogAlpha * 0.8})`);
+            const fogAlpha = Math.min(0.28, saturation * 0.45);
+            const fogGrad = ctx.createRadialGradient(cw / 2, ch / 2, 0, cw / 2, ch / 2, ch * 0.8);
+            fogGrad.addColorStop(0, `rgba(255,255,255,${fogAlpha * 0.3})`);
+            fogGrad.addColorStop(1, `rgba(255,255,255,${fogAlpha})`);
             ctx.fillStyle = fogGrad;
-            ctx.fillRect(0, 0, w, h);
+            ctx.fillRect(0, 0, cw, ch);
 
-            // GOTITAS DE AGUA (Sudor químico acumulativo)
-            // Calculamos el número de gotas según la saturación (hasta 60 gotas al final)
-            const maxDrops = 65;
-            const currentDropCount = Math.floor(saturation * maxDrops);
+            // POLVO DE CAL RESIDUAL (Fragilidad post-uso)
+            if (saturation > 0.85) {
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                for (let j = 0; j < 15; j++) {
+                    const dx = Math.floor(((Math.sin(j * 22.1) + 1) / 2) * cw);
+                    const dy = Math.floor(((Math.cos(j * 33.4) + 1) / 2) * ch);
+                    ctx.fillRect(dx, dy, 1, 1);
+                }
+            }
 
-            for (let i = 0; i < currentDropCount; i++) {
-                // Posiciones deterministas basadas en el índice i para que la gota no "salte"
-                const x = ((Math.sin(i * 15.42) + 1) / 2) * (w - 4) + 2;
-                const y = ((Math.cos(i * 37.81) + 1) / 2) * (h - 4) + 2;
-                
-                // Radio de la gota crece sutilmente con la saturación (0.4px a 1.8px)
-                const rBase = 0.5 + (Math.sin(i * 9.17) + 1) * 0.8;
-                const r = rBase * Math.min(1.0, (saturation * 2)); 
-
-                // Dibujamos la gota con efecto de lente especular
-                ctx.beginPath();
-                ctx.arc(x, y, r, 0, Math.PI * 2);
-                
-                // Cuerpo translúcido (capta luz)
-                ctx.fillStyle = 'rgba(255,255,255,0.3)';
-                ctx.fill();
-
-                // Reflejo de luz (brillo blanco arriba-izquierda)
-                ctx.beginPath();
-                ctx.arc(x - r*0.35, y - r*0.35, r*0.25, 0, Math.PI * 2);
-                ctx.fillStyle = 'white';
-                ctx.fill();
-
-                // Sombra de relieve (abajo-derecha)
-                ctx.beginPath();
-                ctx.arc(x + r*0.1, y + r*0.1, r, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-                ctx.lineWidth = 0.3;
-                ctx.stroke();
+            const dropCount = Math.floor(saturation * 35);
+            for (let i = 0; i < dropCount; i++) {
+                const dx = Math.floor(((Math.sin(i * 15.4) + 1) / 2) * cw);
+                const dy = Math.floor(((Math.cos(i * 37.8) + 1) / 2) * ch);
+                const dr = (0.5 + (Math.sin(i * 7.1) + 1) * 0.6) * Math.min(1, (saturation * 2));
+                ctx.beginPath(); ctx.arc(dx, dy, dr, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'; ctx.fill();
+                ctx.beginPath(); ctx.arc(dx - dr * 0.3, dy - dr * 0.3, dr * 0.3, 0, Math.PI * 2);
+                ctx.fillStyle = 'white'; ctx.fill();
+                ctx.beginPath(); ctx.arc(dx + dr * 0.2, dy + dr * 0.2, dr, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)'; ctx.lineWidth = 0.3; ctx.stroke();
             }
             ctx.restore();
         }
 
-        // 5. OVERLAY CRISTAL FINAL (Reflejos de luz externos sobre el vaho/gotas)
-        ctx.drawImage(this.getOverlayCache(w, h), 0, 0);
+        // 5. OVERLAY
+        ctx.drawImage(this.getOverlayCache(cw, ch), 0, 0, cw, ch);
     }
 }
 
