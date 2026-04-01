@@ -13,20 +13,23 @@ class SubManagementManager {
 
     generateParticles(index) {
         this.particles[index] = [];
-        const count = 3500; // Densidad para rellenar mejor
+        // 2200 pellets para empaquetamiento total y denso
+        const count = 2200;
         for (let i = 0; i < count; i++) {
-            // Un tono más natural para el químico (pellets blancos/grises)
-            const isDark = Math.random() > 0.85;
-            const baseColor = isDark ? 100 + Math.random() * 30 : 190 + Math.random() * 50;
+            const r = 1.4 + Math.random() * 1.6;
+            const halfLen = r * (0.7 + Math.random() * 1.0);
+            const base = 215 + Math.random() * 35;
 
             this.particles[index].push({
                 x: Math.random() * 100,
                 y: Math.random() * 100,
-                size: 1.0 + Math.random() * 3.5, // Ligeramente más grandes
-                angle: Math.random() * Math.PI * 2,
-                sides: 4 + Math.floor(Math.random() * 4), // Entre 4 y 7 lados, formato "pellets"
-                color: `rgba(${baseColor}, ${baseColor + 5}, ${baseColor + 15}, 0.95)`, // Ligero tinte frío
-                rotSpeed: (Math.random() - 0.5) * 0.01
+                r,
+                halfLen,
+                angle: Math.random() * Math.PI,
+                base,
+                reactivity: 0.4 + Math.random() * 1.2,
+                // Semilla para micro-gotas de condensación
+                sweatSeed: Math.random()
             });
         }
     }
@@ -65,13 +68,10 @@ class SubManagementManager {
                 lucide.createIcons();
             }
 
-            for (let i = 0; i < 2; i++) {
-                const canvas = document.getElementById(`scrubber-canvas-${i}`);
-                if (canvas) {
-                    canvas.width = canvas.clientWidth;
-                    canvas.height = canvas.clientHeight;
-                }
-            }
+            // Invalidar cachés para forzar redibujado con dimensiones reales
+            // (NO resizear canvas aquí: clientWidth=0 porque el modal no ha pintado aún)
+            this._lastScrubPerc = [];
+            this.particleCache = [];
         }
         if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('macro', 0.4);
         if (typeof window.updateCursorVisibility === 'function') window.updateCursorVisibility();
@@ -98,196 +98,248 @@ class SubManagementManager {
     update(player) {
         if (!this.isOpen) return;
 
-        // Actualizar fondo de la ESCENA tras la modal
-        const backdrop = document.getElementById('sub-management-backdrop');
-        const atmoLed = document.getElementById('simple-atmo-led');
-        const atmoText = document.getElementById('simple-atmo-text');
+        // 1. CACHE DE REFERENCIAS DOM (Si no existen)
+        if (!this.dom) {
+            this.dom = {
+                backdrop: document.getElementById('sub-management-backdrop'),
+                atmoLed: document.getElementById('simple-atmo-led'),
+                atmoText: document.getElementById('simple-atmo-text'),
+                knob: document.getElementById('filter-knob'),
+                o2Bar: document.getElementById('mgmt-o2-bar'),
+                o2Val: document.getElementById('mgmt-o2-value'),
+                co2Display: document.getElementById('mgmt-co2-display'),
+                co2Leds: document.getElementById('mgmt-co2-leds'),
+                co2Status: document.getElementById('mgmt-co2-led-status')
+            };
+        }
 
-        if (backdrop) {
-            const isOn = player.lightOn;
-            // Si hay emergencia, usamos la de alarma pase lo que pase con la luz
+        // 2. OPTIMIZACIÓN DE FONDO (Evitar layouts costosos si el estado es el mismo)
+        if (this.dom.backdrop) {
             let bgImg;
             if (player.poisonTimer > 0) {
                 bgImg = 'img/controls/alarm.jpg';
             } else {
-                bgImg = isOn ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
+                bgImg = player.lightOn ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
             }
-            
-            backdrop.style.backgroundImage = `url(${bgImg})`;
 
-            // Ajuste dinámico de brillo para mayor claridad
-            backdrop.style.filter = 'brightness(0.9) contrast(1.1)';
+            if (this._lastBgImg !== bgImg) {
+                this.dom.backdrop.style.backgroundImage = `url(${bgImg})`;
+                this._lastBgImg = bgImg;
+            }
         }
 
-        // Lógica visual para el indicador de atmósfera
-        if (atmoLed && atmoText) {
-            if (player.poisonTimer > 0) {
-                // Modo Emergencia
-                atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-red-500 shadow-[0_0_12px_#ef4444]";
-                atmoText.innerText = "ATMÓSFERA CRÍTICA";
-                atmoText.className = "text-red-500 text-[9px] uppercase tracking-widest font-black transition-colors duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]";
+        // 3. OPTIMIZACIÓN DE INDICADOR DE ATMÓSFERA
+        const isEmergency = player.poisonTimer > 0;
+        if (this.dom.atmoLed && this.dom.atmoText && this._lastAtmoState !== isEmergency) {
+            if (isEmergency) {
+                this.dom.atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-red-500 shadow-[0_0_12px_#ef4444]";
+                this.dom.atmoText.innerText = "ATMÓSFERA CRÍTICA";
+                this.dom.atmoText.className = "text-red-500 text-[9px] uppercase tracking-widest font-black transition-colors duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]";
             } else {
-                // Modo Normal
-                atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-emerald-500 shadow-[0_0_8px_#10b981]";
-                atmoText.innerText = "ATMÓSFERA ESTABLE";
-                atmoText.className = "text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300";
+                this.dom.atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-emerald-500 shadow-[0_0_8px_#10b981]";
+                this.dom.atmoText.innerText = "ATMÓSFERA ESTABLE";
+                this.dom.atmoText.className = "text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300";
             }
+            this._lastAtmoState = isEmergency;
         }
 
         this.updateLifeSupportUI(player);
         this.updateScrubbersUI(player);
 
-        const knob = document.getElementById('filter-knob');
-        if (knob) {
-            knob.style.transform = player.activeScrubberIndex === 0 ? 'rotate(-45deg)' : 'rotate(45deg)';
+        if (this.dom.knob) {
+            const rotation = player.activeScrubberIndex === 0 ? 'rotate(-45deg)' : 'rotate(45deg)';
+            if (this._lastKnobRot !== rotation) {
+                this.dom.knob.style.transform = rotation;
+                this._lastKnobRot = rotation;
+            }
         }
     }
     updateLifeSupportUI(player) {
-        const o2Bar = document.getElementById('mgmt-o2-bar');
-        const o2Val = document.getElementById('mgmt-o2-value');
-        if (o2Bar) o2Bar.style.width = `${player.oxygen}%`;
-        if (o2Val) o2Val.innerText = `${player.oxygen.toFixed(1)}%`;
+        // Barras y valores redondeados para evitar ruido en el DOM
+        const rO2 = Math.round(player.oxygen * 10) / 10;
+        if (this.dom.o2Bar && this._lastO2 !== rO2) {
+            this.dom.o2Bar.style.width = `${rO2}%`;
+            this._lastO2 = rO2;
+        }
+        if (this.dom.o2Val && this._lastO2Text !== rO2) {
+            this.dom.o2Val.innerText = `${rO2.toFixed(1)}%`;
+            this._lastO2Text = rO2;
+        }
 
-        const co2Display = document.getElementById('mgmt-co2-display');
-        const co2Leds = document.getElementById('mgmt-co2-leds');
-        const co2Status = document.getElementById('mgmt-co2-led-status');
-
-        if (co2Display) {
+        if (this.dom.co2Display) {
             const conc = 0.025 + (player.co2 / 1000);
-            co2Display.innerText = `${conc.toFixed(3)}`;
+            const rConc = conc.toFixed(3);
 
-            if (co2Leds && co2Status) {
-                const leds = co2Leds.children;
-                if (player.co2 < 40) {
-                    // NOMINAL (1 LED ESMERALDA)
-                    leds[0].className = "w-1 h-3 bg-emerald-500 rounded-sm shadow-[0_0_5px_#10b981]";
-                    leds[1].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
-                    leds[2].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
-                    co2Status.innerText = "Nominal";
-                    co2Status.className = "text-[7px] text-emerald-500/40 font-bold uppercase text-center";
-                    co2Display.classList.replace('text-red-500', 'text-cyan-400');
-                } else if (player.co2 < 80) {
-                    // WARNING (2 LEDS AMARILLO)
-                    leds[0].className = "w-1 h-3 bg-amber-500 rounded-sm";
-                    leds[1].className = "w-1 h-3 bg-amber-500 rounded-sm shadow-[0_0_5px_#f59e0b]";
-                    leds[2].className = "w-1 h-3 bg-amber-500/10 rounded-sm";
-                    co2Status.innerText = "Warning";
-                    co2Status.className = "text-[7px] text-amber-500 font-bold uppercase text-center";
-                    co2Display.classList.replace('text-red-500', 'text-cyan-400');
-                } else {
-                    // CRITICAL (3 LEDS ROJO)
-                    leds[0].className = "w-1 h-3 bg-red-500 rounded-sm";
-                    leds[1].className = "w-1 h-3 bg-red-500 rounded-sm";
-                    leds[2].className = "w-1 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_#ef4444] animate-pulse";
-                    co2Status.innerText = "Critical";
-                    co2Status.className = "text-[7px] text-red-500 font-bold uppercase text-center";
-                    co2Display.classList.replace('text-cyan-400', 'text-red-500');
+            if (this._lastCo2Val !== rConc) {
+                this.dom.co2Display.innerText = rConc;
+                this._lastCo2Val = rConc;
+
+                if (this.dom.co2Leds && this.dom.co2Status) {
+                    const leds = this.dom.co2Leds.children;
+                    const co2Level = player.co2 < 40 ? 0 : (player.co2 < 80 ? 1 : 2);
+
+                    if (this._lastCo2Level !== co2Level) {
+                        if (co2Level === 0) {
+                            leds[0].className = "w-1 h-3 bg-emerald-500 rounded-sm shadow-[0_0_5px_#10b981]";
+                            leds[1].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
+                            leds[2].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
+                            this.dom.co2Status.innerText = "Nominal";
+                            this.dom.co2Status.className = "text-[7px] text-emerald-500/40 font-bold uppercase text-center";
+                            this.dom.co2Display.classList.replace('text-red-500', 'text-cyan-400');
+                        } else if (co2Level === 1) {
+                            leds[0].className = "w-1 h-3 bg-amber-500 rounded-sm";
+                            leds[1].className = "w-1 h-3 bg-amber-500 rounded-sm shadow-[0_0_5px_#f59e0b]";
+                            leds[2].className = "w-1 h-3 bg-amber-500/10 rounded-sm";
+                            this.dom.co2Status.innerText = "Warning";
+                            this.dom.co2Status.className = "text-[7px] text-amber-500 font-bold uppercase text-center";
+                            this.dom.co2Display.classList.replace('text-red-500', 'text-cyan-400');
+                        } else {
+                            leds[0].className = "w-1 h-3 bg-red-500 rounded-sm";
+                            leds[1].className = "w-1 h-3 bg-red-500 rounded-sm";
+                            leds[2].className = "w-1 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_#ef4444] animate-pulse";
+                            this.dom.co2Status.innerText = "Critical";
+                            this.dom.co2Status.className = "text-[7px] text-red-500 font-bold uppercase text-center";
+                            this.dom.co2Display.classList.replace('text-cyan-400', 'text-red-500');
+                        }
+                        this._lastCo2Level = co2Level;
+                    }
                 }
             }
         }
     }
     updateScrubbersUI(player) {
+        if (!this._scrubDOM) this._scrubDOM = [{}, {}];
+
         player.scrubbers.forEach((s, i) => {
-            const canvas = document.getElementById(`scrubber-canvas-${i}`);
-            const btnReplace = document.getElementById(`scrubber-replace-${i}`);
-            const statusText = document.getElementById(`scrubber-status-${i}`);
-            const timerBox = document.getElementById(`timer-box-${i}`);
-            const needle = document.getElementById(`gauge-needle-${i}`);
-            const gaugePath = document.getElementById(`gauge-path-${i}`);
+            const dom = this._scrubDOM[i];
 
-            const prefix = i === 0 ? 'a' : 'b';
-            const lightOk = document.getElementById(`light-${prefix}-ok`);
-            const lightFail = document.getElementById(`light-${prefix}-fail`);
-
-            if (canvas) {
-                this.drawScrubber(canvas, s.percentage, i);
+            // Cachear elementos si no existen
+            if (!dom.canvas) {
+                const prefix = i === 0 ? 'a' : 'b';
+                dom.canvas = document.getElementById(`scrubber-canvas-${i}`);
+                dom.btnReplace = document.getElementById(`scrubber-replace-${i}`);
+                dom.statusText = document.getElementById(`scrubber-status-${i}`);
+                dom.timerBox = document.getElementById(`timer-box-${i}`);
+                dom.needle = document.getElementById(`gauge-needle-${i}`);
+                dom.gaugePath = document.getElementById(`gauge-path-${i}`);
+                dom.lightOk = document.getElementById(`light-${prefix}-ok`);
+                dom.lightFail = document.getElementById(`light-${prefix}-fail`);
             }
 
-            // Aguja del manómetro (de -120deg a 120deg)
-            if (needle) {
-                const angle = -120 + (s.percentage / 100) * 240;
-                needle.style.transform = `rotate(${angle}deg)`;
+            // Dibujar canvas del filtro (con fix para canvas 0x0 en primer render)
+            if (dom.canvas) {
+                // Si el canvas no tiene dimensiones reales aún, intentar recalcularlas
+                if (dom.canvas.width === 0 || dom.canvas.height === 0) {
+                    const cw = dom.canvas.clientWidth;
+                    const ch = dom.canvas.clientHeight;
+                    if (cw > 0 && ch > 0) {
+                        dom.canvas.width = cw;
+                        dom.canvas.height = ch;
+                        // Invalida caché de partículas para reconstruir con dimensiones reales
+                        if (this.particleCache) this.particleCache[i] = null;
+                    }
+                    // No guardamos _lastScrubPerc: forzará redibujado cuando el canvas sea válido
+                }
+
+                // Solo dibujar y cachear si el canvas tiene dimensiones reales
+                if (dom.canvas.width > 0 && dom.canvas.height > 0) {
+                    if (this._lastScrubPerc?.[i] !== s.percentage) {
+                        this.drawScrubber(dom.canvas, s.percentage, i);
+                        if (!this._lastScrubPerc) this._lastScrubPerc = [];
+                        this._lastScrubPerc[i] = s.percentage;
+                    }
+                }
             }
 
-            if (gaugePath) {
-                const fullLength = gaugePath.getTotalLength() || 184;
-                const offset = fullLength - (s.percentage / 100) * fullLength;
+            // Aguja y Path (Redondeado para evitar jitter)
+            const rPerc = Math.round(s.percentage * 10) / 10;
+            if (dom.needle && dom._lastPerc !== rPerc) {
+                const angle = -120 + (rPerc / 100) * 240;
+                dom.needle.style.transform = `rotate(${angle}deg)`;
+            }
+
+            if (dom.gaugePath && dom._lastPerc !== rPerc) {
+                const fullLength = dom.gaugePath.getTotalLength() || 184;
+                const offset = fullLength - (rPerc / 100) * fullLength;
 
                 if (this.firstUpdate) {
-                    gaugePath.style.transition = 'none';
-                    if (needle) needle.style.transition = 'none';
-                } else {
-                    gaugePath.style.transition = 'stroke-dashoffset 0.5s ease-out';
-                    if (needle) needle.style.transition = 'all 0.5s ease-out';
+                    dom.gaugePath.style.transition = 'none';
+                    if (dom.needle) dom.needle.style.transition = 'none';
+                } else if (dom._lastPerc === undefined) {
+                    dom.gaugePath.style.transition = 'stroke-dashoffset 0.5s ease-out';
+                    if (dom.needle) dom.needle.style.transition = 'all 0.5s ease-out';
                 }
 
-                gaugePath.style.strokeDasharray = `${fullLength}`;
-                gaugePath.style.strokeDashoffset = `${offset}`;
+                dom.gaugePath.style.strokeDasharray = `${fullLength}`;
+                dom.gaugePath.style.strokeDashoffset = `${offset}`;
             }
+            dom._lastPerc = rPerc;
 
-            // Luces de estado
-            if (lightOk && lightFail) {
-                // Luz OK: solo enciende si es el filtro activo Y le queda carga útil
-                if (player.activeScrubberIndex === i && s.percentage > 0) {
-                    lightOk.classList.add('light-active');
-                } else {
-                    lightOk.classList.remove('light-active');
-                }
+            // Luces de estado (Exclusivas)
+            // Luz Verde: Solo si tiene carga Y es el seleccionado
+            const isOkActive = s.percentage > 0 && player.activeScrubberIndex === i;
+            // Luz Roja: Solo si está totalmente agotado (0%)
+            const isFailActive = s.percentage <= 0;
 
-                // Luz FAIL: enciende de alerta siempre que el filtro esté agotado
-                if (s.percentage <= 0 || (s.needsReplacement && s.replacementTimer > 0)) {
-                    lightFail.classList.add('light-alert');
-                } else {
-                    lightFail.classList.remove('light-alert');
-                }
+            if (dom.lightOk && dom._lastOk !== isOkActive) {
+                dom.lightOk.classList.toggle('light-active', isOkActive);
+                dom._lastOk = isOkActive;
+            }
+            if (dom.lightFail && dom._lastFail !== isFailActive) {
+                dom.lightFail.classList.toggle('light-alert', isFailActive);
+                dom._lastFail = isFailActive;
             }
 
             // Texto de estado
-            if (statusText) {
+            const stateKey = `${player.activeScrubberIndex === i}_${s.percentage <= 0}_${s.needsReplacement && s.replacementTimer > 0}`;
+            if (dom.statusText && dom._lastStateKey !== stateKey) {
                 if (player.activeScrubberIndex === i) {
-                    statusText.innerText = "ACTIVO [OK]";
-                    statusText.className = "text-emerald-500 text-[10px] font-bold uppercase mb-2";
+                    dom.statusText.innerText = "ACTIVO [OK]";
+                    dom.statusText.className = "text-emerald-500 text-[10px] font-bold uppercase mb-2";
                 } else if (s.percentage <= 0) {
-                    statusText.innerText = "AGOTADO [FAIL]";
-                    statusText.className = "text-red-500 text-[10px] font-bold uppercase mb-2";
+                    dom.statusText.innerText = "AGOTADO [FAIL]";
+                    dom.statusText.className = "text-red-500 text-[10px] font-bold uppercase mb-2";
+                } else if (s.needsReplacement && s.replacementTimer > 0) {
+                    dom.statusText.innerText = "MANTENIMIENTO";
+                    dom.statusText.className = "text-amber-500/60 text-[10px] font-bold uppercase mb-2";
                 } else {
-                    statusText.innerText = "INACTIVO";
-                    statusText.className = "text-white/30 text-[10px] font-bold uppercase mb-2";
+                    dom.statusText.innerText = "INACTIVO";
+                    dom.statusText.className = "text-white/30 text-[10px] font-bold uppercase mb-2";
                 }
+                dom._lastStateKey = stateKey;
             }
 
-            // GESTIÓN DE CONTADORES (Uso o Mantenimiento)
-            if (timerBox) {
+            // GESTIÓN DE CONTADORES
+            if (dom.timerBox) {
+                let timerText = "";
+                let isHidden = false;
+
                 if (player.activeScrubberIndex === i) {
-                    // MODO USO: Tiempo de vida restante
-                    timerBox.classList.remove('opacity-0');
                     const timeLeft = (s.percentage / 100) * FILTER_CONFIG.scrubberDuration * 60;
                     const mins = Math.floor(timeLeft / 60);
                     const secs = Math.floor(timeLeft % 60);
-                    timerBox.innerText = `CARGA: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    timerText = `CARGA: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 } else if (s.percentage < 100 && s.needsReplacement && s.replacementTimer > 0) {
-                    // MODO MANTENIMIENTO: Cuenta atrás para recambio
-                    timerBox.classList.remove('opacity-0');
                     const mins = Math.floor(s.replacementTimer / 60);
                     const secs = Math.floor(s.replacementTimer % 60);
-                    timerBox.innerText = `READY IN: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-                    if (statusText) {
-                        statusText.innerText = "MANTENIMIENTO";
-                        statusText.className = "text-amber-500/60 text-[10px] font-bold uppercase mb-2";
-                    }
+                    timerText = `READY IN: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 } else {
-                    timerBox.classList.add('opacity-0');
+                    isHidden = true;
+                }
+
+                if (dom._lastTimerText !== timerText || dom._lastHidden !== isHidden) {
+                    dom.timerBox.innerText = timerText;
+                    dom.timerBox.classList.toggle('opacity-0', isHidden);
+                    dom._lastTimerText = timerText;
+                    dom._lastHidden = isHidden;
                 }
             }
 
             // Botón de recambio
-            if (btnReplace) {
-                if (s.needsReplacement && s.replacementTimer <= 0) {
-                    btnReplace.classList.remove('hidden');
-                } else {
-                    btnReplace.classList.add('hidden');
-                }
+            const showReplace = s.needsReplacement && s.replacementTimer <= 0;
+            if (dom.btnReplace && dom._lastShowReplace !== showReplace) {
+                dom.btnReplace.classList.toggle('hidden', !showReplace);
+                dom._lastShowReplace = showReplace;
             }
         });
 
@@ -300,7 +352,7 @@ class SubManagementManager {
             const oc = document.createElement('canvas');
             oc.width = w; oc.height = h;
             const ctx = oc.getContext('2d');
-            
+
             // Reflejo principal
             const glassGrad1 = ctx.createLinearGradient(0, 0, w, 0);
             glassGrad1.addColorStop(0, 'rgba(255,255,255,0)');
@@ -344,80 +396,218 @@ class SubManagementManager {
             const oc = document.createElement('canvas');
             oc.width = w; oc.height = h;
             const ctx = oc.getContext('2d');
-            
-            // Dibujar TODOS los químicos
+
+            // DIBUJAR CÁPSULAS CILÍNDRICAS (forma pastilla real de cal sodada)
             this.particles[index].forEach(p => {
                 const px = (p.x / 100) * w;
                 const py = (p.y / 100) * h;
-                
+
                 ctx.save();
                 ctx.translate(px, py);
-                ctx.rotate(p.angle); // Ángulo estático, más realista para pellets amontonados
-                
+                ctx.rotate(p.angle);
+
+                // Forma cápsula: rect con semicírculos en los extremos
                 ctx.beginPath();
-                for (let s = 0; s < p.sides; s++) {
-                    const angle = (s / p.sides) * Math.PI * 2;
-                    const rx = Math.cos(angle) * p.size;
-                    const ry = Math.sin(angle) * p.size;
-                    if (s === 0) ctx.moveTo(rx, ry);
-                    else ctx.lineTo(rx, ry);
-                }
+                ctx.moveTo(-p.halfLen, -p.r);
+                ctx.lineTo(p.halfLen, -p.r);
+                ctx.arc(p.halfLen, 0, p.r, -Math.PI / 2, Math.PI / 2);
+                ctx.lineTo(-p.halfLen, p.r);
+                ctx.arc(-p.halfLen, 0, p.r, Math.PI / 2, 3 * Math.PI / 2);
                 ctx.closePath();
-                ctx.fillStyle = p.color; ctx.fill();
-                ctx.strokeStyle = 'rgba(0,0,0,0.4)'; ctx.lineWidth = 0.5; ctx.stroke();
+
+                // Gradiente cilíndrico: claro arriba → oscuro abajo (iluminación cenital)
+                const v = p.base;
+                const grad = ctx.createLinearGradient(0, -p.r, 0, p.r);
+                grad.addColorStop(0, `rgb(${Math.min(255, v + 30)},${Math.min(255, v + 30)},${Math.min(255, v + 27)})`);
+                grad.addColorStop(0.25, `rgb(${Math.min(255, v + 18)},${Math.min(255, v + 18)},${Math.min(255, v + 15)})`);
+                grad.addColorStop(0.55, `rgb(${v},${v},${Math.max(0, v - 3)})`);
+                grad.addColorStop(1, `rgb(${Math.max(0, v - 35)},${Math.max(0, v - 35)},${Math.max(0, v - 38)})`);
+                ctx.fillStyle = grad;
+                ctx.fill();
+
+                // Micro-highlight especular en el tope de la cápsula
+                ctx.beginPath();
+                ctx.moveTo(-p.halfLen * 0.6, -p.r * 0.8);
+                ctx.lineTo(p.halfLen * 0.6, -p.r * 0.8);
+                ctx.strokeStyle = `rgba(255,255,255,${0.15 + Math.random() * 0.1})`;
+                ctx.lineWidth = p.r * 0.25;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                // Borde oscuro para separación entre cápsulas
+                ctx.beginPath();
+                ctx.moveTo(-p.halfLen, -p.r);
+                ctx.lineTo(p.halfLen, -p.r);
+                ctx.arc(p.halfLen, 0, p.r, -Math.PI / 2, Math.PI / 2);
+                ctx.lineTo(-p.halfLen, p.r);
+                ctx.arc(-p.halfLen, 0, p.r, Math.PI / 2, 3 * Math.PI / 2);
+                ctx.closePath();
+                ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+                ctx.lineWidth = 0.5;
+                ctx.lineCap = 'butt';
+                ctx.stroke();
+
                 ctx.restore();
             });
-            
-            // Sombra multiplicada pre-calculada
+
+            // Curva de profundidad cilíndrica del recipiente (oscurece bordes laterales)
             ctx.globalCompositeOperation = 'multiply';
-            const shadowGrad = ctx.createLinearGradient(0, 0, w, 0);
-            shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.95)');
-            shadowGrad.addColorStop(0.2, 'rgba(210, 210, 210, 1)');
-            shadowGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
-            shadowGrad.addColorStop(0.8, 'rgba(160, 160, 160, 1)');
-            shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-            ctx.fillStyle = shadowGrad;
+            const depthGrad = ctx.createLinearGradient(0, 0, w, 0);
+            depthGrad.addColorStop(0, 'rgba(0,0,0,0.88)');
+            depthGrad.addColorStop(0.12, 'rgba(200,200,200,1)');
+            depthGrad.addColorStop(0.45, 'rgba(255,255,255,1)');
+            depthGrad.addColorStop(0.78, 'rgba(185,185,185,1)');
+            depthGrad.addColorStop(1, 'rgba(0,0,0,0.88)');
+            ctx.fillStyle = depthGrad;
             ctx.fillRect(0, 0, w, h);
             ctx.globalCompositeOperation = 'source-over';
-            
+
             this.particleCache[index] = oc;
         }
         return this.particleCache[index];
     }
 
     drawScrubber(canvas, percentage, index) {
-        const ctx = canvas.getContext('2d', { alpha: false }); // Optimización
+        const ctx = canvas.getContext('2d', { alpha: false });
         const w = canvas.width;
         const h = canvas.height;
 
-        const fillY = h * (1 - (percentage / 100));
+        const saturation = 1 - (percentage / 100);
+        const now = Date.now();
 
-        // 1. DIBUJAR FONDO CILÍNDRICO DEL CRISTAL (Profundidad) - Optimizado caché
+        // 1. FONDO (Oscuridad central)
         if (!this.bgGradCache || this.bgGradCache.w !== w) {
             this.bgGradCache = { w: w, grad: ctx.createLinearGradient(0, 0, w, 0) };
-            this.bgGradCache.grad.addColorStop(0, 'rgba(5, 10, 15, 0.95)');
-            this.bgGradCache.grad.addColorStop(0.15, 'rgba(15, 25, 35, 1)');
-            this.bgGradCache.grad.addColorStop(0.5, 'rgba(20, 30, 40, 1)');
-            this.bgGradCache.grad.addColorStop(0.85, 'rgba(15, 25, 35, 1)');
-            this.bgGradCache.grad.addColorStop(1, 'rgba(5, 10, 15, 0.95)');
+            this.bgGradCache.grad.addColorStop(0, '#020406');
+            this.bgGradCache.grad.addColorStop(0.5, '#080c10');
+            this.bgGradCache.grad.addColorStop(1, '#020406');
         }
         ctx.fillStyle = this.bgGradCache.grad;
         ctx.fillRect(0, 0, w, h);
 
-        // 2 + 3. DIBUJAR PARTÍCULAS CACHEADAS SEGÚN ALTURA
-        const pCache = this.getParticleCache(index, w, h);
-        ctx.drawImage(pCache, 0, fillY, w, h - fillY, 0, fillY, w, h - fillY);
+        // 2. DIBUJAR PELLETS (Fase química y petrificación)
+        this.particles[index].forEach(p => {
+            const px = (p.x / 100) * w;
+            const pyPerc = (p.y / 100);
+            const py = pyPerc * h;
 
-        // 4. SOMBRA EN LA PARTE SUPERIOR DE LA MASA
-        if (percentage > 0) {
-            const topGrad = ctx.createLinearGradient(0, fillY, 0, fillY + 30);
-            topGrad.addColorStop(0, 'rgba(0,0,0,0.85)');
-            topGrad.addColorStop(1, 'transparent');
-            ctx.fillStyle = topGrad;
-            ctx.fillRect(0, fillY, w, 30);
+            // Frente de saturación violeta
+            const edgeEffect = Math.max(0, 1 - Math.abs(pyPerc - 0.5) * 2);
+            const pSat = Math.max(0, Math.min(1, (saturation * 1.6 * p.reactivity) - (edgeEffect * 0.45)));
+
+            ctx.save();
+            ctx.translate(px, py);
+            ctx.rotate(p.angle);
+
+            // Forma Cápsula
+            ctx.beginPath();
+            ctx.moveTo(-p.halfLen, -p.r); ctx.lineTo(p.halfLen, -p.r);
+            ctx.arc(p.halfLen, 0, p.r, -Math.PI / 2, Math.PI / 2);
+            ctx.lineTo(-p.halfLen, p.r);
+            ctx.arc(-p.halfLen, 0, p.r, Math.PI / 2, 3 * Math.PI / 2);
+            ctx.closePath();
+
+            // Lógica de color: Blanco Poroso -> Violeta Pétreo
+            // Fresco (mate/tiza): 230, 225, 215 | Saturado (liso/denso): 85, 30, 145
+            const targetR = 85; const targetG = 25; const targetB = 145;
+            const rVal = p.base * (1 - pSat) + (targetR * pSat);
+            const gVal = p.base * (1 - pSat) + (targetG * pSat);
+            const bVal = (p.base - 10) * (1 - pSat) + (targetB * pSat);
+
+            const grad = ctx.createLinearGradient(0, -p.r, 0, p.r);
+            if (pSat < 0.2) {
+                // ESTADO FRESCO: Gradiente mate, muy suave, textura tiza
+                grad.addColorStop(0, `rgb(${Math.min(255, rVal + 10)},${Math.min(255, gVal + 10)},${Math.min(255, bVal + 8)})`);
+                grad.addColorStop(0.6, `rgb(${rVal},${gVal},${bVal})`);
+                grad.addColorStop(1, `rgb(${Math.max(0, rVal - 15)},${Math.max(0, gVal - 15)},${Math.max(0, bVal - 18)})`);
+            } else {
+                // ESTADO PETRIFICADO: Brillo nítido y especular (piedra lisa/carbonato)
+                const shine = Math.min(255, rVal + 60);
+                grad.addColorStop(0, `rgb(${shine},${Math.min(255, gVal + 15)},${Math.min(255, bVal + 50)})`);
+                grad.addColorStop(0.3, `rgb(${rVal},${gVal},${bVal})`);
+                grad.addColorStop(1, `rgb(${Math.max(0, rVal - 50)},${Math.max(0, gVal - 50)},${Math.max(0, bVal - 55)})`);
+            }
+
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // 3. SUDOR QUÍMICO (Humedad por reacción exotérmica)
+            // Solo visible en la fase de cambio activa (pSat entre 0.2 y 0.8)
+            if (pSat > 0.15 && pSat < 0.85) {
+                const sweatAlpha = Math.min(0.6, Math.sin(now / 500 + p.sweatSeed * 10) * 0.3 + 0.3) * (1 - Math.abs(pSat - 0.5) * 2);
+                if (sweatAlpha > 0.1) {
+                    ctx.fillStyle = `rgba(255,255,255,${sweatAlpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.halfLen * 0.4, -p.r * 0.5, 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(-p.halfLen * 0.2, -p.r * 0.7, 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Borde denso (Petrificación)
+            ctx.strokeStyle = pSat > 0.7 ? `rgba(0,0,0,0.5)` : `rgba(0,0,0,0.2)`;
+            ctx.lineWidth = pSat > 0.7 ? 0.6 : 0.4;
+            ctx.stroke();
+
+            ctx.restore();
+        });
+
+        // 4. CONDENSACIÓN EN EL CRISTAL (Acumulación progresiva de humedad)
+        // Aparece gradualmente según la saturación (0% al 100%)
+        if (saturation > 0.05) {
+            ctx.save();
+            
+            // VAHO DINÁMICO: El cristal se empaña por el calor
+            // Opacidad escala de 0 a 0.35 máx.
+            const fogAlpha = Math.min(0.35, saturation * 0.45);
+            const fogGrad = ctx.createLinearGradient(0, 0, 0, h);
+            fogGrad.addColorStop(0, `rgba(255,255,255,${fogAlpha * 1.2})`);
+            fogGrad.addColorStop(0.5, `rgba(255,255,255,${fogAlpha * 0.5})`);
+            fogGrad.addColorStop(1, `rgba(255,255,255,${fogAlpha * 0.8})`);
+            ctx.fillStyle = fogGrad;
+            ctx.fillRect(0, 0, w, h);
+
+            // GOTITAS DE AGUA (Sudor químico acumulativo)
+            // Calculamos el número de gotas según la saturación (hasta 60 gotas al final)
+            const maxDrops = 65;
+            const currentDropCount = Math.floor(saturation * maxDrops);
+
+            for (let i = 0; i < currentDropCount; i++) {
+                // Posiciones deterministas basadas en el índice i para que la gota no "salte"
+                const x = ((Math.sin(i * 15.42) + 1) / 2) * (w - 4) + 2;
+                const y = ((Math.cos(i * 37.81) + 1) / 2) * (h - 4) + 2;
+                
+                // Radio de la gota crece sutilmente con la saturación (0.4px a 1.8px)
+                const rBase = 0.5 + (Math.sin(i * 9.17) + 1) * 0.8;
+                const r = rBase * Math.min(1.0, (saturation * 2)); 
+
+                // Dibujamos la gota con efecto de lente especular
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                
+                // Cuerpo translúcido (capta luz)
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fill();
+
+                // Reflejo de luz (brillo blanco arriba-izquierda)
+                ctx.beginPath();
+                ctx.arc(x - r*0.35, y - r*0.35, r*0.25, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+
+                // Sombra de relieve (abajo-derecha)
+                ctx.beginPath();
+                ctx.arc(x + r*0.1, y + r*0.1, r, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+                ctx.lineWidth = 0.3;
+                ctx.stroke();
+            }
+            ctx.restore();
         }
 
-        // 5. CACHÉ DE EFECTOS CRISTAL
+        // 5. OVERLAY CRISTAL FINAL (Reflejos de luz externos sobre el vaho/gotas)
         ctx.drawImage(this.getOverlayCache(w, h), 0, 0);
     }
 }

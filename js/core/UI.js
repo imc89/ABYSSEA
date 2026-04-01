@@ -135,20 +135,29 @@ class UIManager {
 
             if (val) {
                 val.innerText = `${Math.floor(s.percentage)}%`;
-                // Resaltar el activo
                 if (player.activeScrubberIndex === i) {
-                    val.classList.remove('text-white/20');
-                    val.classList.add('text-emerald-400');
+                    // Activo: emerald brillante
+                    val.className = "text-[10px] text-emerald-400 font-mono font-bold";
+                } else if (s.percentage > 60) {
+                    // Inactivo pero lleno/saludable: emerald tenue
+                    val.className = "text-[10px] text-emerald-400/50 font-mono font-bold";
+                } else if (s.percentage > 25) {
+                    // Inactivo amarillo bajo
+                    val.className = "text-[10px] text-amber-500/50 font-mono font-bold";
                 } else {
-                    val.classList.add('text-white/20');
-                    val.classList.remove('text-emerald-400');
+                    // Inactivo casi vacío
+                    val.className = "text-[10px] text-red-500/50 font-mono font-bold";
                 }
             }
 
             if (dot) {
                 if (player.activeScrubberIndex === i) {
                     dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981] animate-pulse";
+                } else if (s.percentage > 25) {
+                    // Inactivo con carga: punto emerald tenue
+                    dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500/40";
                 } else {
+                    // Inactivo vacío
                     dot.className = "w-1.5 h-1.5 rounded-full bg-white/10";
                 }
             }
@@ -222,13 +231,48 @@ class UIManager {
      */
     updateBatteryDisplay(player) {
         const batteryBar = document.getElementById('battery-bar');
+        const batteryPercent = document.getElementById('battery-percent');
+        const batteryLed = document.getElementById('battery-status-led-hud');
+
+        const battVal = Math.floor(player.lightBattery);
+
         if (batteryBar) {
-            batteryBar.style.width = `${player.lightBattery}%`;
+            batteryBar.style.width = `${battVal}%`;
+            // Cambiar color de la barra si es crítico
+            if (battVal < 20) {
+                batteryBar.classList.replace('bg-yellow-500', 'bg-red-500');
+            } else {
+                batteryBar.classList.replace('bg-red-500', 'bg-yellow-500');
+            }
         }
 
-        const batteryPercent = document.getElementById('battery-percent');
         if (batteryPercent) {
-            batteryPercent.innerText = `${Math.floor(player.lightBattery)}%`;
+            batteryPercent.innerText = `${battVal}%`;
+            if (battVal < 20) {
+                batteryPercent.classList.add('text-red-500', 'animate-pulse');
+            } else {
+                batteryPercent.classList.remove('text-red-500', 'animate-pulse');
+            }
+        }
+
+        // LÓGICA DE LED: mismo patrón que los dots de los filtros
+        if (batteryLed) {
+            if (battVal < 20) {
+                // Crítico: rojo parpadeante
+                batteryLed.style.background = '#ef4444';
+                batteryLed.style.boxShadow = '0 0 6px #ef4444';
+                batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate';
+            } else if (player.lightOn) {
+                // Power ON: punto amarillo encendido
+                batteryLed.style.background = '#eab308';
+                batteryLed.style.boxShadow = '0 0 6px #eab308';
+                batteryLed.style.animation = 'none';
+            } else {
+                // Standby / Recargando: punto apagado
+                batteryLed.style.background = 'rgba(255,255,255,0.08)';
+                batteryLed.style.boxShadow = 'none';
+                batteryLed.style.animation = 'none';
+            }
         }
     }
 

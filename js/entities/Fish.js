@@ -425,13 +425,24 @@ class Fish {
 
                                 ctx.restore();
                             } else if (capa === 'front' && this.lightElements[i]) {
-                                // Dibujar en DOM (Capa delantera)
+                                // Dibujar en DOM (Capa delantera) — OPTIMIZADO PARA PREVENIR DOM THRASHING
                                 const el = this.lightElements[i];
-                                el.style.display = 'block';
-                                el.style.width = `${power * 2}px`;
-                                el.style.height = `${power * 2}px`;
-                                el.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
-                                el.style.opacity = pulse;
+                                
+                                // Propiedades constantes y caras (solo se setean una vez)
+                                if (!el._isInitialized) {
+                                    el.style.display = 'block';
+                                    el.style.width = `${power * 2}px`;
+                                    el.style.height = `${power * 2}px`;
+                                    el.style.background = `radial-gradient(circle, ${color} 0%, transparent 70%)`;
+                                    el._isInitialized = true;
+                                }
+
+                                // Redondear opacidad a 2 decimales para evitar seteos continuos
+                                const rPulse = Math.round(pulse * 100) / 100;
+                                if (el._lastOpacity !== rPulse) {
+                                    el.style.opacity = rPulse;
+                                    el._lastOpacity = rPulse;
+                                }
 
                                 // Calcular posición relativa rotada
                                 let lx = pos.x;
@@ -443,10 +454,21 @@ class Fish {
                                 const rx = lx * cos - ly * sin;
                                 const ry = lx * sin + ly * cos;
 
-                                el.style.transform = `translate(${sx + rx - power}px, ${sy + ry - power}px)`;
+                                // Limitar actualizaciones del transform a pixeles enteros
+                                const transX = Math.round(sx + rx - power);
+                                const transY = Math.round(sy + ry - power);
+                                const rTransform = `translate(${transX}px, ${transY}px)`;
+                                
+                                if (el._lastTransform !== rTransform) {
+                                    el.style.transform = rTransform;
+                                    el._lastTransform = rTransform;
+                                }
                             }
                         } else {
-                            if (this.lightElements[i]) this.lightElements[i].style.display = 'none';
+                            if (this.lightElements[i] && this.lightElements[i].style.display !== 'none') {
+                                this.lightElements[i].style.display = 'none';
+                                this.lightElements[i]._isInitialized = false; // Reset para posible cambio visual al reactivarse
+                            }
                         }
                     }
                 }

@@ -9,7 +9,7 @@ const FILTER_CONFIG = {
 
     // FILTROS DE CAL SODADA (En Minutos)
     scrubberDuration: 0.5,          // Cada filtro dura 10 minutos de uso continuo
-    scrubberReplacementTime: 2.5,    // Mantenimiento de 2.5 minutos (enfriamiento de filtro usado)
+    scrubberReplacementTime: 0.3,    // Mantenimiento de 2.5 minutos (enfriamiento de filtro usado)
 
     // UMBRALES DE EMERGENCIA (En Segundos)
     co2PoisoningGracePeriod: 6,   // 10 Segundos de gracia (con alerta visual y cuenta atrás)

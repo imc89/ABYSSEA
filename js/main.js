@@ -454,17 +454,33 @@ function update(dtMult = 1.0) {
 
     // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
     const proximateFishes = [];
+    
+    // OPTIMIZACIÓN CRÍTICA (ALTA CALIDAD): Diccionario de grupos Boids para evitar O(N^2)
+    // Al filtrar aquí, cada pez solo se compara matemáticamente contra sus pocos 
+    // compañeros de banco exactos, no contra los 150 peces de pantalla.
+    const boidsGroups = {};
+
     fishes.forEach(f => {
         // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
         f.isSimulated = Math.abs(f.y - player.y) < 1500;
+        
         if (f.isSimulated) {
             proximateFishes.push(f);
+            
+            // Agrupación Hash O(1)
+            const groupId = `${f.config.id}_${f.groupIndex}`;
+            if (!boidsGroups[groupId]) boidsGroups[groupId] = [];
+            boidsGroups[groupId].push(f);
+            
             telemetryData.activeFishes++;
         }
     });
 
-    // Solo actualizar IA y Posiciones locales de los que están simulados usando la lista truncada proximateFishes
-    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas, dtMult));
+    // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
+    proximateFishes.forEach(f => {
+        const groupId = `${f.config.id}_${f.groupIndex}`;
+        f.update(boidsGroups[groupId], player, canvas, dtMult);
+    });
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
     scannableTarget = findScannableTarget();

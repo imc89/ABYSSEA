@@ -93,10 +93,8 @@ class Particle {
             );
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
             
-            // Función auxiliar clampAngleDelta (debe estar disponible globalmente como en Fish.js)
-            const MathAngleDelta = typeof clampAngleDelta !== 'undefined' 
-                ? clampAngleDelta(angToParticle, lookDir)
-                : Math.abs(angToParticle - lookDir); // Fallback si no está definida
+            // Usar clampAngleDelta directamente (está disponible de forma global en Utils o Main)
+            const MathAngleDelta = clampAngleDelta(angToParticle, lookDir);
 
             if (MathAngleDelta < WORLD.lightAngle) {
                 // Dentro del cono: intensidad basada en distancia y factor de parpadeo

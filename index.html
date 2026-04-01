@@ -775,18 +775,6 @@
                         </div>
                     </div>
 
-                    <div class="hud-glass p-3 pr-5 rounded-lg border-r-4 border-r-yellow-500 w-[200px] mb-4">
-                        <div class="flex items-center justify-between gap-4 mb-2">
-                            <p class="text-yellow-500 text-[10px] font-bold uppercase tracking-widest">Batería Faro</p>
-                            <span id="battery-percent" class="text-white text-[10px] font-mono">100%</span>
-                        </div>
-                        <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                            <div id="battery-bar"
-                                class="h-full bg-yellow-500 transition-all duration-300 shadow-[0_0_8px_#eab308]"
-                                style="width: 100%"></div>
-                        </div>
-                    </div>
-
                     <!-- CONTROLADORES "V" -->
                     <div class="relative self-end">
                         <div id="v-controller-indicator" onclick="uiManager.toggleScrubberHUD()"
@@ -805,6 +793,25 @@
                         <!-- Dropdown de Filtros (Mini HUD) -->
                         <div id="scrubber-hud-dropdown"
                             class="absolute top-12 right-0 w-64 hud-glass p-4 rounded-xl border border-cyan-500/20 shadow-[0_20px_50px_rgba(0,0,0,0.8)] transition-all duration-500 opacity-0 invisible -translate-y-4 scale-95 z-50">
+                            
+                            <!-- BATERÍA FARO: misma estructura que los filtros -->
+                            <div class="mb-4">
+                                <p class="text-white/40 text-[8px] uppercase tracking-[0.3em] font-bold mb-3 border-b border-white/5 pb-2">
+                                    Generador de Luz [FLARE_SYS]</p>
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex justify-between items-end">
+                                        <div class="flex items-center gap-2">
+                                            <div id="battery-status-led-hud" class="w-1.5 h-1.5 rounded-full" style="background:#27272a;box-shadow:none;"></div>
+                                            <span class="text-[9px] text-white/80 font-bold uppercase tracking-widest">Faro</span>
+                                        </div>
+                                        <span id="battery-percent" class="text-[10px] text-yellow-500/60 font-mono font-bold">100%</span>
+                                    </div>
+                                    <div class="w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
+                                        <div id="battery-bar" class="h-full bg-yellow-500 shadow-[0_0_8px_#eab308] transition-all duration-300" style="width: 100%"></div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <p
                                 class="text-white/40 text-[8px] uppercase tracking-[0.3em] font-bold mb-3 border-b border-white/5 pb-2">
                                 Filtros Activos [CO2]</p>
@@ -832,17 +839,17 @@
                                 <div class="flex flex-col gap-1">
                                     <div class="flex justify-between items-end">
                                         <div class="flex items-center gap-2">
-                                            <div id="hud-scrub-dot-1" class="w-1.5 h-1.5 rounded-full bg-white/10">
+                                            <div id="hud-scrub-dot-1" class="w-1.5 h-1.5 rounded-full bg-emerald-500/40">
                                             </div>
                                             <span
                                                 class="text-[9px] text-white/80 font-bold uppercase tracking-widest">Filtro
                                                 B</span>
                                         </div>
                                         <span id="hud-scrub-val-1"
-                                            class="text-[10px] text-white/20 font-mono font-bold">100%</span>
+                                            class="text-[10px] text-emerald-400/50 font-mono font-bold">100%</span>
                                     </div>
                                     <div class="w-full h-[3px] bg-white/5 rounded-full overflow-hidden">
-                                        <div id="hud-scrub-bar-1" class="h-full bg-white/20 transition-all duration-300"
+                                        <div id="hud-scrub-bar-1" class="h-full bg-emerald-500/40 transition-all duration-300"
                                             style="width: 100%"></div>
                                     </div>
                                 </div>
@@ -1050,9 +1057,12 @@
                         </div>
                         <div class="flex items-center gap-6">
                             <div class="flex items-center gap-2">
-                                <div id="simple-atmo-led" class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981] transition-colors duration-300">
+                                <div id="simple-atmo-led"
+                                    class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981] transition-colors duration-300">
                                 </div>
-                                <span id="simple-atmo-text" class="text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300">ATMÓSFERA ESTABLE</span>
+                                <span id="simple-atmo-text"
+                                    class="text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300">ATMÓSFERA
+                                    ESTABLE</span>
                             </div>
                             <button onclick="uiManager.toggleSubManagement()"
                                 class="p-2 hover:bg-white/5 rounded-full transition-colors">
