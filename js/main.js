@@ -359,7 +359,13 @@ function loop(timestamp) {
  * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
 function update(dtMult = 1.0) {
-    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen) return;
+    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen) {
+        // Pausar audio de motor/burbujas si entramos a un menú mientras nos movíamos
+        if (typeof bubblesAudio !== 'undefined' && bubblesAudio && !bubblesAudio.paused) {
+            bubblesAudio.pause();
+        }
+        return;
+    }
 
     // Actualizar jugador (pasar canvas para límites dinámicos)
     const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);

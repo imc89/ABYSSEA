@@ -226,27 +226,24 @@ class SubManagementManager {
                 dom.lightFail = document.getElementById(`light-${prefix}-fail`);
             }
 
-            // Dibujar canvas del filtro (con fix para canvas 0x0 en primer render)
+            // Dibujar canvas del filtro
             if (dom.canvas) {
-                // Si el canvas no tiene dimensiones reales aún, intentar recalcularlas
-                if (dom.canvas.width === 0 || dom.canvas.height === 0) {
-                    const cw = dom.canvas.clientWidth;
-                    const ch = dom.canvas.clientHeight;
-                    if (cw > 0 && ch > 0) {
-                        dom.canvas.width = cw;
-                        dom.canvas.height = ch;
-                        // Invalida caché de partículas para reconstruir con dimensiones reales
-                        if (this.particleCache) this.particleCache[i] = null;
-                    }
-                    // No guardamos _lastScrubPerc: forzará redibujado cuando el canvas sea válido
-                }
+                const cw = dom.canvas.clientWidth;
+                const ch = dom.canvas.clientHeight;
 
-                // Solo dibujar y cachear si el canvas tiene dimensiones reales
-                if (dom.canvas.width > 0 && dom.canvas.height > 0) {
-                    if (this._lastScrubPerc?.[i] !== s.percentage) {
+                if (cw > 0 && ch > 0) {
+                    const needsRedraw = this._lastScrubPerc?.[i] !== s.percentage || this._lastWidth?.[i] !== cw;
+                    if (needsRedraw) {
+                        if (this._lastWidth && this._lastWidth[i] !== cw && this.particleCache) {
+                             this.particleCache[i] = null; // Invalidar caché si cambió el tamaño
+                        }
                         this.drawScrubber(dom.canvas, s.percentage, i);
+                        
                         if (!this._lastScrubPerc) this._lastScrubPerc = [];
+                        if (!this._lastWidth) this._lastWidth = [];
+                        
                         this._lastScrubPerc[i] = s.percentage;
+                        this._lastWidth[i] = cw;
                     }
                 }
             }
@@ -468,12 +465,13 @@ class SubManagementManager {
     }
 
     drawScrubber(canvas, percentage, index) {
-        const ctx = canvas.getContext('2d', { alpha: false });
+        const cw = canvas.clientWidth;
+        const ch = canvas.clientHeight;
+        
+        if (cw === 0 || ch === 0) return;
 
-        // --- SOPORTE HIGH DPI (Nitidez extrema) ---
+        const ctx = canvas.getContext('2d', { alpha: false });
         const dpr = window.devicePixelRatio || 1;
-        const cw = canvas.clientWidth || canvas.width;
-        const ch = canvas.clientHeight || canvas.height;
 
         if (canvas.width !== cw * dpr || canvas.height !== ch * dpr) {
             canvas.width = cw * dpr;

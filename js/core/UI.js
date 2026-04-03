@@ -70,9 +70,13 @@ class UIManager {
         if (this.subManager.isOpen) {
             document.body.classList.add('cursor-active');
             if (sideMenu) sideMenu.classList.add('active');
+            // Activar navegación por teclado entre pestañas
+            if (typeof subTabManager !== 'undefined') subTabManager.attachKeyboard();
         } else {
             document.body.classList.remove('cursor-active');
             if (sideMenu) sideMenu.classList.remove('active');
+            // Desactivar navegación por teclado al cerrar
+            if (typeof subTabManager !== 'undefined') subTabManager.detachKeyboard();
         }
     }
 

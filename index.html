@@ -305,8 +305,11 @@
         }
 
         #side-tactical-menu .side-nav-item:hover,
+        #side-tactical-menu .side-nav-item:hover *,
         #sub-management-modal button:hover,
-        #sub-management-modal .cursor-pointer:hover {
+        #sub-management-modal button:hover *,
+        #sub-management-modal .cursor-pointer:hover,
+        #sub-management-modal .cursor-pointer:hover * {
             cursor: url('./img/cursor/cursor_hover.cur'), auto !important;
         }
 
@@ -821,6 +824,91 @@
         #filter-knob {
             transform-origin: center;
         }
+
+        /* ── SUB-MANAGEMENT TABS ─────────────────────────────────── */
+        .sub-panel {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+        }
+        .sub-panel.active {
+            display: flex;
+        }
+
+        /* Empty placeholder panels */
+        .empty-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .empty-panel::before {
+            content: '';
+            position: absolute;
+            inset: 40px;
+            border: 1px solid rgba(6, 182, 212, 0.06);
+            border-radius: 16px;
+            pointer-events: none;
+        }
+
+        /* Corner brackets decorativos */
+        .empty-panel::after {
+            content: '';
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            width: 28px;
+            height: 28px;
+            border-top: 1px solid rgba(6, 182, 212, 0.2);
+            border-left: 1px solid rgba(6, 182, 212, 0.2);
+            pointer-events: none;
+        }
+
+        .empty-panel-icon {
+            width: 52px;
+            height: 52px;
+            color: rgba(6, 182, 212, 0.12);
+            filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.08));
+        }
+
+        .empty-panel-label {
+            font-size: 9px;
+            font-weight: 800;
+            letter-spacing: 0.35em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.08);
+        }
+
+        .empty-panel-status {
+            font-size: 7px;
+            font-weight: 700;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: rgba(6, 182, 212, 0.18);
+            border: 1px solid rgba(6, 182, 212, 0.12);
+            padding: 4px 14px;
+            border-radius: 100px;
+        }
+
+        /* Scan-line sutil en paneles vacios */
+        .empty-panel-scanline {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                transparent 0px,
+                transparent 3px,
+                rgba(0,0,0,0.06) 3px,
+                rgba(0,0,0,0.06) 4px
+            );
+            pointer-events: none;
+        }
     </style>
 </head>
 
@@ -840,23 +928,23 @@
     <div id="ui-layer">
         <!-- MENÚ LATERAL TÁCTICO -->
         <nav id="side-tactical-menu">
-            <div class="side-nav-item" onclick="console.log('Energía clicked')">
+            <div class="side-nav-item" data-tab="energia" onclick="subTabManager.selectTab('energia')">
                 <i data-lucide="zap"></i>
                 <span>ENERGÍA</span>
             </div>
-            <div class="side-nav-item" onclick="console.log('Temperatura clicked')">
+            <div class="side-nav-item" data-tab="temperatura" onclick="subTabManager.selectTab('temperatura')">
                 <i data-lucide="thermometer"></i>
                 <span>TEMPERATURA</span>
             </div>
-            <div class="side-nav-item" onclick="console.log('Caudalímetro clicked')">
-                <i data-lucide="bubbles"></i>
+            <div class="side-nav-item" data-tab="caudal" onclick="subTabManager.selectTab('caudal')">
+                <i data-lucide="gauge"></i>
                 <span>CAUDALÍMETRO</span>
             </div>
-            <div class="side-nav-item side-nav-item-active" onclick="uiManager.toggleScrubberHUD()">
+            <div class="side-nav-item side-nav-item-active" data-tab="scrubbers" onclick="subTabManager.selectTab('scrubbers')">
                 <i data-lucide="wind"></i>
                 <span>SCRUBBERS</span>
             </div>
-            <div class="side-nav-item" onclick="console.log('Muestras clicked')">
+            <div class="side-nav-item" data-tab="muestras" onclick="subTabManager.selectTab('muestras')">
                 <i data-lucide="microscope"></i>
                 <span>MUESTRAS</span>
             </div>
@@ -1204,8 +1292,8 @@
                     <div class="flex justify-between items-center px-8 py-4 border-b border-white/5 bg-black/20">
                         <div class="flex flex-col">
                             <h2 class="text-white/60 text-[10px] font-bold tracking-[0.4em] uppercase">Gestión
-                                Específica</h2>
-                            <h3 class="text-white text-lg font-bold tracking-tight">Soporte Vital y Scrubbers</h3>
+                                Interna</h2>
+                            <h3 id="mgmt-panel-title" class="text-white text-lg font-bold tracking-tight">Scrubbers CO₂</h3>
                         </div>
                         <div class="flex items-center gap-6">
                             <div class="flex items-center gap-2">
@@ -1222,6 +1310,49 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- ═══ PANEL: ENERGÍA ═══ -->
+                    <div id="panel-energia" class="sub-panel">
+                        <div class="empty-panel">
+                            <div class="empty-panel-scanline"></div>
+                            <svg class="empty-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            <span class="empty-panel-label">Sistema de Energía</span>
+                            <span class="empty-panel-status">En Desarrollo</span>
+                        </div>
+                        <!-- Footer -->
+                        <div class="px-12 py-6 flex justify-center bg-[#050a0f]/80 border-t border-white/5">
+                            <p class="text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Power Management — Módulo I</p>
+                        </div>
+                    </div>
+
+                    <!-- ═══ PANEL: TEMPERATURA ═══ -->
+                    <div id="panel-temperatura" class="sub-panel">
+                        <div class="empty-panel">
+                            <div class="empty-panel-scanline"></div>
+                            <svg class="empty-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                            <span class="empty-panel-label">Monitor Térmico</span>
+                            <span class="empty-panel-status">En Desarrollo</span>
+                        </div>
+                        <div class="px-12 py-6 flex justify-center bg-[#050a0f]/80 border-t border-white/5">
+                            <p class="text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Thermal Control — Módulo II</p>
+                        </div>
+                    </div>
+
+                    <!-- ═══ PANEL: CAUDALÍMETRO ═══ -->
+                    <div id="panel-caudal" class="sub-panel">
+                        <div class="empty-panel">
+                            <div class="empty-panel-scanline"></div>
+                            <svg class="empty-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2 6.3-6.4 2.1 2-6.3z"/></svg>
+                            <span class="empty-panel-label">Caudalímetro de Flujo</span>
+                            <span class="empty-panel-status">En Desarrollo</span>
+                        </div>
+                        <div class="px-12 py-6 flex justify-center bg-[#050a0f]/80 border-t border-white/5">
+                            <p class="text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Flow Sensor — Módulo III</p>
+                        </div>
+                    </div>
+
+                    <!-- ═══ PANEL: SCRUBBERS (CONTENIDO COMPLETO) ═══ -->
+                    <div id="panel-scrubbers" class="sub-panel active">
 
                     <!-- Main System Area -->
                     <div class="flex-1 flex items-center justify-around px-20">
@@ -1538,7 +1669,7 @@
 
                     </div>
 
-                    <!-- Footer Data (Technical Instrumentation) -->
+                    <!-- Footer Data Scrubbers (Technical Instrumentation) -->
                     <div
                         class="px-12 py-10 flex flex-col items-center bg-[#050a0f]/80 border-t border-white/5 relative">
                         <!-- Decorative tactical line -->
@@ -1603,6 +1734,22 @@
                         <p class="mt-6 text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Life
                             Support Systems - Model VII</p>
                     </div>
+
+                    </div><!-- /panel-scrubbers -->
+
+                    <!-- ═══ PANEL: MUESTRAS ═══ -->
+                    <div id="panel-muestras" class="sub-panel">
+                        <div class="empty-panel">
+                            <div class="empty-panel-scanline"></div>
+                            <svg class="empty-panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 1-2-2V7m6 7h10a2 2 0 0 0 2-2V7M9 14v7m0 0H5m4 0h10"/></svg>
+                            <span class="empty-panel-label">Laboratorio de Muestras</span>
+                            <span class="empty-panel-status">En Desarrollo</span>
+                        </div>
+                        <div class="px-12 py-6 flex justify-center bg-[#050a0f]/80 border-t border-white/5">
+                            <p class="text-white/10 text-[8px] uppercase tracking-[0.5em] font-medium">Borealis Sample Lab — Módulo V</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1751,6 +1898,7 @@
     <script src="js/core/SplashScreen.js"></script>
     <script src="js/core/LoadingScreen.js"></script>
     <script src="js/core/macroManager.js"></script>
+    <script src="js/core/SubTabManager.js"></script>
     <script src="js/core/SubManagementManager.js"></script>
     <script src="js/core/EndGame.js"></script>
     <script src="js/core/UI.js"></script>
