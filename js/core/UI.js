@@ -65,7 +65,7 @@ class UIManager {
     toggleSubManagement() {
         const isOpen = this.subManager.toggle();
         const sideMenu = document.getElementById('side-tactical-menu');
-        
+
         // Gestionar visibilidad global del cursor en el Body
         if (this.subManager.isOpen) {
             document.body.classList.add('cursor-active');

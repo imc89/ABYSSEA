@@ -77,20 +77,31 @@
 
         /* Hover states técnicos y de interacción */
         #splash-screen button:hover,
+        #splash-screen button:hover *,
         #esc-menu button:hover,
+        #esc-menu button:hover *,
         #scan-modal button:hover,
+        #scan-modal button:hover *,
         #discovery-modal button:hover,
+        #discovery-modal button:hover *,
         #controls-menu button:hover,
+        #controls-menu button:hover *,
         #end-game-screen button:hover,
+        #end-game-screen button:hover *,
         #splash-config-btn:hover,
+        #splash-config-btn:hover *,
         .side-nav-item:hover,
+        .side-nav-item:hover *,
         #filter-knob:hover,
         #knob-tactical-unit:hover,
         #knob-tactical-unit *:hover,
         [id^="scrubber-replace"]:hover,
         body.cursor-active .side-nav-item:hover,
+        body.cursor-active .side-nav-item:hover *,
         body.cursor-active button:hover,
-        body.cursor-active .cursor-pointer:hover {
+        body.cursor-active button:hover *,
+        body.cursor-active .cursor-pointer:hover,
+        body.cursor-active .cursor-pointer:hover * {
             cursor: url('./img/cursor/cursor_hover.cur'), auto !important;
         }
 
@@ -195,11 +206,11 @@
         /* MENÚ TÁCTICO LATERAL (DERECHA) */
         #side-tactical-menu {
             position: fixed;
-            right: -180px;
+            right: -200px;
             /* Oculto fuera */
             top: 50%;
             transform: translateY(-50%);
-            width: 160px;
+            width: 180px;
             /* Más ancho para textos horizontales */
             height: auto;
             background: rgba(0, 10, 20, 0.4);
@@ -235,32 +246,54 @@
         }
 
         .side-nav-item {
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.35);
             font-size: 8px;
-            /* Un poco más pequeño para que quepa Caudalímetro */
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.25em;
+            letter-spacing: 0.15em;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             white-space: nowrap;
-            padding: 8px 10px;
-            border-left: 2px solid transparent;
+            padding: 10px 14px;
+            border-left: 3px solid transparent;
             width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .side-nav-item i {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
         }
 
         .side-nav-item:hover {
             color: #06b6d4;
             text-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
             border-left-color: #06b6d4;
-            background: rgba(6, 182, 212, 0.05);
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.1) 0%, transparent 100%);
+        }
+
+        .side-nav-item:hover i {
+            color: #06b6d4;
+            filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8));
+            /* Brillo en lugar de cambio de tamaño */
         }
 
         .side-nav-item-active {
             color: #06b6d4 !important;
             opacity: 1 !important;
             border-left-color: #06b6d4 !important;
-            background: rgba(6, 182, 212, 0.1);
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.15) 0%, transparent 100%);
+        }
+
+        .side-nav-item-active i {
+            color: #06b6d4;
+            filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.7));
         }
 
         /* Forzar cursor en todo el menú lateral y gestión */
@@ -807,10 +840,26 @@
     <div id="ui-layer">
         <!-- MENÚ LATERAL TÁCTICO -->
         <nav id="side-tactical-menu">
-            <div class="side-nav-item" onclick="console.log('Energía clicked')">ENERGÍA</div>
-            <div class="side-nav-item" onclick="console.log('Caudalímetro clicked')">CAUDALÍMETRO</div>
-            <div class="side-nav-item side-nav-item-active" onclick="uiManager.toggleScrubberHUD()">SCRUBBERS</div>
-            <div class="side-nav-item" onclick="console.log('Muestras clicked')">MUESTRAS</div>
+            <div class="side-nav-item" onclick="console.log('Energía clicked')">
+                <i data-lucide="zap"></i>
+                <span>ENERGÍA</span>
+            </div>
+            <div class="side-nav-item" onclick="console.log('Temperatura clicked')">
+                <i data-lucide="thermometer"></i>
+                <span>TEMPERATURA</span>
+            </div>
+            <div class="side-nav-item" onclick="console.log('Caudalímetro clicked')">
+                <i data-lucide="bubbles"></i>
+                <span>CAUDALÍMETRO</span>
+            </div>
+            <div class="side-nav-item side-nav-item-active" onclick="uiManager.toggleScrubberHUD()">
+                <i data-lucide="wind"></i>
+                <span>SCRUBBERS</span>
+            </div>
+            <div class="side-nav-item" onclick="console.log('Muestras clicked')">
+                <i data-lucide="microscope"></i>
+                <span>MUESTRAS</span>
+            </div>
         </nav>
 
 
