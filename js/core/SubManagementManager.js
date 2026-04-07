@@ -75,6 +75,12 @@ class SubManagementManager {
         }
         if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('macro', 0.4);
         if (typeof window.updateCursorVisibility === 'function') window.updateCursorVisibility();
+
+        // Despertar el manager si la pestaña activa es energía
+        if (typeof energyManager !== 'undefined' && typeof subTabManager !== 'undefined') {
+            energyManager.isOpen = (subTabManager.currentTab === 'energia');
+            if (energyManager.isOpen) energyManager.forceUIDraw();
+        }
     }
 
     close() {
@@ -93,6 +99,8 @@ class SubManagementManager {
             }, 500);
         }
         if (typeof window.updateCursorVisibility === 'function') window.updateCursorVisibility();
+
+        if (typeof energyManager !== 'undefined') energyManager.isOpen = false;
     }
 
     update(player) {
@@ -116,10 +124,12 @@ class SubManagementManager {
         // 2. OPTIMIZACIÓN DE FONDO (Evitar layouts costosos si el estado es el mismo)
         if (this.dom.backdrop) {
             let bgImg;
+            const hasPower = typeof energyManager !== 'undefined' ? !energyManager.isBlackout : true;
+
             if (player.poisonTimer > 0) {
                 bgImg = 'img/controls/alarm.jpg';
             } else {
-                bgImg = player.lightOn ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
+                bgImg = (player.lightOn && hasPower) ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
             }
 
             if (this._lastBgImg !== bgImg) {
@@ -235,13 +245,13 @@ class SubManagementManager {
                     const needsRedraw = this._lastScrubPerc?.[i] !== s.percentage || this._lastWidth?.[i] !== cw;
                     if (needsRedraw) {
                         if (this._lastWidth && this._lastWidth[i] !== cw && this.particleCache) {
-                             this.particleCache[i] = null; // Invalidar caché si cambió el tamaño
+                            this.particleCache[i] = null; // Invalidar caché si cambió el tamaño
                         }
                         this.drawScrubber(dom.canvas, s.percentage, i);
-                        
+
                         if (!this._lastScrubPerc) this._lastScrubPerc = [];
                         if (!this._lastWidth) this._lastWidth = [];
-                        
+
                         this._lastScrubPerc[i] = s.percentage;
                         this._lastWidth[i] = cw;
                     }
@@ -467,7 +477,7 @@ class SubManagementManager {
     drawScrubber(canvas, percentage, index) {
         const cw = canvas.clientWidth;
         const ch = canvas.clientHeight;
-        
+
         if (cw === 0 || ch === 0) return;
 
         const ctx = canvas.getContext('2d', { alpha: false });

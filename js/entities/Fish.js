@@ -326,7 +326,8 @@ class Fish {
 
         // Dentro del cono = opacidad plena. La caída ocurre en los bordes angulares y al salir del rango.
         let lightIntensity = 0;
-        if (player.lightOn && player.lightBattery > 0 && dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (player.lightOn && mainBattery > 0 && dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
             const dist = Math.sqrt(dSq);
             const angToFish = Math.atan2(
                 this.y - (player.y + WORLD.lightOffsetY),

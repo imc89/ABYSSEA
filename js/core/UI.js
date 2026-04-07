@@ -159,7 +159,11 @@ class UIManager {
         const batteryBar = document.getElementById('battery-bar');
         const batteryPercent = document.getElementById('battery-percent');
         const batteryLed = document.getElementById('battery-status-led-hud');
-        const battVal = Math.floor(player.lightBattery);
+
+        // [ES] Ahora usamos la Reserva Principal de Energía (Global) de energyManager
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        const battVal = Math.floor(mainBattery);
+
         if (batteryBar) {
             batteryBar.style.width = `${battVal}%`;
             if (battVal < 20) batteryBar.classList.replace('bg-yellow-500', 'bg-red-500');
@@ -171,8 +175,12 @@ class UIManager {
             else batteryPercent.classList.remove('text-red-500', 'animate-pulse');
         }
         if (batteryLed) {
-            if (battVal < 20) { batteryLed.style.background = '#ef4444'; batteryLed.style.boxShadow = '0 0 6px #ef4444'; batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate'; }
-            else if (player.lightOn) { batteryLed.style.background = '#eab308'; batteryLed.style.boxShadow = '0 0 6px #eab308'; batteryLed.style.animation = 'none'; }
+            if (battVal < 20) {
+                batteryLed.style.background = '#ef4444'; batteryLed.style.boxShadow = '0 0 6px #ef4444'; batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate';
+            }
+            else if (player.lightOn) {
+                batteryLed.style.background = '#eab308'; batteryLed.style.boxShadow = '0 0 6px #eab308'; batteryLed.style.animation = 'none';
+            }
             else { batteryLed.style.background = 'rgba(255,255,255,0.08)'; batteryLed.style.boxShadow = 'none'; batteryLed.style.animation = 'none'; }
         }
     }

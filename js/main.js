@@ -337,10 +337,15 @@ function loop(timestamp) {
 
     update(dtMult);
     
-    // El Soporte Vital y la UI siempre se actualizan, incluso si el juego está pausado por menús
+    // El Soporte Vital, Energía y la UI siempre se actualizan, incluso si el juego está pausado por menús
     if (typeof player !== 'undefined' && player) {
         player.updateLifeSupport(dtMult);
     }
+    if (typeof energyManager !== 'undefined' && energyManager) {
+        // Le pasamos el deltatime en segundos reales
+        energyManager.update(dt / 1000, typeof player !== 'undefined' ? player : null);
+    }
+    
     if (typeof uiManager !== 'undefined' && uiManager) {
         uiManager.update(player, 
             typeof scannableTarget !== 'undefined' ? scannableTarget : null, 
@@ -407,8 +412,8 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // Lógica de audio para batería baja (< 10%)
-    if (player.lightOn && player.lightBattery < 10 && player.lightBattery > 0) {
+    // [ES] Lógica de audio para batería baja de la RESERVA PRINCIPAL (< 10%)
+    if (typeof energyManager !== 'undefined' && energyManager.battery < 10 && energyManager.battery > 0) {
         if (lowBatteryAudio && lowBatteryAudio.paused) {
             lowBatteryAudio.play().catch(e => { });
         }
@@ -426,12 +431,15 @@ function update(dtMult = 1.0) {
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
     discoveryPoints.forEach(poi => {
+        // [ES] Obligatorio resetear el estado de iluminación en cada frame para evitar falsos positivos
+        poi.isLit = false;
+
         // Primero: Proximidad básica (para optimizar)
         const dist = Math.hypot(player.x - poi.x, player.y - poi.y);
 
         // Segundo: Verificación de cono de luz
-        poi.isLit = false;
-        if (player.lightOn && player.lightBattery > 0 && dist < WORLD.lightSpotRange) {
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (player.lightOn && mainBattery > 0 && dist < WORLD.lightSpotRange) {
             const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
 
@@ -500,7 +508,8 @@ function update(dtMult = 1.0) {
  * [EN] Find fish inside the light cone to activate scanner. Determines the closest focused entity.
  */
 function findScannableTarget() {
-    if (!player.lightOn) return null;
+    const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+    if (!player.lightOn || mainBattery <= 0) return null;
 
     let minDistSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
     let target = null;
@@ -646,7 +655,8 @@ function draw() {
     );
 
     // Dibujar línea de tracking al pez objetivo
-    if (scannableTarget && player.lightOn && player.lightBattery > 0) {
+    const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+    if (scannableTarget && player.lightOn && mainBattery > 0) {
         const px = player.x - camera.x;
         const py = player.y - camera.y + WORLD.lightOffsetY;
         const tx = scannableTarget.x - camera.x;

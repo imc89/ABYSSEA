@@ -18,9 +18,8 @@ class Player {
         this.h = PLAYER_CONFIG.height;
         this.dir = 1;  // 1 = derecha, -1 = izquierda
 
-        // Sistema de iluminación
+        // Sistema de iluminación (Faro)
         this.lightOn = false;
-        this.lightBattery = 100;
         this.lightFlickerIntensity = 1.0;
 
         // Sistema de sónar
@@ -60,10 +59,17 @@ class Player {
 
         // Actualizar sónar
         if (this.sonarActive) {
-            this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
-            if (this.sonarRadius > PLAYER_CONFIG.sonarMaxRadius) {
+            // Si hay apagón o se apaga empíricamente el circuito, cancelar sonar
+            if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.sonar)) {
                 this.sonarActive = false;
-                this.sonarCharging = true;
+                this.sonarCharging = false;
+                this.sonarCooldown = 0;
+            } else {
+                this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
+                if (this.sonarRadius > PLAYER_CONFIG.sonarMaxRadius) {
+                    this.sonarActive = false;
+                    this.sonarCharging = true;
+                }
             }
         }
 
@@ -75,26 +81,18 @@ class Player {
             }
         }
 
-        // Gestión de batería del faro
-        if (this.lightOn) {
-            this.lightBattery -= PLAYER_CONFIG.lightDrainRate * dtMult;
-            if (this.lightBattery <= 0) {
-                this.lightBattery = 0;
-                this.lightOn = false;
-            }
-        } else if (this.lightBattery < 100) {
-            this.lightBattery += PLAYER_CONFIG.lightRechargeRate * dtMult;
+        // El consumo y regeneración del Faro ahora lo gestiona de forma centralizada el EnergyManager.
+        // Aquí solo nos aseguramos de apagar la luz si nos quedamos sin energía principal.
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.faro)) {
+            this.lightOn = false;
         }
 
-        // EFECTO DE BOMBILLA MURIÉNDOSE: parpadeo agresivo cuando la batería baja del 10%
-        if (this.lightOn && this.lightBattery < 10) {
-            // Cuánto de cerca está de 0 (0=llena al 10%, 1=muerta)
-            const dying = 1 - (this.lightBattery / 10);
-            // Frecuencia de parpadeo se acelera al morir
+        // EFECTO DE BOMBILLA MURIÉNDOSE: parpadeo agresivo cuando la reserva principal baja del 10%
+        if (this.lightOn && mainBattery < 10 && mainBattery > 0) {
+            const dying = 1 - (mainBattery / 10);
             const flickerSpeed = 0.015 + dying * 0.08;
-            // Ruido aleatorio que aumenta según se muere
             const noise = (Math.random() - 0.5) * dying * 1.2;
-            // Onda sinusoidal + ruido aleatorio
             this.lightFlickerIntensity = Math.max(0, Math.min(1,
                 0.5 + Math.sin(Date.now() * flickerSpeed) * 0.5 + noise
             ));
@@ -104,7 +102,13 @@ class Player {
 
         // Movimiento - velocidad horizontal reducida para juego vertical
         const horizontalSpeedReduction = 0.5;  // 50% de velocidad horizontal
-        const currentSpeed = this.speed * (keys['ShiftLeft'] ? this.boost : 1);
+        let currentSpeed = this.speed * (keys['ShiftLeft'] ? this.boost : 1);
+
+        // Bloquear motores de propulsión si no hay energía o están apagados en tablero
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.motores)) {
+            currentSpeed = 0;
+        }
+
         let moving = false;
 
         if (this.isKeyPressed('left', keys, controlScheme)) {
@@ -207,7 +211,11 @@ class Player {
 
             // Filtrado de CO2 (Scrubber activo)
             const activeScrubber = this.scrubbers[this.activeScrubberIndex];
-            if (activeScrubber.percentage > 0) {
+
+            // Solo funciona si no hay apagón y el interruptor interno está activado
+            const hasPower = typeof energyManager !== 'undefined' ? (!energyManager.isBlackout && energyManager.switches.scrubbers) : true;
+
+            if (activeScrubber.percentage > 0 && hasPower) {
                 activeScrubber.percentage -= scrubberDrainPerTick * dtMult;
                 if (activeScrubber.percentage < 0) activeScrubber.percentage = 0;
 
@@ -383,6 +391,10 @@ class Player {
      * [EN] Activates the sonar system if it's not on cooldown, starting the detection wave.
      */
     activateSonar() {
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.sonar)) {
+            return false; // Sin energía
+        }
+
         if (this.sonarCooldown <= 0 && !this.sonarActive) {
             this.sonarActive = true;
             this.sonarRadius = 0;
@@ -397,7 +409,12 @@ class Player {
      * [EN] Toggles the main spotlight state (on/off) and plays the corresponding sound effect.
      */
     toggleLight() {
-        if (this.lightBattery > 2) {
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.faro)) {
+            return;
+        }
+
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (mainBattery > 0.5) {
             this.lightOn = !this.lightOn;
             GlobalAudioPool.play('light', 0.4);
         }
@@ -444,7 +461,8 @@ class Player {
      * [EN] Draws the light halos (directional and radial) emitted by the submarine when the flashlight is on.
      */
     drawLight(ctx, camera) {
-        if (!this.lightOn) return;
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (!this.lightOn || mainBattery <= 0) return;
 
         const px = this.x - camera.x;
         const py = this.y - camera.y + WORLD.lightOffsetY;

@@ -18,7 +18,7 @@ class SubTabManager {
             muestras:    'Laboratorio de Muestras'
         };
 
-        this.currentIndex = 3; // Scrubbers activo por defecto
+        this.currentIndex = 0; // Energía activo por defecto
         this._keyHandler = this._onKey.bind(this);
         this._keyHandlerAttached = false;
     }
@@ -90,6 +90,12 @@ class SubTabManager {
                 titleEl.style.transform = 'translateY(0)';
             }, 120);
         }
+
+        // 4. Notificar a los managers específicos si su pestaña está activa
+        if (typeof energyManager !== 'undefined') {
+            energyManager.isOpen = (tabId === 'energia');
+            if (energyManager.isOpen) energyManager.forceUIDraw();
+        }
     }
 
     /**
@@ -101,8 +107,11 @@ class SubTabManager {
         const modal = document.getElementById('sub-management-modal');
         if (!modal || !modal.classList.contains('active')) return;
 
-        // Ignorar si el usuario está escribiendo en un input
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+        // Allow navigation keys (W/S/Arrows) even if focus is on a checkbox/switch.
+        // We only block if the user is typing in a text-like input.
+        const isTextInput = ['TEXTAREA', 'SELECT'].includes(e.target.tagName) || 
+                           (e.target.tagName === 'INPUT' && !['checkbox', 'radio'].includes(e.target.type));
+        if (isTextInput) return;
 
         switch (e.key) {
             case 'w':
