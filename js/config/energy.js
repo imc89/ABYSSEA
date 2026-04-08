@@ -39,7 +39,8 @@ window.ENERGY_CONFIG = {
         sonar: 3,       // El sonar de profundidad.
         motores: 12,    // Propulsión activa.
         scrubbers: 2,   // Filtros de CO2.
-        calefactor: 8   // Calefacción interna (Bioma Abisal).
+        calefactor: 8,  // Calefacción interna (Bioma Abisal).
+        ventilacion: 10 // Sistemas de ventilación (Soporte Vital).
     },
 
     // --- MONITOR DE EFICIENCIA ---

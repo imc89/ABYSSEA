@@ -16,7 +16,8 @@ class EnergyManager {
             sonar: true,
             motores: true,
             scrubbers: true,
-            calefactor: true
+            calefactor: true,
+            ventilacion: true
         };
 
         this.isBlackout = false;
@@ -127,6 +128,7 @@ class EnergyManager {
             if (this.switches.motores) consumow += cfg.motores;
             if (this.switches.scrubbers) consumow += cfg.scrubbers;
             if (this.switches.calefactor) consumow += cfg.calefactor;
+            if (this.switches.ventilacion && cfg.ventilacion) consumow += cfg.ventilacion;
 
             const drainRate = consumow * 0.005; // 0.005 % por segundo por W
             this.battery -= drainRate * dt;
@@ -158,6 +160,7 @@ class EnergyManager {
         if (this.switches.motores) cTotal += cfg.motores;
         if (this.switches.scrubbers) cTotal += cfg.scrubbers;
         if (this.switches.calefactor) cTotal += cfg.calefactor;
+        if (this.switches.ventilacion && cfg.ventilacion) cTotal += cfg.ventilacion;
 
         if (this.isBlackout) cTotal = 0;
 

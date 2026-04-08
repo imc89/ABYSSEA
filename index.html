@@ -1820,42 +1820,35 @@
                             </div>
 
                             <!-- RIGHT COLUMN: SWITCHES -->
-                            <div class="w-1/2 flex flex-col z-10 pt-0 relative pl-4" style="overflow: visible;">
+                            <div class="w-1/2 flex flex-col justify-center z-10 pt-0 relative pl-4" style="overflow: visible;">
                                 <span
                                     class="text-[10px] text-cyan-500 uppercase tracking-[0.3em] font-bold mb-2 block border-b border-white/5 pb-2 text-center">Panel
                                     de Distribución Principal</span>
 
-                                <div class="flex flex-col gap-2 pb-4" id="energy-switches-container"
+                                <div class="grid grid-cols-2 gap-3" id="energy-switches-container"
                                     style="overflow: visible;">
+
                                     <!-- FARO -->
-                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-5 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)] h-[68px]"
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
                                         style="overflow: visible;">
-                                        <div class="flex flex-col items-start gap-1">
-                                            <span
-                                                class="text-white text-[11px] uppercase font-black tracking-widest flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]">
-                                                    <path
-                                                        d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5" />
-                                                    <path d="M9 18h6" />
-                                                    <path d="M10 22h4" />
+                                                    class="text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)] shrink-0">
+                                                    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5" />
+                                                    <path d="M9 18h6" /><path d="M10 22h4" />
                                                 </svg>
-                                                Faro Exterior
+                                                Faro
                                             </span>
-                                            <span class="text-[9px] text-white/30 font-mono tracking-wider ml-7">ESTADO
-                                                NOMINAL • MÁX <span class="text-white/60 font-bold">5W</span></span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">NOMINAL • <span class="text-white/60 font-bold">5W</span></span>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center shrink-0 ml-2">
                                             <div class="toggle-switch" style="pointer-events: none;">
-                                                <input class="guard" type="checkbox"
-                                                    onclick="event.stopPropagation(); this.blur();"
-                                                    style="pointer-events: auto;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation(); this.blur();" style="pointer-events: auto;">
                                                 <span class="guard-sides"></span>
-                                                <input id="sw-faro" class="switch" type="checkbox"
-                                                    onchange="energyManager.toggleSwitch('faro'); this.blur();"
-                                                    style="pointer-events: auto;" checked>
+                                                <input id="sw-faro" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('faro'); this.blur();" style="pointer-events: auto;" checked>
                                                 <span class="knob"></span>
                                                 <span class="light"></span>
                                             </div>
@@ -1863,35 +1856,26 @@
                                     </div>
 
                                     <!-- SONAR -->
-                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-5 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)] h-[68px]"
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
                                         style="overflow: visible;">
-                                        <div class="flex flex-col items-start gap-1">
-                                            <span
-                                                class="text-white text-[11px] uppercase font-black tracking-widest flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)]">
-                                                    <path d="M2 10v3" />
-                                                    <path d="M6 6v11" />
-                                                    <path d="M10 3v18" />
-                                                    <path d="M14 8v7" />
-                                                    <path d="M18 5v13" />
-                                                    <path d="M22 10v3" />
+                                                    class="text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.5)] shrink-0">
+                                                    <path d="M2 10v3" /><path d="M6 6v11" /><path d="M10 3v18" />
+                                                    <path d="M14 8v7" /><path d="M18 5v13" /><path d="M22 10v3" />
                                                 </svg>
-                                                Sonda de Eco
+                                                Sonda Eco
                                             </span>
-                                            <span class="text-[9px] text-white/30 font-mono tracking-wider ml-7">RANGING
-                                                ACTIVO • MÁX <span class="text-white/60 font-bold">10W</span></span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">RANGING • <span class="text-white/60 font-bold">10W</span></span>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center shrink-0 ml-2">
                                             <div class="toggle-switch" style="pointer-events: none;">
-                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()"
-                                                    style="pointer-events: auto;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()" style="pointer-events: auto;">
                                                 <span class="guard-sides"></span>
-                                                <input id="sw-sonar" class="switch" type="checkbox"
-                                                    onchange="energyManager.toggleSwitch('sonar')"
-                                                    style="pointer-events: auto;" checked>
+                                                <input id="sw-sonar" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('sonar')" style="pointer-events: auto;" checked>
                                                 <span class="knob"></span>
                                                 <span class="light"></span>
                                             </div>
@@ -1899,34 +1883,28 @@
                                     </div>
 
                                     <!-- MOTORES -->
-                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-5 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)] h-[68px]"
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
                                         style="overflow: visible;">
-                                        <div class="flex flex-col items-start gap-1">
-                                            <span
-                                                class="text-white text-[11px] uppercase font-black tracking-widest flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="text-indigo-400 drop-shadow-[0_0_5px_rgba(129,140,248,0.5)]">
-                                                    <circle cx="12" cy="12" r="10" />
-                                                    <circle cx="12" cy="12" r="4" />
+                                                    class="text-indigo-400 drop-shadow-[0_0_5px_rgba(129,140,248,0.5)] shrink-0">
+                                                    <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" />
                                                     <line x1="21.17" x2="12" y1="8" y2="8" />
                                                     <line x1="3.95" x2="8.54" y1="6.06" y2="14" />
                                                     <line x1="10.88" x2="15.46" y1="21.94" y2="14" />
                                                 </svg>
-                                                Motores Propulsión
+                                                Motores
                                             </span>
-                                            <span class="text-[9px] text-white/30 font-mono tracking-wider ml-7">LINEA
-                                                DE EJE • MÁX <span class="text-white/60 font-bold">15W</span></span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">PROPULSIÓN • <span class="text-white/60 font-bold">15W</span></span>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center shrink-0 ml-2">
                                             <div class="toggle-switch" style="pointer-events: none;">
-                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()"
-                                                    style="pointer-events: auto;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()" style="pointer-events: auto;">
                                                 <span class="guard-sides"></span>
-                                                <input id="sw-motores" class="switch" type="checkbox"
-                                                    onchange="energyManager.toggleSwitch('motores')"
-                                                    style="pointer-events: auto;" checked>
+                                                <input id="sw-motores" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('motores')" style="pointer-events: auto;" checked>
                                                 <span class="knob"></span>
                                                 <span class="light"></span>
                                             </div>
@@ -1934,38 +1912,27 @@
                                     </div>
 
                                     <!-- SCRUBBERS -->
-                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-5 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)] h-[68px]"
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
                                         style="overflow: visible;">
-                                        <div class="flex flex-col items-start gap-1">
-                                            <span
-                                                class="text-white text-[11px] uppercase font-black tracking-widest flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)]">
+                                                    class="text-emerald-400 drop-shadow-[0_0_5px_rgba(52,211,153,0.5)] shrink-0">
                                                     <rect width="18" height="18" x="3" y="3" rx="2" />
-                                                    <path d="M7 3v18" />
-                                                    <path d="M3 7.5h4" />
-                                                    <path d="M3 12h18" />
-                                                    <path d="M3 16.5h4" />
-                                                    <path d="M17 3v18" />
-                                                    <path d="M17 7.5h4" />
-                                                    <path d="M17 16.5h4" />
+                                                    <path d="M7 3v18" /><path d="M3 7.5h4" /><path d="M3 12h18" />
+                                                    <path d="M3 16.5h4" /><path d="M17 3v18" /><path d="M17 7.5h4" /><path d="M17 16.5h4" />
                                                 </svg>
-                                                Soporte Vital (CO2)
+                                                Soporte CO2
                                             </span>
-                                            <span
-                                                class="text-[9px] text-white/30 font-mono tracking-wider ml-7">SCRUBBERS
-                                                • FIJO <span class="text-white/60 font-bold">8W</span></span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">SCRUBBERS • <span class="text-white/60 font-bold">8W</span></span>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center shrink-0 ml-2">
                                             <div class="toggle-switch" style="pointer-events: none;">
-                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()"
-                                                    style="pointer-events: auto;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()" style="pointer-events: auto;">
                                                 <span class="guard-sides"></span>
-                                                <input id="sw-scrubbers" class="switch" type="checkbox"
-                                                    onchange="energyManager.toggleSwitch('scrubbers')"
-                                                    style="pointer-events: auto;" checked>
+                                                <input id="sw-scrubbers" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('scrubbers')" style="pointer-events: auto;" checked>
                                                 <span class="knob"></span>
                                                 <span class="light"></span>
                                             </div>
@@ -1973,33 +1940,53 @@
                                     </div>
 
                                     <!-- CALEFACTOR -->
-                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-5 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)] h-[68px]"
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
                                         style="overflow: visible;">
-                                        <div class="flex flex-col items-start gap-1">
-                                            <span
-                                                class="text-white text-[11px] uppercase font-black tracking-widest flex items-center gap-3">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                    class="text-orange-400 drop-shadow-[0_0_5px_rgba(251,146,60,0.5)]">
-                                                    <path d="M12 9a4 4 0 0 0-2 7.5" />
-                                                    <path d="M12 3v2" />
+                                                    class="text-orange-400 drop-shadow-[0_0_5px_rgba(251,146,60,0.5)] shrink-0">
+                                                    <path d="M12 9a4 4 0 0 0-2 7.5" /><path d="M12 3v2" />
                                                     <path d="M6.6 18.4l-1.4 1.4" />
                                                     <path d="M20 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
                                                 </svg>
-                                                Núcleo Calefactor
+                                                Calefactor
                                             </span>
-                                            <span class="text-[9px] text-white/30 font-mono tracking-wider ml-7">THERMAL
-                                                CORE • FIJO <span class="text-white/80 font-bold">12W</span></span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">THERMAL CORE • <span class="text-white/80 font-bold">12W</span></span>
                                         </div>
-                                        <div class="flex items-center">
+                                        <div class="flex items-center shrink-0 ml-2">
                                             <div class="toggle-switch" style="pointer-events: none;">
-                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()"
-                                                    style="pointer-events: auto;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()" style="pointer-events: auto;">
                                                 <span class="guard-sides"></span>
-                                                <input id="sw-calefactor" class="switch" type="checkbox"
-                                                    onchange="energyManager.toggleSwitch('calefactor')"
-                                                    style="pointer-events: auto;" checked>
+                                                <input id="sw-calefactor" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('calefactor')" style="pointer-events: auto;" checked>
+                                                <span class="knob"></span>
+                                                <span class="light"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- VENTILACIÓN -->
+                                    <div class="bg-[#0b141a] border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between shadow-[inset_0_0_20px_rgba(0,0,0,0.9),_0_5px_10px_rgba(0,0,0,0.5)]"
+                                        style="overflow: visible;">
+                                        <div class="flex flex-col items-start gap-1 min-w-0">
+                                            <span class="text-white text-[10px] uppercase font-black tracking-widest flex items-center gap-2 whitespace-nowrap">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="text-sky-400 drop-shadow-[0_0_5px_rgba(56,189,248,0.5)] shrink-0">
+                                                    <path d="M5.58 16.58A8 8 0 0 0 12 22v-9Z"/><path d="m15.41 17.65 6.09-3.52-4.5-7.79H8.72"/><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+                                                </svg>
+                                                Ventilación
+                                            </span>
+                                            <span class="text-[8px] text-white/30 font-mono tracking-wider ml-4">SOPORTE VITAL • <span class="text-white/60 font-bold">10W</span></span>
+                                        </div>
+                                        <div class="flex items-center shrink-0 ml-2">
+                                            <div class="toggle-switch" style="pointer-events: none;">
+                                                <input class="guard" type="checkbox" onclick="event.stopPropagation()" style="pointer-events: auto;">
+                                                <span class="guard-sides"></span>
+                                                <input id="sw-ventilacion" class="switch" type="checkbox" onchange="energyManager.toggleSwitch('ventilacion')" style="pointer-events: auto;" checked>
                                                 <span class="knob"></span>
                                                 <span class="light"></span>
                                             </div>
