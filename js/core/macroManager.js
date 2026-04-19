@@ -192,7 +192,7 @@ class MacroManager {
         if (mTitle) mTitle.innerHTML = "";
         if (mGenus) mGenus.innerHTML = "";
         if (mDesc) mDesc.innerHTML = "";
-        
+
         // Limpiar UI de objetivo
         if (mTargetUI) {
             mTargetUI.style.display = 'flex';
@@ -411,16 +411,16 @@ class MacroManager {
 
             if (!this.state.lightOn) {
                 img.style.opacity = '0';
-                img.style.filter  = '';
+                img.style.filter = '';
                 return;
             }
 
-            const dist   = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
-            const radius = revealed ? 600 : 130; 
-            
+            const dist = Math.hypot(this.state.crosshairX - c.x, this.state.crosshairY - c.y);
+            const radius = revealed ? 600 : 130;
+
             if (dist > radius) {
                 img.style.opacity = '0';
-                img.style.filter  = '';
+                img.style.filter = '';
                 return;
             }
 
@@ -593,19 +593,19 @@ class MacroManager {
             creatures.forEach(c => {
                 ctx.save();
                 ctx.translate(c.x, c.y);
-                
+
                 // Flipping horizontal según dirección
                 const flip = c.vx < 0 ? -1 : 1;
                 ctx.scale(flip, 1);
 
                 const w = c.w * breathingScale;
                 const h = c.h * breathingScale;
-                
+
                 // Visibilidad basada en distancia antes de la máscara (para coherencia con GIFs)
                 const dist = Math.hypot(crosshairX - c.x, crosshairY - c.y);
                 const radius = revealed ? 600 : 130;
                 const opacityMult = Math.pow(Math.max(0, 1 - dist / radius), 1.5);
-                
+
                 ctx.globalAlpha = revealed ? 1.0 : (0.1 + 0.9 * opacityMult);
 
                 if (creatureImg.complete && creatureImg.naturalWidth > 0) {
@@ -735,6 +735,11 @@ class MacroManager {
                     if (mTitle) mTitle.innerText = macroData.nombre;
                     if (mGenus) mGenus.innerText = macroData.cientifico;
                     if (mDesc) mDesc.innerText = macroData.descripcion;
+
+                    // Almacenaje real en la base de muestras del laboratorio
+                    if (typeof window.addSampleToLab === 'function') {
+                        window.addSampleToLab(macroData);
+                    }
                 }
 
                 // Mostrar UI

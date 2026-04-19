@@ -33,7 +33,7 @@ class Player {
 
         // Sistema de Soporte Vital
         this.oxygen = 100;
-        this.co2 = 0;
+        this.co2 = 0.04; // Nivel base habitual 
         this.poisonTimer = 0;
         this.isDead = false;
         this.activeScrubberIndex = 0; // 0 o 1
@@ -195,19 +195,16 @@ class Player {
         const isMenuOpenGlobal = (typeof isMenuOpen !== 'undefined' ? isMenuOpen : false);
         const canSimulate = !this.isLocked && !isMenuOpenGlobal;
 
-        // Factores de conversión: (100% / (minutos * 60s * 60fps))
-        const o2DrainPerTick = (100 / (FILTER_CONFIG.oxygenDuration * 60 * 60));
-        const co2ProdPerTick = (100 / (FILTER_CONFIG.co2BuildUpTime * 60 * 60));
+        // Factores de conversión
+        const co2ProdPerTick = (FILTER_CONFIG.cabinCo2RiseRate / 60);
         const scrubberDrainPerTick = (100 / (FILTER_CONFIG.scrubberDuration * 60 * 60));
-        const scrubberEfficiency = co2ProdPerTick * 2.5; // Limpia 2.5 veces más rápido de lo que se ensucia
+        // Eficiencia del scrubber: debe ser capaz de contrarrestar el ascenso
+        const scrubberEfficiency = co2ProdPerTick * 1.5;
 
         if (canSimulate) {
-            // Consumo de Oxígeno
-            this.oxygen -= o2DrainPerTick * dtMult;
-            if (this.oxygen < 0) this.oxygen = 0;
-
             // Producción de CO2
             this.co2 += co2ProdPerTick * dtMult;
+            if (this.co2 > 20.0) this.co2 = 20.0; // Cap sumidero suave
 
             // Filtrado de CO2 (Scrubber activo)
             const activeScrubber = this.scrubbers[this.activeScrubberIndex];
@@ -226,76 +223,122 @@ class Player {
 
         // Recuperar el scrubber activo fuera del if para la lógica de intoxicación
         const activeScrubber = this.scrubbers[this.activeScrubberIndex];
-
-        // Lógica de intoxicación por CO2
         const overlay = document.getElementById('co2-poison-overlay');
-        const grace = FILTER_CONFIG.co2PoisoningGracePeriod;
+        const countdown = document.getElementById('co2-critical-countdown');
 
-        if (activeScrubber.percentage <= 0 && !this.isDead) {
-            // Solo descontar vida si el submarino se ha movido (desbloqueado) y el menú no está abierto
-            const canPoison = !this.isLocked && (typeof isMenuOpen !== 'undefined' ? !isMenuOpen : true);
+        // Lógica de alerta y muerte por Anoxia (Oxígeno)
+        const isAnoxiaCritical = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 7.0);
 
-            if (canPoison) {
-                this.poisonTimer += (1 / 60) * dtMult; // Incrementar segundos
-            }
+        // Detectar si el jugador está solucionando los problemas activamente
+        this.isCo2Improving = false;
+        if (typeof energyManager !== 'undefined') {
+            const hasPower = !energyManager.isBlackout && energyManager.switches.scrubbers;
+            if (activeScrubber && activeScrubber.percentage > 0 && hasPower) this.isCo2Improving = true;
+        }
+        if (typeof oxygenManager !== 'undefined' && oxygenManager.isPurging) {
+            this.isCo2Improving = true;
+        }
 
-            // Efecto visual progresivo (nublado) e interfaz
-            const countdown = document.getElementById('co2-critical-countdown');
-            const timerVal = document.getElementById('co2-timer-value');
+        // Control de visibilidad del contador (Solo fuera de menús técnicos o generales)
+        const isTechMenuOpen =
+            (typeof subManagementManager !== 'undefined' && subManagementManager.isOpen) ||
+            (typeof uiManager !== 'undefined' && (
+                uiManager.isSubManagementOpen ||
+                uiManager.isDiscoveryModalOpen ||
+                uiManager.isScanModalOpen
+            ));
+        const canShowTimer = !isMenuOpenGlobal && !isTechMenuOpen;
 
-            // Ocultar contador si hay algún menú abierto para no solapar
-            const isMenuOrModalOpen = (typeof isMenuOpen !== 'undefined' && isMenuOpen) ||
-                (typeof uiManager !== 'undefined' && (uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen));
+        if ((this.co2 >= 15.0 || isAnoxiaCritical) && !this.isDead) {
+            // Verificar si el problema específico que está causando la emergencia se está solucionando
+            const isCo2Fixing = (this.co2 >= 15.0 && this.isCo2Improving);
+            const isO2Fixing = (isAnoxiaCritical && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
+            
+            // Si hay emergencia por alguna de las dos o ambas, y se están arreglando TODAS las alarmas activas
+            const fixingAll = (this.co2 >= 15.0 ? isCo2Fixing : true) && (isAnoxiaCritical ? isO2Fixing : true);
+            
+            if (fixingAll) {
+                if (canSimulate && this.poisonTimer > 0) {
+                    this.poisonTimer -= (2 / 60) * dtMult;
+                    if (this.poisonTimer < 0) this.poisonTimer = 0;
+                }
+            } else if (canSimulate) {
+                this.poisonTimer += (1 / 60) * dtMult;
 
-            if (countdown) {
-                if (isMenuOrModalOpen) countdown.classList.add('hidden');
-                else countdown.classList.remove('hidden');
-            }
-
-            if (timerVal) {
-                const remaining = Math.max(0, grace - this.poisonTimer);
-                timerVal.innerText = remaining.toFixed(1);
-
-                // Actualizar animacion visual del anillo rojo
-                if (countdown) {
-                    const timerCircle = countdown.querySelector('svg circle:nth-child(2)');
-                    if (timerCircle) {
-                        // El stroke-dasharray base es 150, calculamos el porcentaje consumido
-                        const progress = Math.min(1, this.poisonTimer / grace);
-                        timerCircle.style.strokeDashoffset = (progress * 150).toString();
+                if (this.poisonTimer >= FILTER_CONFIG.co2PoisoningGracePeriod) {
+                    if (isAnoxiaCritical && !isO2Fixing) {
+                        this.triggerGameOver('MUERTE POR ANOXIA', 'anoxia');
+                    } else {
+                        this.triggerGameOver('INTOXICACIÓN POR CO2', 'critical');
                     }
                 }
             }
-
-            if (overlay) {
-                const progress = Math.min(1, this.poisonTimer / grace);
-                overlay.style.opacity = progress.toString();
-                overlay.style.backdropFilter = `blur(${progress * 15}px)`;
+        } else if (!isAnoxiaCritical && this.co2 < 15.0 && !this.isDead) {
+            if (canSimulate && this.poisonTimer > 0) {
+                this.poisonTimer -= (2 / 60) * dtMult;
+                if (this.poisonTimer < 0) this.poisonTimer = 0;
             }
+        }
 
-            // Muerte tras el periodo de gracia
-            if (this.poisonTimer >= grace) {
-                this.triggerGameOver();
-            }
-        } else if (activeScrubber.percentage > 0 && !this.isDead) {
-            // Recuperación si hay aire
-            if (this.poisonTimer > 0) {
-                this.poisonTimer -= (2 / 60) * dtMult; // Recuperación rápida
-                const countdown = document.getElementById('co2-critical-countdown');
+        // Mostrar u ocultar el contador según estado y visibilidad de menús
+        if (countdown) {
+            const isCriticalAtmo = (this.co2 >= 15.0 || isAnoxiaCritical);
+            if (isCriticalAtmo && canShowTimer && !this.isDead) {
+                countdown.classList.remove('hidden');
+                const timerVal = document.getElementById('co2-timer-value');
+                const statusLabel = countdown.querySelector('span');
+                const timerCircle = countdown.querySelector('svg circle:nth-child(2)');
 
-                if (this.poisonTimer <= 0) {
-                    this.poisonTimer = 0;
-                    if (countdown) countdown.classList.add('hidden');
+                if (timerVal) {
+                    const remaining = Math.max(0, FILTER_CONFIG.co2PoisoningGracePeriod - this.poisonTimer);
+                    timerVal.innerText = remaining.toFixed(1);
                 }
 
-                if (overlay) {
-                    const progress = this.poisonTimer / grace;
-                    overlay.style.opacity = progress.toString();
-                    overlay.style.backdropFilter = `blur(${progress * 15}px)`;
+                if (statusLabel) {
+                    if (isAnoxiaCritical) {
+                        statusLabel.innerText = "EMERGENCIA O2";
+                        statusLabel.className = "text-cyan-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-cyan-500/30";
+                    } else {
+                        statusLabel.innerText = "EMERGENCIA CO2";
+                        statusLabel.className = "text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30";
+                    }
+                }
+
+                if (timerCircle) {
+                    timerCircle.style.stroke = isAnoxiaCritical ? "#06b6d4" : "#ef4444";
+                    const progress = Math.min(1, this.poisonTimer / FILTER_CONFIG.co2PoisoningGracePeriod);
+                    timerCircle.style.strokeDashoffset = (progress * 150).toString();
                 }
             } else {
-                const countdown = document.getElementById('co2-critical-countdown');
-                if (countdown && !countdown.classList.contains('hidden')) countdown.classList.add('hidden');
+                countdown.classList.add('hidden');
+            }
+        }
+
+        // Efecto visual progresivo de Rojo (Escalado a 15%)
+        if (overlay) {
+            let redOpacity = 0;
+            if (this.co2 >= 2.0 && this.co2 < 5.0) {
+                redOpacity = (this.co2 - 2.0) * 0.05;
+            } else if (this.co2 < 10.0) {
+                redOpacity = 0.15 + (this.co2 - 5.0) * 0.05;
+            } else if (this.co2 < 15.0) {
+                redOpacity = 0.4 + (this.co2 - 10.0) * 0.04;
+            } else if (this.co2 >= 15.0) {
+                redOpacity = 0.6;
+            }
+            
+            // Caching values
+            const rOpacity = (Math.round(redOpacity * 100) / 100).toString();
+            // Reducir la distorsión global haciéndolo jugable (max 3px de blur)
+            const rBlur = Math.round(redOpacity * 3).toString();
+            
+            if (overlay.dataset.lastOp !== rOpacity) {
+                overlay.style.opacity = rOpacity;
+                overlay.dataset.lastOp = rOpacity;
+            }
+            if (overlay.dataset.lastBlur !== rBlur) {
+                overlay.style.backdropFilter = `blur(${rBlur}px)`;
+                overlay.dataset.lastBlur = rBlur;
             }
         }
 
@@ -324,14 +367,14 @@ class Player {
     }
 
     /**
-     * [ES] Activa la secuencia de fin de juego por intoxicación.
+     * [ES] Activa la secuencia de fin de juego por intoxicación o asfixia.
      */
-    triggerGameOver() {
+    triggerGameOver(reason = 'INTOXICACIÓN POR CO2', theme = 'critical') {
         if (this.isDead) return;
         this.isDead = true;
 
         if (typeof endGame !== 'undefined' && endGame) {
-            endGame.show('INTOXICACIÓN POR CO2');
+            endGame.show(reason, theme);
         } else {
             // Fallback de seguridad
             location.reload();

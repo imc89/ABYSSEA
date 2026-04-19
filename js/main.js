@@ -24,6 +24,7 @@ let scannableTarget = null;
 let bubblesAudio = null;
 let bgMusic = null;
 let lowBatteryAudio = null;
+let alarmAudio = null;
 let isMusicMuted = false;
 let isMenuOpen = false;
 
@@ -38,6 +39,9 @@ let telemetryData = {
 // Puntos de interés (Mini-descubrimientos)
 let discoveryPoints = [];
 let nearPOI = null;
+
+// Caché DOM global para optimización del Main Loop
+let domCache = {};
 
 /**
  * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
@@ -141,6 +145,10 @@ function setupGameCore() {
     lowBatteryAudio.loop = true;
     lowBatteryAudio.volume = 0.6;
 
+    alarmAudio = new Audio('audio/alarm.mp3');
+    alarmAudio.loop = true;
+    alarmAudio.volume = 0.5;
+
     // Precargar Audios
     GlobalAudioPool.initPool('fish_escape', 'audio/fish_escape.mp3', 5);
     GlobalAudioPool.initPool('light', 'audio/light.mp3', 2);
@@ -194,6 +202,11 @@ function setupGameCore() {
 
     // Event listeners
     // setupEventHandlers(); // Movido a init() para responder desde el splash
+    
+    // Caching global DOM elements para evitar consultar en cada loop (optimizacion rendimiento CPU 60fps)
+    domCache.alarmOverlay = document.getElementById('general-alarm-overlay');
+    domCache.alarmBanner = document.getElementById('alarm-hud-banner');
+    domCache.fishLayer = document.getElementById('fish-layer');
 }
 
 /**
@@ -336,7 +349,7 @@ function loop(timestamp) {
     const dtMult = dt / 16.666;
 
     update(dtMult);
-    
+
     // El Soporte Vital, Energía y la UI siempre se actualizan, incluso si el juego está pausado por menús
     if (typeof player !== 'undefined' && player) {
         player.updateLifeSupport(dtMult);
@@ -345,14 +358,20 @@ function loop(timestamp) {
         // Le pasamos el deltatime en segundos reales
         energyManager.update(dt / 1000, typeof player !== 'undefined' ? player : null);
     }
-    
+
     if (typeof uiManager !== 'undefined' && uiManager) {
-        uiManager.update(player, 
-            typeof scannableTarget !== 'undefined' ? scannableTarget : null, 
-            typeof FISH_CATALOG !== 'undefined' ? FISH_CATALOG : null, 
+        uiManager.update(player,
+            typeof scannableTarget !== 'undefined' ? scannableTarget : null,
+            typeof FISH_CATALOG !== 'undefined' ? FISH_CATALOG : null,
             typeof nearPOI !== 'undefined' ? nearPOI : null,
             typeof camera !== 'undefined' ? camera : null
         );
+    }
+
+    if (typeof oxygenManager !== 'undefined' && oxygenManager) {
+        // Le pasamos dtMult modificado a segundos y player
+        // dtMult * (16.666/1000) nos da segundos para que encaje con la configuración de filtros
+        oxygenManager.update(dt / 1000, player);
     }
 
     draw();
@@ -424,6 +443,64 @@ function update(dtMult = 1.0) {
         }
     }
 
+    // [ES] Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2)
+    const isAnoxiaAlarm = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 15.0);
+    const isCo2Alarm = (typeof player !== 'undefined' && player.co2 >= 10.0);
+
+    // Nueva verificación: Si se están tomando acciones de mejora para apagar la alarma de inmediato
+    const isO2Fixing = (isAnoxiaAlarm && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
+    const isCo2Fixing = (isCo2Alarm && typeof player !== 'undefined' && player.isCo2Improving);
+    const isPlayerDead = (typeof player !== 'undefined' && player.isDead);
+
+    const isAlarmActive = !isPlayerDead && ((isAnoxiaAlarm && !isO2Fixing) || (isCo2Alarm && !isCo2Fixing));
+
+    const alarmOverlay = domCache.alarmOverlay;
+    const alarmBanner = domCache.alarmBanner;
+    const alarmLabel = document.getElementById('alarm-hud-label');
+    const alarmValue = document.getElementById('alarm-hud-value');
+
+    if (isAlarmActive) {
+        if (alarmAudio && alarmAudio.paused) {
+            alarmAudio.play().catch(e => { });
+        }
+
+        // Pulso visual del borde de alarma
+        if (alarmOverlay) {
+            const pulse = (Math.sin(Date.now() * 0.005) * 0.5 + 0.5) * 0.4;
+            alarmOverlay.style.opacity = pulse.toString();
+        }
+
+        // Banner superior: mostrar con texto específico
+        if (alarmBanner) {
+            alarmBanner.classList.add('active');
+            // Determinar qué sistema falla y mostrar el valor relevante
+            if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
+                if (alarmLabel) alarmLabel.textContent = 'O₂ CRÍTICO · CO₂ CRÍTICO';
+                if (alarmValue) alarmValue.textContent = `O₂ ${(oxygenManager.cabinOxygen).toFixed(1)}%  ·  CO₂ ${(player.co2).toFixed(1)}%`;
+            } else if (isAnoxiaAlarm && !isO2Fixing) {
+                if (alarmLabel) alarmLabel.textContent = 'ALARMA — OXÍGENO BAJO';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
+            } else {
+                if (alarmLabel) alarmLabel.textContent = 'ALARMA — CO₂ ELEVADO';
+                if (alarmValue) alarmValue.textContent = `CO₂: ${(player.co2).toFixed(1)}%`;
+            }
+        }
+    } else {
+        if (alarmAudio && !alarmAudio.paused) {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+        }
+
+        if (alarmOverlay) {
+            alarmOverlay.style.opacity = '0';
+        }
+
+        // Ocultar banner
+        if (alarmBanner) {
+            alarmBanner.classList.remove('active');
+        }
+    }
+
     // Actualizar burbujas y filtrar las muertas
     bubbles = bubbles.filter(b => b.life > 0);
     bubbles.forEach(b => b.update(dtMult));
@@ -468,7 +545,7 @@ function update(dtMult = 1.0) {
 
     // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
     const proximateFishes = [];
-    
+
     // OPTIMIZACIÓN CRÍTICA (ALTA CALIDAD): Diccionario de grupos Boids para evitar O(N^2)
     // Al filtrar aquí, cada pez solo se compara matemáticamente contra sus pocos 
     // compañeros de banco exactos, no contra los 150 peces de pantalla.
@@ -477,15 +554,15 @@ function update(dtMult = 1.0) {
     fishes.forEach(f => {
         // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
         f.isSimulated = Math.abs(f.y - player.y) < 1500;
-        
+
         if (f.isSimulated) {
             proximateFishes.push(f);
-            
+
             // Agrupación Hash O(1)
             const groupId = `${f.config.id}_${f.groupIndex}`;
             if (!boidsGroups[groupId]) boidsGroups[groupId] = [];
             boidsGroups[groupId].push(f);
-            
+
             telemetryData.activeFishes++;
         }
     });
@@ -903,7 +980,7 @@ function updateCursorVisibility() {
     const isSubManagementOpen = uiManager.isSubManagementOpen || false;
     const isGameOverOpen = (typeof endGame !== 'undefined' && endGame && endGame.isOpen);
     const isDead = (typeof player !== 'undefined' && player && player.isDead);
-    
+
     // Si cualquiera de estas condiciones se cumple, el cursor DEBE verse
     const anyModalOpen = isMenuOpen || isScanOpen || isDiscoveryOpen || isSubManagementOpen || isGameOverOpen || isDead;
     const shouldHide = !anyModalOpen;

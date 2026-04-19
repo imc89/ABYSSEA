@@ -111,34 +111,164 @@ class UIManager {
             const val = document.getElementById(`hud-scrub-val-${i}`);
             const dot = document.getElementById(`hud-scrub-dot-${i}`);
 
-            if (bar) {
-                bar.style.width = `${s.percentage}%`;
+            const rPerc = Math.round(s.percentage * 10) / 10;
+            const rPercStr = rPerc.toString();
+
+            if (bar && bar.dataset.last !== rPercStr) {
+                bar.style.width = `${rPerc}%`;
+                bar.dataset.last = rPercStr;
                 if (s.percentage <= 25) bar.className = "h-full bg-red-500 shadow-[0_0_8px_#ef4444]";
                 else if (s.percentage <= 60) bar.className = "h-full bg-amber-500 shadow-[0_0_8px_#f59e0b]";
                 else bar.className = "h-full bg-emerald-500 shadow-[0_0_8px_#10b981]";
             }
-            if (val) val.innerText = `${Math.floor(s.percentage)}%`;
-            if (dot) {
-                if (player.activeScrubberIndex === i) dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981] animate-pulse";
+            if (val && val.dataset.last !== rPercStr) {
+                val.innerText = `${Math.floor(s.percentage)}%`;
+                val.dataset.last = rPercStr;
+            }
+
+            const isActive = player.activeScrubberIndex === i;
+            if (dot && dot.dataset.last !== String(isActive + '_' + rPercStr)) {
+                if (isActive) dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981] animate-pulse";
                 else if (s.percentage > 25) dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500/40";
                 else dot.className = "w-1.5 h-1.5 rounded-full bg-white/10";
+                dot.dataset.last = String(isActive + '_' + rPercStr);
             }
         });
 
         const atmosStatus = document.getElementById('hud-atmos-status');
         if (atmosStatus) {
-            if (player.co2 < 40) { atmosStatus.innerText = "ATM: NOMINAL"; atmosStatus.className = "text-[7px] text-emerald-500/60 uppercase font-bold tracking-widest font-mono"; }
-            else if (player.co2 < 80) { atmosStatus.innerText = "ATM: WARNING"; atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono"; }
-            else { atmosStatus.innerText = "ATM: CRITICAL"; atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse"; }
+            const co2Level = player.co2 < 40 ? 0 : (player.co2 < 80 ? 1 : 2);
+            if (atmosStatus.dataset.last !== String(co2Level)) {
+                if (co2Level === 0) { atmosStatus.innerText = "ATM: NOMINAL"; atmosStatus.className = "text-[7px] text-emerald-500/60 uppercase font-bold tracking-widest font-mono"; }
+                else if (co2Level === 1) { atmosStatus.innerText = "ATM: WARNING"; atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono"; }
+                else { atmosStatus.innerText = "ATM: CRITICAL"; atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse"; }
+                atmosStatus.dataset.last = String(co2Level);
+            }
+        }
+
+        // --- Tanques de O₂ en HUD V-dropdown ---
+        if (typeof oxygenManager !== 'undefined') {
+            oxygenManager.tanks.forEach((tank, i) => {
+                const tankBar = document.getElementById(`hud-tank-bar-${i}`);
+                const tankVal = document.getElementById(`hud-tank-val-${i}`);
+                const tankDot = document.getElementById(`hud-tank-dot-${i}`);
+                const rTank = Math.round(tank.percentage * 10) / 10;
+                const rTankStr = rTank.toString();
+                const isActive = oxygenManager.activeTankIndex === i;
+
+                if (tankBar && tankBar.dataset.last !== rTankStr) {
+                    tankBar.style.width = `${rTank.toFixed(1)}%`;
+                    let cls = 'h-full transition-all duration-500 ';
+                    if (tank.percentage <= 0) cls += 'bg-white/10';
+                    else if (tank.percentage <= 20) cls += 'bg-red-500 shadow-[0_0_8px_#ef4444]' + (isActive ? ' animate-pulse' : '');
+                    else if (tank.percentage <= 50) cls += 'bg-amber-400 shadow-[0_0_8px_#fbbf24]';
+                    else cls += 'bg-cyan-500 shadow-[0_0_8px_#06b6d4]';
+                    tankBar.className = cls;
+                    tankBar.dataset.last = rTankStr;
+                }
+                if (tankVal && tankVal.dataset.last !== rTankStr + isActive) {
+                    tankVal.textContent = tank.isRefilling ? 'RECARG...' : `${Math.floor(tank.percentage)}%`;
+                    tankVal.className = tank.percentage <= 20
+                        ? 'text-[10px] text-red-400 font-mono font-bold'
+                        : tank.percentage <= 50
+                            ? 'text-[10px] text-amber-400 font-mono font-bold'
+                            : 'text-[10px] text-cyan-400 font-mono font-bold';
+                    tankVal.dataset.last = rTankStr + isActive;
+                }
+                if (tankDot && tankDot.dataset.last !== rTankStr + isActive) {
+                    if (tank.percentage <= 0) { tankDot.style.background = 'rgba(255,255,255,0.1)'; tankDot.style.boxShadow = 'none'; }
+                    else if (isActive) { tankDot.style.background = '#06b6d4'; tankDot.style.boxShadow = '0 0 8px #06b6d4'; }
+                    else if (tank.percentage <= 20) { tankDot.style.background = '#ef4444'; tankDot.style.boxShadow = '0 0 6px #ef4444'; }
+                    else if (tank.percentage <= 50) { tankDot.style.background = '#fbbf24'; tankDot.style.boxShadow = '0 0 6px #fbbf24'; }
+                    else { tankDot.style.background = '#67e8f9'; tankDot.style.boxShadow = '0 0 4px #67e8f9'; }
+                    tankDot.dataset.last = rTankStr + isActive;
+                }
+            });
+        }
+
+        // --- O₂ y CO₂ en HUD V-dropdown ---
+        const o2Val = typeof oxygenManager !== 'undefined' ? oxygenManager.cabinOxygen : 21.0;
+        const co2Val = player.co2;
+
+        // O₂ Cabina
+        const hudO2Bar = document.getElementById('hud-o2-bar');
+        const hudO2Val = document.getElementById('hud-o2-val');
+        const hudO2Dot = document.getElementById('hud-o2-dot');
+        const rO2 = Math.round(o2Val * 10) / 10;
+        const rO2Str = rO2.toString();
+        // Barra proporcional: 21% = 100%, 0% = 0%
+        const o2BarW = Math.max(0, Math.min(100, (o2Val / 21.0) * 100));
+        if (hudO2Bar && hudO2Bar.dataset.last !== rO2Str) {
+            hudO2Bar.style.width = `${o2BarW.toFixed(1)}%`;
+            let barCls = 'h-full transition-all duration-500 ';
+            if (o2Val < 7.0) barCls += 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse';
+            else if (o2Val < 15.0) barCls += 'bg-amber-400 shadow-[0_0_8px_#fbbf24]';
+            else barCls += 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]';
+            hudO2Bar.className = barCls;
+            hudO2Bar.dataset.last = rO2Str;
+        }
+        if (hudO2Val && hudO2Val.dataset.last !== rO2Str) {
+            hudO2Val.textContent = `${rO2.toFixed(1)}%`;
+            hudO2Val.className = o2Val < 7.0 ? 'text-[10px] text-red-400 font-mono font-bold animate-pulse'
+                : o2Val < 15.0 ? 'text-[10px] text-amber-400 font-mono font-bold'
+                    : 'text-[10px] text-cyan-400 font-mono font-bold';
+            hudO2Val.dataset.last = rO2Str;
+        }
+        if (hudO2Dot && hudO2Dot.dataset.last !== rO2Str) {
+            if (o2Val < 7.0) { hudO2Dot.style.background = '#ef4444'; hudO2Dot.style.boxShadow = '0 0 6px #ef4444'; }
+            else if (o2Val < 15.0) { hudO2Dot.style.background = '#fbbf24'; hudO2Dot.style.boxShadow = '0 0 6px #fbbf24'; }
+            else { hudO2Dot.style.background = '#22d3ee'; hudO2Dot.style.boxShadow = '0 0 6px #22d3ee'; }
+            hudO2Dot.dataset.last = rO2Str;
+        }
+
+        // CO₂
+        const hudCo2Bar = document.getElementById('hud-co2-bar');
+        const hudCo2Val = document.getElementById('hud-co2-val');
+        const hudCo2Dot = document.getElementById('hud-co2-dot');
+        const rCo2 = Math.round(co2Val * 10) / 10;
+        const rCo2Str = rCo2.toString();
+        // Barra: 0% = 0%, 20% (máx) = 100%
+        const co2BarW = Math.max(0, Math.min(100, (co2Val / 20.0) * 100));
+        if (hudCo2Bar && hudCo2Bar.dataset.last !== rCo2Str) {
+            hudCo2Bar.style.width = `${co2BarW.toFixed(1)}%`;
+            let barCls = 'h-full transition-all duration-500 ';
+            if (co2Val >= 15.0) barCls += 'bg-red-500 shadow-[0_0_8px_#ef4444] animate-pulse';
+            else if (co2Val >= 5.0) barCls += 'bg-amber-400 shadow-[0_0_8px_#fbbf24]';
+            else barCls += 'bg-emerald-400 shadow-[0_0_8px_#34d399]';
+            hudCo2Bar.className = barCls;
+            hudCo2Bar.dataset.last = rCo2Str;
+        }
+        if (hudCo2Val && hudCo2Val.dataset.last !== rCo2Str) {
+            hudCo2Val.textContent = `${rCo2.toFixed(1)}%`;
+            hudCo2Val.className = co2Val >= 15.0 ? 'text-[10px] text-red-400 font-mono font-bold animate-pulse'
+                : co2Val >= 5.0 ? 'text-[10px] text-amber-400 font-mono font-bold'
+                    : 'text-[10px] text-emerald-400 font-mono font-bold';
+            hudCo2Val.dataset.last = rCo2Str;
+        }
+        if (hudCo2Dot && hudCo2Dot.dataset.last !== rCo2Str) {
+            if (co2Val >= 15.0) { hudCo2Dot.style.background = '#ef4444'; hudCo2Dot.style.boxShadow = '0 0 6px #ef4444'; }
+            else if (co2Val >= 5.0) { hudCo2Dot.style.background = '#fbbf24'; hudCo2Dot.style.boxShadow = '0 0 6px #fbbf24'; }
+            else { hudCo2Dot.style.background = '#34d399'; hudCo2Dot.style.boxShadow = '0 0 6px #34d399'; }
+            hudCo2Dot.dataset.last = rCo2Str;
         }
     }
 
     updateDepthDisplay(player) {
         const depth = Math.floor(player.y / WORLD.depthScale);
         const depthDisplay = document.getElementById('depth-display');
-        if (depthDisplay) depthDisplay.innerText = `${depth.toString().padStart(4, '0')}m`;
+        if (depthDisplay && depthDisplay.dataset.last !== String(depth)) {
+            depthDisplay.innerText = `${depth.toString().padStart(4, '0')}m`;
+            depthDisplay.dataset.last = String(depth);
+        }
+
         const depthBar = document.getElementById('depth-bar');
-        if (depthBar) depthBar.style.width = `${Math.min(100, (player.y / WORLD.height) * 100)}%`;
+        if (depthBar) {
+            const perc = Math.round(Math.min(100, (player.y / WORLD.height) * 100) * 10) / 10;
+            if (depthBar.dataset.last !== String(perc)) {
+                depthBar.style.width = `${perc}%`;
+                depthBar.dataset.last = String(perc);
+            }
+        }
     }
 
     updateZoneDisplay(player) {
@@ -163,25 +293,44 @@ class UIManager {
         // [ES] Ahora usamos la Reserva Principal de Energía (Global) de energyManager
         const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
         const battVal = Math.floor(mainBattery);
+        const isLow = battVal < 20;
 
-        if (batteryBar) {
+        if (batteryBar && batteryBar.dataset.last !== String(battVal)) {
             batteryBar.style.width = `${battVal}%`;
-            if (battVal < 20) batteryBar.classList.replace('bg-yellow-500', 'bg-red-500');
+            if (isLow) batteryBar.classList.replace('bg-yellow-500', 'bg-red-500');
             else batteryBar.classList.replace('bg-red-500', 'bg-yellow-500');
+            batteryBar.dataset.last = String(battVal);
         }
-        if (batteryPercent) {
+
+        if (batteryPercent && batteryPercent.dataset.last !== String(battVal)) {
             batteryPercent.innerText = `${battVal}%`;
-            if (battVal < 20) batteryPercent.classList.add('text-red-500', 'animate-pulse');
+            if (isLow) batteryPercent.classList.add('text-red-500', 'animate-pulse');
             else batteryPercent.classList.remove('text-red-500', 'animate-pulse');
+            batteryPercent.dataset.last = String(battVal);
         }
+
         if (batteryLed) {
-            if (battVal < 20) {
-                batteryLed.style.background = '#ef4444'; batteryLed.style.boxShadow = '0 0 6px #ef4444'; batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate';
+            const ledState = isLow ? "low" : (player.lightOn ? "on" : "off");
+            if (batteryLed.dataset.last !== ledState) {
+                const lightLabel = document.getElementById('hud-light-label');
+                if (isLow) {
+                    batteryLed.style.background = '#ef4444';
+                    batteryLed.style.boxShadow = '0 0 6px #ef4444';
+                    batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate';
+                    if (lightLabel) { lightLabel.textContent = 'BAJA'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-red-400 animate-pulse'; }
+                } else if (player.lightOn) {
+                    batteryLed.style.background = '#eab308';
+                    batteryLed.style.boxShadow = '0 0 8px #eab308';
+                    batteryLed.style.animation = 'none';
+                    if (lightLabel) { lightLabel.textContent = 'ON'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-yellow-400'; }
+                } else {
+                    batteryLed.style.background = 'rgba(255,255,255,0.08)';
+                    batteryLed.style.boxShadow = 'none';
+                    batteryLed.style.animation = 'none';
+                    if (lightLabel) { lightLabel.textContent = 'OFF'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-white/20'; }
+                }
+                batteryLed.dataset.last = ledState;
             }
-            else if (player.lightOn) {
-                batteryLed.style.background = '#eab308'; batteryLed.style.boxShadow = '0 0 6px #eab308'; batteryLed.style.animation = 'none';
-            }
-            else { batteryLed.style.background = 'rgba(255,255,255,0.08)'; batteryLed.style.boxShadow = 'none'; batteryLed.style.animation = 'none'; }
         }
     }
 
@@ -195,22 +344,26 @@ class UIManager {
         const statusText = document.getElementById('sonar-status');
         const statusDot = document.getElementById('sonar-status-dot');
         if (progressRing && statusText && statusDot) {
-            const circumference = 150.8;
-            if (player.sonarActive) {
-                progressRing.style.strokeDashoffset = 0; statusText.innerText = "PING...";
-                statusText.classList.add('text-emerald-400');
-                statusDot.className = "w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse";
-            } else if (player.sonarCharging) {
-                const progress = 1 - (player.sonarCooldown / player.sonarMaxCooldown);
-                const offset = circumference * (1 - progress);
-                progressRing.style.strokeDashoffset = offset;
-                statusText.innerText = `Cargando ${Math.ceil(player.sonarCooldown)}s`;
-                statusText.classList.remove('text-emerald-400');
-                statusDot.className = "w-1.5 h-1.5 bg-yellow-500 rounded-full";
-            } else {
-                progressRing.style.strokeDashoffset = 0; statusText.innerText = "READY";
-                statusText.classList.remove('text-emerald-400');
-                statusDot.className = "w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_5px_#10b981]";
+            const stateHash = `${player.sonarActive}_${player.sonarCharging ? Math.ceil(player.sonarCooldown) : 0}`;
+            if (progressRing.dataset.last !== stateHash) {
+                const circumference = 150.8;
+                if (player.sonarActive) {
+                    progressRing.style.strokeDashoffset = 0; statusText.innerText = "PING...";
+                    statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-emerald-400";
+                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse";
+                } else if (player.sonarCharging) {
+                    const progress = 1 - (player.sonarCooldown / player.sonarMaxCooldown);
+                    const offset = circumference * (1 - progress);
+                    progressRing.style.strokeDashoffset = offset;
+                    statusText.innerText = `Cargando ${Math.ceil(player.sonarCooldown)}s`;
+                    statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-white/50";
+                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
+                } else {
+                    progressRing.style.strokeDashoffset = 0; statusText.innerText = "READY";
+                    statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-white/50";
+                    statusDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]";
+                }
+                progressRing.dataset.last = stateHash;
             }
         }
     }
@@ -233,10 +386,13 @@ class UIManager {
         if (scannableTarget && scannerUI) {
             scannerUI.style.opacity = "1"; scannerUI.style.transform = "translateX(0)";
             if (indicator) { indicator.innerText = "PULSA [ENTER] ANALIZAR"; indicator.style.display = 'block'; }
-            const scanName = document.getElementById('scan-name'); if (scanName) scanName.innerText = scannableTarget.config.nombre;
-            const scanGenus = document.getElementById('scan-genus'); if (scanGenus) scanGenus.innerText = scannableTarget.config.cientifico;
-            const scanRange = document.getElementById('scan-range'); if (scanRange) scanRange.innerText = `${scannableTarget.config.minProf}m - ${scannableTarget.config.maxProf}m`;
-            const scanBehavior = document.getElementById('scan-behavior'); if (scanBehavior) scanBehavior.innerText = scannableTarget.config.esCardumen ? "Cardumen" : "Solitario";
+            
+            const cfg = scannableTarget.config;
+            const scanName = document.getElementById('scan-name'); if (scanName) scanName.innerText = cfg.nombre;
+            const scanGenus = document.getElementById('scan-genus'); if (scanGenus) scanGenus.innerText = cfg.cientifico;
+            const scanRange = document.getElementById('scan-range'); if (scanRange) scanRange.innerText = `${cfg.minProf}m - ${cfg.maxProf}m`;
+            const scanBehavior = document.getElementById('scan-behavior'); if (scanBehavior) scanBehavior.innerText = cfg.esCardumen ? "Cardumen" : "Solitario";
+
         } else if (scannerUI) {
             scannerUI.style.opacity = "0"; scannerUI.style.transform = "translateX(20px)";
             if (indicator) indicator.style.display = 'none';
@@ -264,6 +420,11 @@ class UIManager {
             if (mDepth) mDepth.innerText = `${target.config.minProf}m - ${target.config.maxProf}m`;
             if (mBehav) mBehav.innerText = target.config.esCardumen ? "Cardumen" : "Solitario";
             if (modal) modal.classList.add('active');
+
+            // Backup de registro al abrir el modal (por si falló el avistamiento)
+            if (typeof window.addSampleToLab === 'function') {
+                window.addSampleToLab(target.config);
+            }
         }
         if (typeof window.updateCursorVisibility === 'function') window.updateCursorVisibility();
     }
@@ -276,7 +437,7 @@ class UIManager {
         const currentDepth = player.y;
         const indicatorContainer = document.getElementById('depth-species-indicators');
         if (!indicatorContainer) return;
-        const nearbySpecies = fishCatalog.filter(fish => currentDepth >= (fish.minProf * WORLD.depthScale) && currentDepth <= (fish.maxProf * WORLD.depthScale));
+        const nearbySpecies = fishCatalog.filter(fish => currentDepth >= (fish.minProf * window.WORLD?.depthScale) && currentDepth <= (fish.maxProf * window.WORLD?.depthScale));
         if (nearbySpecies.length > 0) {
             indicatorContainer.innerHTML = nearbySpecies.map(fish => `<span class="species-tag">${fish.nombre}</span>`).join('');
             indicatorContainer.style.opacity = "1";

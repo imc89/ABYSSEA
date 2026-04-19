@@ -117,7 +117,9 @@ class SubManagementManager {
                 o2Val: document.getElementById('mgmt-o2-value'),
                 co2Display: document.getElementById('mgmt-co2-display'),
                 co2Leds: document.getElementById('mgmt-co2-leds'),
-                co2Status: document.getElementById('mgmt-co2-led-status')
+                co2Status: document.getElementById('mgmt-co2-led-status'),
+                cabinCo2Display: document.getElementById('scrubber-cabin-co2-display'),
+                cabinCo2Status: document.getElementById('scrubber-cabin-co2-status')
             };
         }
 
@@ -125,11 +127,13 @@ class SubManagementManager {
         if (this.dom.backdrop) {
             let bgImg;
             const hasPower = typeof energyManager !== 'undefined' ? !energyManager.isBlackout : true;
+            const isFaroSwOn = typeof energyManager !== 'undefined' ? energyManager.switches.faro : true;
 
             if (player.poisonTimer > 0) {
                 bgImg = 'img/controls/alarm.jpg';
             } else {
-                bgImg = (player.lightOn && hasPower) ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
+                // Solo mostrar luz si: hay energía global AND el interruptor de faro está ON AND el foco está activo
+                bgImg = (player.lightOn && hasPower && isFaroSwOn) ? 'img/controls/light.jpg' : 'img/controls/dark.jpg';
             }
 
             if (this._lastBgImg !== bgImg) {
@@ -166,27 +170,48 @@ class SubManagementManager {
     }
     updateLifeSupportUI(player) {
         // Barras y valores redondeados para evitar ruido en el DOM
-        const rO2 = Math.round(player.oxygen * 10) / 10;
+        let o2Reserve = 100;
+        if (typeof oxygenManager !== 'undefined') {
+            o2Reserve = (oxygenManager.tanks[0].percentage + oxygenManager.tanks[1].percentage) / 2;
+        } else {
+            o2Reserve = player.oxygen;
+        }
+
+        const rO2 = Math.round(o2Reserve * 10) / 10;
         if (this.dom.o2Bar && this._lastO2 !== rO2) {
             this.dom.o2Bar.style.width = `${rO2}%`;
             this._lastO2 = rO2;
         }
         if (this.dom.o2Val && this._lastO2Text !== rO2) {
             this.dom.o2Val.innerText = `${rO2.toFixed(1)}%`;
+
+            // Color dinámico según nivel de reserva
+            if (rO2 < 17.0) {
+                this.dom.o2Val.className = "text-red-500 font-mono text-xs font-bold leading-none animate-pulse";
+            } else if (rO2 < 20.0) {
+                this.dom.o2Val.className = "text-amber-400 font-mono text-xs font-bold leading-none";
+            } else {
+                this.dom.o2Val.className = "text-emerald-400 font-mono text-xs font-bold leading-none";
+            }
             this._lastO2Text = rO2;
         }
 
         if (this.dom.co2Display) {
-            const conc = 0.025 + (player.co2 / 1000);
-            const rConc = conc.toFixed(3);
+            const rConc = player.co2.toFixed(1);
 
             if (this._lastCo2Val !== rConc) {
                 this.dom.co2Display.innerText = rConc;
+
+                // Actualizar el nuevo indicador en el panel de scrubbers
+                if (this.dom.cabinCo2Display) {
+                    this.dom.cabinCo2Display.innerText = rConc;
+                }
+
                 this._lastCo2Val = rConc;
 
                 if (this.dom.co2Leds && this.dom.co2Status) {
                     const leds = this.dom.co2Leds.children;
-                    const co2Level = player.co2 < 40 ? 0 : (player.co2 < 80 ? 1 : 2);
+                    const co2Level = player.co2 < 1.0 ? 0 : (player.co2 < 5.0 ? 1 : 2);
 
                     if (this._lastCo2Level !== co2Level) {
                         if (co2Level === 0) {
@@ -195,21 +220,52 @@ class SubManagementManager {
                             leds[2].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
                             this.dom.co2Status.innerText = "Nominal";
                             this.dom.co2Status.className = "text-[7px] text-emerald-500/40 font-bold uppercase text-center";
-                            this.dom.co2Display.classList.replace('text-red-500', 'text-cyan-400');
+
+                            // Color dinámico del texto de CO2
+                            this.dom.co2Display.className = "text-emerald-400 font-mono text-3xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+
+                            // Estados para el nuevo indicador
+                            if (this.dom.cabinCo2Display) {
+                                this.dom.cabinCo2Display.className = "text-emerald-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+                            }
+                            if (this.dom.cabinCo2Status) {
+                                this.dom.cabinCo2Status.innerText = "NOMINAL";
+                                this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                            }
                         } else if (co2Level === 1) {
                             leds[0].className = "w-1 h-3 bg-amber-500 rounded-sm";
                             leds[1].className = "w-1 h-3 bg-amber-500 rounded-sm shadow-[0_0_5px_#f59e0b]";
                             leds[2].className = "w-1 h-3 bg-amber-500/10 rounded-sm";
                             this.dom.co2Status.innerText = "Warning";
                             this.dom.co2Status.className = "text-[7px] text-amber-500 font-bold uppercase text-center";
-                            this.dom.co2Display.classList.replace('text-red-500', 'text-cyan-400');
+
+                            // Color dinámico del texto de CO2
+                            this.dom.co2Display.className = "text-amber-400 font-mono text-3xl tracking-tighter drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]";
+
+                            if (this.dom.cabinCo2Display) {
+                                this.dom.cabinCo2Display.className = "text-amber-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]";
+                            }
+                            if (this.dom.cabinCo2Status) {
+                                this.dom.cabinCo2Status.innerText = "WARNING";
+                                this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30";
+                            }
                         } else {
                             leds[0].className = "w-1 h-3 bg-red-500 rounded-sm";
                             leds[1].className = "w-1 h-3 bg-red-500 rounded-sm";
                             leds[2].className = "w-1 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_#ef4444] animate-pulse";
                             this.dom.co2Status.innerText = "Critical";
                             this.dom.co2Status.className = "text-[7px] text-red-500 font-bold uppercase text-center";
-                            this.dom.co2Display.classList.replace('text-cyan-400', 'text-red-500');
+
+                            // Color dinámico del texto de CO2
+                            this.dom.co2Display.className = "text-red-600 font-mono text-3xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse";
+
+                            if (this.dom.cabinCo2Display) {
+                                this.dom.cabinCo2Display.className = "text-red-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse";
+                            }
+                            if (this.dom.cabinCo2Status) {
+                                this.dom.cabinCo2Status.innerText = "CRITICAL";
+                                this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse";
+                            }
                         }
                         this._lastCo2Level = co2Level;
                     }
@@ -606,6 +662,10 @@ class SubManagementManager {
     }
 }
 
+// Exportar
+if (typeof window !== 'undefined') {
+    window.SubManagementManager = SubManagementManager;
+}
 // Exportar
 if (typeof window !== 'undefined') {
     window.SubManagementManager = SubManagementManager;
