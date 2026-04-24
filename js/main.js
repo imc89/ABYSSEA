@@ -373,6 +373,10 @@ function loop(timestamp) {
         // dtMult * (16.666/1000) nos da segundos para que encaje con la configuración de filtros
         oxygenManager.update(dt / 1000, player);
     }
+    
+    if (typeof temperatureManager !== 'undefined' && temperatureManager) {
+        temperatureManager.update(dt / 1000, player);
+    }
 
     draw();
     requestAnimationFrame(loop);
