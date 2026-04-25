@@ -32,6 +32,7 @@ class TemperatureManager {
                 OFF: document.getElementById('temp-btn-off')
             },
 
+            pumpBtn: document.getElementById('temp-pump-btn'),
             pumpLed: document.getElementById('temp-pump-led'),
             pumpHandle: document.getElementById('temp-pump-handle'),
 
@@ -75,16 +76,19 @@ class TemperatureManager {
         this.setpoint += amount;
         if (this.setpoint > 30.0) this.setpoint = 30.0;
         if (this.setpoint < 10.0) this.setpoint = 10.0;
-        
+
         // If manually adjusted, ensure we are in AUTO mode so it takes effect
         if (this.mode !== 'AUTO' && this.mode !== 'OFF') {
             this.mode = 'AUTO';
         }
-        
+
         this.updateUI();
     }
 
     togglePump() {
+        let hasEnergy = typeof energyManager !== 'undefined' ? (!energyManager.isBlackout && energyManager.switches.calefactor) : true;
+        if (!hasEnergy) return;
+
         this.pumpActive = !this.pumpActive;
         if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('toggle', 0.8);
         this.updateUI();
@@ -105,12 +109,28 @@ class TemperatureManager {
         if (!this.emergencyGuardOpen) return;
         if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('toggle', 1.0);
         this.emergencyActive = !this.emergencyActive;
+
+        if (this.emergencyActive) {
+            // Coste: Consume un 20% del Oxígeno total
+            if (typeof window.oxygenManager !== 'undefined' && typeof window.oxygenManager.consume === 'function') {
+                window.oxygenManager.consume(20);
+            }
+            // Reset survival timers
+            this.hyperTimer = 0;
+            this.hypoTimer = 0;
+        }
+
         this.updateUI();
     }
 
     update(dtSec, player) {
         // Temperature simulation logic
-        let hasEnergy = typeof energyManager !== 'undefined' ? !energyManager.isBlackout : true;
+        let hasEnergy = typeof energyManager !== 'undefined' ? (!energyManager.isBlackout && energyManager.switches.calefactor) : true;
+
+        if (!hasEnergy && this.pumpActive) {
+            this.pumpActive = false;
+            this.updateUI();
+        }
 
         // Calculate external temperature based on Depth
         let depthMeters = 0;
@@ -149,32 +169,187 @@ class TemperatureManager {
             this.humidity = Math.max(0, Math.min(100, this.humidity));
         }
 
-        // Only active if we have energy and not completely OFF or Emergency breaks it
-        let activeHeating = false;
-        let activeCooling = false;
+        // Emergency purge logic
+        let systemOff = (!hasEnergy || this.mode === 'OFF');
 
-        if (hasEnergy && !this.emergencyActive && this.mode !== 'OFF') {
-            if (this.mode === 'HEAT') activeHeating = true;
-            else if (this.mode === 'COOLING') activeCooling = true;
-            else if (this.mode === 'AUTO') {
-                if (this.internalTemp < this.setpoint - 0.5) activeHeating = true;
-                else if (this.internalTemp > this.setpoint + 0.5) activeCooling = true;
+        if (this.emergencyActive) {
+            let rate = dtSec / 2.0; // 2 seconds to complete
+            this.internalTemp += (20.0 - this.internalTemp) * rate * 5;
+            this.humidity += (20.0 - this.humidity) * rate * 5;
+
+            // Fast-forward offTimer to the cooling phase so it drops afterwards
+            if (systemOff && this.offTimer < 90) {
+                this.offTimer = 90;
+            }
+
+            if (Math.abs(this.internalTemp - 20) < 0.5 && Math.abs(this.humidity - 20) < 0.5) {
+                this.internalTemp = 20.0;
+                this.humidity = 20.0;
+            }
+        } else {
+            if (systemOff) {
+                this.offTimer = (this.offTimer || 0) + dtSec;
+
+                let tempDelta = 0;
+                let humDelta = 0;
+
+                // Curve logic (Relative) based on gameplay table:
+                if (this.offTimer <= 20) {
+                    tempDelta = 0.45;    // 21 to 30 over 20s
+                    humDelta = 1.5;      // 45 to 75 over 20s
+                } else if (this.offTimer <= 60) {
+                    tempDelta = 0.225;   // 30 to 39 over 40s
+                    humDelta = 0.625;    // 75 to 100 over 40s
+                } else if (this.offTimer <= 90) {
+                    // NEW PLATEAU: 30s at peak heat to trigger Hyperthermia Game Over
+                    tempDelta = 0;
+                    humDelta = 0;
+                } else if (this.offTimer <= 210) {
+                    tempDelta = -0.225;  // 39 to 12 over 120s
+                    humDelta = -0.5;     // 100 to 40 over 120s
+                } else if (this.offTimer <= 330) {
+                    tempDelta = -0.075;  // 12 to 3 over 120s
+                    humDelta = -0.208;   // 40 to 15 over 120s
+                } else {
+                    // Stabilize at external temp
+                    this.internalTemp += (Math.max(this.externalTemp, 3) - this.internalTemp) * dtSec * 0.1;
+                    this.humidity += (15 - this.humidity) * dtSec * 0.1;
+                }
+
+                if (this.offTimer <= 330) {
+                    this.internalTemp += tempDelta * dtSec;
+                    this.humidity += humDelta * dtSec;
+                }
+
+                // Clamps
+                this.internalTemp = Math.max(Math.min(this.internalTemp, 39.5), Math.max(this.externalTemp, 3));
+                this.humidity = Math.max(10, Math.min(this.humidity, 100));
+
+                // Ceguera Operativa: Humidity reaches ~70%
+                if (this.humidity >= 70) {
+                    document.body.classList.add('humidity-blindness');
+                } else {
+                    document.body.classList.remove('humidity-blindness');
+                }
+            } else {
+                this.offTimer = 0; // Reset
+                document.body.classList.remove('humidity-blindness');
+
+                // System is ON. Stabilize in ~10 seconds if pump is active.
+                if (this.pumpActive) {
+                    let tempDiff = this.setpoint - this.internalTemp;
+                    // Enfriamiento más rápido que calentamiento si agua exterior está fría
+                    let speedMult = (tempDiff < 0 && this.externalTemp < 10) ? 1.5 : 1.0;
+
+                    this.internalTemp += tempDiff * (0.1 * dtSec * speedMult);
+                    this.humidity += (45 - this.humidity) * (0.1 * dtSec); // Stabilize humidity
+                } else {
+                    // System ON but pump OFF (Internal circulation only)
+                    let envPull = (this.externalTemp - this.internalTemp) * (0.02 * dtSec);
+                    this.internalTemp += envPull;
+                }
             }
         }
 
-        // Pump transfers heat to outside 
-        if (this.pumpActive && !activeHeating) {
-            // Environment pulls temperature down towards external
-            let envPull = (this.externalTemp - this.internalTemp) * (0.05 * dtSec);
-            this.internalTemp += envPull;
-        } else if (!this.pumpActive && !hasEnergy) {
-            // Very slow pull
-            let envPull = (this.externalTemp - this.internalTemp) * (0.01 * dtSec);
-            this.internalTemp += envPull;
+        // --- Overlays and Countdowns ---
+        const hyperOverlay = document.getElementById('hyperthermia-overlay');
+        const hypoOverlay = document.getElementById('hypothermia-overlay');
+
+        // Efecto visual progresivo
+        if (hyperOverlay) {
+            if (this.internalTemp >= 30) {
+                let hyperOp = Math.min(0.6, (this.internalTemp - 30) / 8);
+                hyperOverlay.style.opacity = hyperOp.toString();
+                hyperOverlay.style.backdropFilter = `blur(${Math.round(hyperOp * 4)}px)`;
+            } else {
+                hyperOverlay.style.opacity = "0";
+                hyperOverlay.style.backdropFilter = "blur(0px)";
+            }
         }
 
-        if (activeHeating) this.internalTemp += 1.5 * dtSec;
-        if (activeCooling) this.internalTemp -= 1.0 * dtSec;
+        if (hypoOverlay) {
+            if (this.internalTemp <= 12) {
+                let hypoOp = Math.min(0.6, (12 - this.internalTemp) / 7);
+                hypoOverlay.style.opacity = hypoOp.toString();
+                hypoOverlay.style.backdropFilter = `blur(${Math.round(hypoOp * 4)}px)`;
+            } else {
+                hypoOverlay.style.opacity = "0";
+                hypoOverlay.style.backdropFilter = "blur(0px)";
+            }
+        }
+
+        // Game Over Conditions & Timers
+        const isHyperCritical = this.internalTemp > 38;
+        const isHypoCritical = this.internalTemp < 5;
+
+        // Evaluar timers
+        if (isHyperCritical) {
+            this.hyperTimer = (this.hyperTimer || 0) + dtSec;
+            if (this.hyperTimer >= 20 && typeof player !== 'undefined' && player) {
+                player.triggerGameOver('HIPERTERMIA', 'hyperthermia');
+            }
+        } else {
+            this.hyperTimer = 0;
+        }
+
+        if (isHypoCritical) {
+            this.hypoTimer = (this.hypoTimer || 0) + dtSec;
+            if (this.hypoTimer >= 60 && typeof player !== 'undefined' && player) {
+                player.triggerGameOver('HIPOTERMIA', 'hypothermia');
+            }
+        } else {
+            this.hypoTimer = 0;
+        }
+
+        // Mostrar Timer UI
+        const tempCountdown = document.getElementById('temp-critical-countdown');
+        if (tempCountdown) {
+            const isMenuOpenGlobal = (typeof isMenuOpen !== 'undefined' ? isMenuOpen : false);
+            const isTechMenuOpen =
+                (typeof subManagementManager !== 'undefined' && subManagementManager.isOpen) ||
+                (typeof uiManager !== 'undefined' && (
+                    uiManager.isSubManagementOpen ||
+                    uiManager.isDiscoveryModalOpen ||
+                    uiManager.isScanModalOpen
+                ));
+            const canShowTimer = !isMenuOpenGlobal && !isTechMenuOpen;
+
+            const isDead = typeof player !== 'undefined' && player.isDead;
+
+            if ((isHyperCritical || isHypoCritical) && canShowTimer && !isDead) {
+                tempCountdown.classList.remove('hidden');
+
+                const timerVal = document.getElementById('temp-timer-value');
+                const statusLabel = document.getElementById('temp-timer-label');
+                const timerCircle = tempCountdown.querySelector('svg circle:nth-child(2)');
+
+                if (isHyperCritical) {
+                    if (timerVal) timerVal.innerText = Math.max(0, 20 - this.hyperTimer).toFixed(1);
+                    if (statusLabel) {
+                        statusLabel.innerText = "HIPERTERMIA";
+                        statusLabel.className = "text-orange-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-orange-500/30";
+                    }
+                    if (timerCircle) {
+                        timerCircle.style.stroke = "#f97316"; // orange-500
+                        const progress = Math.min(1, this.hyperTimer / 20);
+                        timerCircle.style.strokeDashoffset = (progress * 150).toString();
+                    }
+                } else if (isHypoCritical) {
+                    if (timerVal) timerVal.innerText = Math.max(0, 60 - this.hypoTimer).toFixed(1);
+                    if (statusLabel) {
+                        statusLabel.innerText = "HIPOTERMIA";
+                        statusLabel.className = "text-blue-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-blue-500/30";
+                    }
+                    if (timerCircle) {
+                        timerCircle.style.stroke = "#3b82f6"; // blue-500
+                        const progress = Math.min(1, this.hypoTimer / 60);
+                        timerCircle.style.strokeDashoffset = (progress * 150).toString();
+                    }
+                }
+            } else {
+                tempCountdown.classList.add('hidden');
+            }
+        }
 
         // Handle Temp History logic
         if (!this.tempHistory) {
@@ -252,14 +427,14 @@ class TemperatureManager {
             for (let i = 0; i < 5; i++) {
                 let temp = this.tempHistory[i];
                 let percent = Math.max(10, Math.min(100, ((temp - 10) / 20) * 100)); // Map 10-30C to 10-100%
-                
-                let r=34, g=211, b=238; // cyan-400
-                if (temp > 26) { r=248; g=113; b=113; } // red-400
-                else if (temp < 16) { r=96; g=165; b=250; } // blue-400
-                
+
+                let r = 34, g = 211, b = 238; // cyan-400
+                if (temp > 26) { r = 248; g = 113; b = 113; } // red-400
+                else if (temp < 16) { r = 96; g = 165; b = 250; } // blue-400
+
                 let opacity = opacities[i];
                 let shadow = i === 4 ? `0 0 15px rgba(${r},${g},${b},0.8)` : 'none';
-                
+
                 html += `<div class="w-2.5 rounded-sm transition-all duration-500" style="background-color: rgba(${r},${g},${b},${opacity}); height: ${percent}%; box-shadow: ${shadow}"></div>`;
             }
             this.dom.historyGraph.innerHTML = html;
@@ -332,7 +507,14 @@ class TemperatureManager {
         });
 
         // Update PUMP UI
-        if (this.pumpActive) {
+        let hasEnergy = typeof energyManager !== 'undefined' ? (!energyManager.isBlackout && energyManager.switches.calefactor) : true;
+
+        if (this.dom.pumpBtn) {
+            this.dom.pumpBtn.style.opacity = hasEnergy ? '1' : '0.4';
+            this.dom.pumpBtn.style.cursor = hasEnergy ? 'pointer' : 'not-allowed';
+        }
+
+        if (this.pumpActive && hasEnergy) {
             this.dom.pumpLed.style.backgroundColor = '#10b981';
             this.dom.pumpLed.style.boxShadow = '0 0 8px #10b981';
             this.dom.pumpHandle.style.background = 'linear-gradient(to bottom, rgba(16,185,129,0.4), rgba(6,78,59,0.1))';
@@ -341,7 +523,7 @@ class TemperatureManager {
             this.dom.pumpHandle.style.top = '0';
             this.dom.pumpHandle.style.bottom = 'auto';
         } else {
-            this.dom.pumpLed.style.backgroundColor = 'rgba(255,255,255,0.1)';
+            this.dom.pumpLed.style.backgroundColor = hasEnergy ? 'rgba(255,255,255,0.1)' : 'rgba(239,68,68,0.3)';
             this.dom.pumpLed.style.boxShadow = 'none';
             this.dom.pumpHandle.style.background = 'linear-gradient(to top, rgba(255,255,255,0.05), transparent)';
             this.dom.pumpHandle.style.borderTop = '1px solid rgba(255,255,255,0.1)';

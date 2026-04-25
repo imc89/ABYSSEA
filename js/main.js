@@ -158,6 +158,8 @@ function setupGameCore() {
 
     // Cargar imagen del jugador
     imageCache.load('player', PLAYER_CONFIG.image);
+    // Cargar imagen del suelo abisal (límite 11000m)
+    imageCache.load('floor', 'img/floor/floor.png');
 
     // Generar partículas de nieve marina (ahora en espacio de pantalla)
     for (let i = 0; i < WORLD.particleCount; i++) {
@@ -202,7 +204,7 @@ function setupGameCore() {
 
     // Event listeners
     // setupEventHandlers(); // Movido a init() para responder desde el splash
-    
+
     // Caching global DOM elements para evitar consultar en cada loop (optimizacion rendimiento CPU 60fps)
     domCache.alarmOverlay = document.getElementById('general-alarm-overlay');
     domCache.alarmBanner = document.getElementById('alarm-hud-banner');
@@ -373,7 +375,7 @@ function loop(timestamp) {
         // dtMult * (16.666/1000) nos da segundos para que encaje con la configuración de filtros
         oxygenManager.update(dt / 1000, player);
     }
-    
+
     if (typeof temperatureManager !== 'undefined' && temperatureManager) {
         temperatureManager.update(dt / 1000, player);
     }
@@ -447,16 +449,28 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // [ES] Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2)
+    // [ES] Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2/Temperatura)
     const isAnoxiaAlarm = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 15.0);
     const isCo2Alarm = (typeof player !== 'undefined' && player.co2 >= 10.0);
+
+    // Alarmas de temperatura
+    const tempMgr = typeof window.temperatureManager !== 'undefined' ? window.temperatureManager : null;
+    const isHyperAlarm = tempMgr && tempMgr.hyperTimer > 0;
+    const isHypoAlarm = tempMgr && tempMgr.hypoTimer > 0;
+    // La alarma térmica se silencia si se activa la emergencia de purga (acción de salvación)
+    const isTempFixing = tempMgr && tempMgr.emergencyActive;
+    const isTempAlarm = (isHyperAlarm || isHypoAlarm) && !isTempFixing;
 
     // Nueva verificación: Si se están tomando acciones de mejora para apagar la alarma de inmediato
     const isO2Fixing = (isAnoxiaAlarm && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
     const isCo2Fixing = (isCo2Alarm && typeof player !== 'undefined' && player.isCo2Improving);
     const isPlayerDead = (typeof player !== 'undefined' && player.isDead);
 
-    const isAlarmActive = !isPlayerDead && ((isAnoxiaAlarm && !isO2Fixing) || (isCo2Alarm && !isCo2Fixing));
+    const isAlarmActive = !isPlayerDead && (
+        (isAnoxiaAlarm && !isO2Fixing) ||
+        (isCo2Alarm && !isCo2Fixing) ||
+        isTempAlarm
+    );
 
     const alarmOverlay = domCache.alarmOverlay;
     const alarmBanner = domCache.alarmBanner;
@@ -474,11 +488,19 @@ function update(dtMult = 1.0) {
             alarmOverlay.style.opacity = pulse.toString();
         }
 
-        // Banner superior: mostrar con texto específico
+        // Banner superior: mostrar con texto específico según prioridad de alarma
         if (alarmBanner) {
             alarmBanner.classList.add('active');
-            // Determinar qué sistema falla y mostrar el valor relevante
-            if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
+
+            if (isHyperAlarm && !isTempFixing) {
+                const secsLeft = Math.max(0, 10 - tempMgr.hyperTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPERTERMIA';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+            } else if (isHypoAlarm && !isTempFixing) {
+                const secsLeft = Math.max(0, 10 - tempMgr.hypoTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPOTERMIA';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+            } else if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
                 if (alarmLabel) alarmLabel.textContent = 'O₂ CRÍTICO · CO₂ CRÍTICO';
                 if (alarmValue) alarmValue.textContent = `O₂ ${(oxygenManager.cabinOxygen).toFixed(1)}%  ·  CO₂ ${(player.co2).toFixed(1)}%`;
             } else if (isAnoxiaAlarm && !isO2Fixing) {
@@ -617,6 +639,7 @@ function findScannableTarget() {
 
 let bgCache = {
     color: [0, 0, 0],
+    colorString: 'rgb(0,0,0)',
     lastDepth: -9999
 };
 
@@ -650,10 +673,11 @@ function draw() {
         }
 
         bgCache.color = bg;
+        bgCache.colorString = `rgb(${Math.round(bg[0])},${Math.round(bg[1])},${Math.round(bg[2])})`;
         bgCache.lastDepth = depthMeters;
     }
 
-    ctx.fillStyle = `rgb(${bgCache.color[0]},${bgCache.color[1]},${bgCache.color[2]})`;
+    ctx.fillStyle = bgCache.colorString;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Alpha ambiental basado en zonas científicas:
@@ -805,6 +829,30 @@ function draw() {
     // Dibujar jugador
     const playerImage = imageCache.get('player');
     player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
+
+    // --- SUELO ABISAL (límite 11000m = Y 110000 en unidades de juego) ---
+    // El centro del submarino se detiene en Y=110000. El suelo visual empieza
+    // medio-alto del jugador más abajo para quedar justo bajo el casco.
+    const FLOOR_WORLD_Y = 110000 + (PLAYER_CONFIG.height / 2);
+    const floorScreenY = FLOOR_WORLD_Y - camera.y;
+
+    // Solo dibujar si está cerca de pantalla
+    if (floorScreenY < canvas.height + 600 && floorScreenY > -600) {
+        const floorImg = imageCache.get('floor');
+        if (floorImg) {
+            // Cubrir todo el ancho del canvas, anclar la parte superior de la imagen al límite
+            const fW = canvas.width;
+            const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
+            ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+        } else {
+            // Fallback si la imagen aún no ha cargado: línea sólida con degradado
+            const grad = ctx.createLinearGradient(0, floorScreenY, 0, floorScreenY + 120);
+            grad.addColorStop(0, 'rgba(30, 18, 8, 1)');
+            grad.addColorStop(1, 'rgba(10, 5, 2, 1)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, floorScreenY, canvas.width, canvas.height);
+        }
+    }
 }
 
 // Iniciar el juego cuando cargue la página

@@ -13,10 +13,10 @@ class SubManagementManager {
 
     generateParticles(index) {
         this.particles[index] = [];
-        // Aumento masivo para relleno total y compactación absoluta
-        const count = 3200;
+        // Aumento optimizado: menos partículas pero más grandes
+        const count = 500;
         for (let i = 0; i < count; i++) {
-            const r = 2.0 + Math.random() * 1.8;
+            const r = 4.0 + Math.random() * 3.6;
             const halfLen = r * (0.8 + Math.random() * 0.9);
             const base = 215 + Math.random() * 35;
 
@@ -298,7 +298,8 @@ class SubManagementManager {
                 const ch = dom.canvas.clientHeight;
 
                 if (cw > 0 && ch > 0) {
-                    const needsRedraw = this._lastScrubPerc?.[i] !== s.percentage || this._lastWidth?.[i] !== cw;
+                    const rPerc = Math.round(s.percentage * 5) / 5; // Redibujar solo cada 0.2%
+                    const needsRedraw = this._lastScrubPerc?.[i] !== rPerc || this._lastWidth?.[i] !== cw;
                     if (needsRedraw) {
                         if (this._lastWidth && this._lastWidth[i] !== cw && this.particleCache) {
                             this.particleCache[i] = null; // Invalidar caché si cambió el tamaño
@@ -308,7 +309,7 @@ class SubManagementManager {
                         if (!this._lastScrubPerc) this._lastScrubPerc = [];
                         if (!this._lastWidth) this._lastWidth = [];
 
-                        this._lastScrubPerc[i] = s.percentage;
+                        this._lastScrubPerc[i] = rPerc;
                         this._lastWidth[i] = cw;
                     }
                 }
@@ -662,10 +663,6 @@ class SubManagementManager {
     }
 }
 
-// Exportar
-if (typeof window !== 'undefined') {
-    window.SubManagementManager = SubManagementManager;
-}
 // Exportar
 if (typeof window !== 'undefined') {
     window.SubManagementManager = SubManagementManager;

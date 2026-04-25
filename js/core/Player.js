@@ -177,6 +177,21 @@ class Player {
             if (this.vy < 0) this.vy *= -0.3; // Rebote mecánico contra el metal grueso
         }
 
+        // LÍMITE DEL FONDO ABISAL (11000m = 110000 unidades de juego)
+        // Fase 1: Empuje progresivo cuando se acerca al lecho (los últimos 200 units)
+        const FLOOR_Y = 110000;
+        const distToFloor = FLOOR_Y - this.y;
+        if (distToFloor < 200 && distToFloor > 0) {
+            // Fuerza de rebote creciente cuanto más cerca del fondo
+            const pushForce = (1 - distToFloor / 200) * 1.5;
+            this.vy -= pushForce * dtMult;
+        }
+        // Fase 2: Clamp duro — player.y NUNCA puede superar 110000 exacto
+        if (this.y >= FLOOR_Y) {
+            this.y = FLOOR_Y;
+            if (this.vy > 0) this.vy = 0;
+        }
+
         // Si está bloqueado, forzar posición
         if (this.isLocked) {
             this.y = this.lockY;

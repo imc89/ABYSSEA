@@ -165,7 +165,8 @@ class EnergyManager {
         if (this.isBlackout) cTotal = 0;
 
         // Bateria
-        if (this._lastBat !== this.battery) {
+        const batRounded = Math.round(this.battery * 10) / 10;
+        if (this._lastBat !== batRounded) {
             this.dom.pctText.innerText = Math.floor(this.battery);
 
             // Aguja: 100% -> 90 grados, 0% -> -90 grados (rango de 180 deg)
@@ -178,7 +179,7 @@ class EnergyManager {
             const offset = dash - (this.battery / 100) * dash;
             this.dom.gaugeArc.style.strokeDashoffset = offset;
 
-            this._lastBat = this.battery;
+            this._lastBat = batRounded;
         }
 
         // SWAP WARNING & COUNTER OVERLAY

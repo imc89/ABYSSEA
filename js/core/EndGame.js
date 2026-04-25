@@ -19,13 +19,57 @@ class EndGame {
         if (this.isOpen) return;
         this.isOpen = true;
 
+        const isHypo = reason === "HIPOTERMIA";
+        const isHyper = reason === "HIPERTERMIA";
         const isAnoxia = theme === "anoxia";
-        const primaryColor = isAnoxia ? "#06b6d4" : "#ef4444";
-        const accentColor = isAnoxia ? "text-cyan-400" : "text-red-500";
-        const glowColor = isAnoxia ? "rgba(6,182,212,0.8)" : "rgba(239,68,68,0.8)";
-        const icon = isAnoxia ? "wind" : "skull";
-        const bodyClass = isAnoxia ? "bg-[#000a0f]" : "bg-[#0a0000]";
-        const gridColor = isAnoxia ? "rgba(6,182,212,0.05)" : "rgba(255,0,0,0.05)";
+
+        let primaryColor, accentColor, glowColor, icon, bodyClass, gridColor, cTheme, logTitle, logText, textColor;
+
+        if (isAnoxia) {
+            primaryColor = "#06b6d4";
+            accentColor = "text-cyan-400";
+            glowColor = "rgba(6,182,212,0.8)";
+            icon = "wind";
+            bodyClass = "bg-[#000a0f]";
+            gridColor = "rgba(6,182,212,0.05)";
+            cTheme = "cyan";
+            logTitle = "ASPHYXIATION_ALERT";
+            logText = "La saturación de oxígeno en cabina ha caído por debajo del umbral mínimo biológico. El personal ha perdido la consciencia debido a una anoxia cerebral masiva. Los sistemas automatizados han cesado su actividad.";
+            textColor = "text-cyan-100/70";
+        } else if (isHypo) {
+            primaryColor = "#3b82f6"; 
+            accentColor = "text-blue-400";
+            glowColor = "rgba(59,130,246,0.8)";
+            icon = "snowflake";
+            bodyClass = "bg-[#000510]";
+            gridColor = "rgba(59,130,246,0.05)";
+            cTheme = "blue";
+            logTitle = "HYPOTHERMIA_ALERT";
+            logText = "La temperatura interna ha caído por debajo del umbral de supervivencia. El metabolismo del piloto se ha detenido debido a una hipotermia severa y congelación. Los sistemas vitales han cesado su actividad.";
+            textColor = "text-blue-100/70";
+        } else if (isHyper) {
+            primaryColor = "#f97316"; 
+            accentColor = "text-orange-500";
+            glowColor = "rgba(249,115,22,0.8)";
+            icon = "flame";
+            bodyClass = "bg-[#100500]";
+            gridColor = "rgba(249,115,22,0.05)";
+            cTheme = "orange";
+            logTitle = "HYPERTHERMIA_ALERT";
+            logText = "La temperatura interna ha excedido el límite biológico soportable por más de 20 segundos. El personal ha sufrido un golpe de calor letal por hipertermia y deshidratación severa. Fallo catastrófico de soporte vital.";
+            textColor = "text-orange-100/70";
+        } else {
+            primaryColor = "#ef4444";
+            accentColor = "text-red-500";
+            glowColor = "rgba(239,68,68,0.8)";
+            icon = "skull";
+            bodyClass = "bg-[#0a0000]";
+            gridColor = "rgba(239,68,68,0.05)";
+            cTheme = "red";
+            logTitle = "TOXICITY_ALERT";
+            logText = "Los sistemas de soporte vital han colapsado irremediablemente. La deficiencia en el purgado de toxinas ha resultado en niveles letales de la atmósfera interna.";
+            textColor = "text-red-100/70";
+        }
         
         // Crear contenedor dinámico
         this.container = document.createElement('div');
@@ -43,9 +87,9 @@ class EndGame {
                 <!-- Warning Circular Hardware Component -->
                 <div class="relative w-36 h-36 flex items-center justify-center mb-10 group mt-10">
                     <!-- Base circular container -->
-                    <div class="absolute inset-0 bg-black/50 rounded-full border border-${isAnoxia ? 'cyan' : 'red'}-500/20 shadow-[0_0_40px_${isAnoxia ? 'rgba(6,182,212,0.15)' : 'rgba(239,68,68,0.15)'}]"></div>
+                    <div class="absolute inset-0 bg-black/50 rounded-full border border-${cTheme}-500/20 shadow-[0_0_40px_${primaryColor}26]"></div>
                     <!-- Inner pulsating circle -->
-                    <div class="absolute inset-3 bg-${isAnoxia ? 'cyan' : 'red'}-900/30 rounded-full border-2 border-${isAnoxia ? 'cyan-500/50' : 'red-500/50'} animate-[pulse-alert_2s_infinite_alternate] shadow-[inset_0_0_20px_rgba(0,0,0,1)]"></div>
+                    <div class="absolute inset-3 bg-${cTheme}-900/30 rounded-full border-2 border-${cTheme}-500/50 animate-[pulse-alert_2s_infinite_alternate] shadow-[inset_0_0_20px_rgba(0,0,0,1)]"></div>
                     <div class="absolute inset-0 flex items-center justify-center z-10">
                         <i data-lucide="${icon}" class="${accentColor} w-16 h-16 drop-shadow-[0_0_15px_${glowColor}]"></i>
                     </div>
@@ -54,54 +98,51 @@ class EndGame {
                 <!-- Título Monumental -->
                 <div class="flex flex-col items-center w-full mb-10">
                     <div class="w-full flex items-center justify-center gap-6 mb-3 relative">
-                        <div class="absolute left-0 w-[40%] h-[1px] bg-gradient-to-r from-transparent via-${isAnoxia ? 'cyan' : 'red'}-500/20 to-${isAnoxia ? 'cyan' : 'red'}-500/80"></div>
+                        <div class="absolute left-0 w-[40%] h-[1px] bg-gradient-to-r from-transparent via-${cTheme}-500/20 to-${cTheme}-500/80"></div>
                         <h1 class="${accentColor} text-6xl md:text-7xl font-black uppercase tracking-[0.25em] drop-shadow-[0_0_30px_${glowColor}] leading-[1.1] z-10" style="font-family: 'Arial Black', Impact, sans-serif;">FIN DEL VIAJE</h1>
-                        <div class="absolute right-0 w-[40%] h-[1px] bg-gradient-to-l from-transparent via-${isAnoxia ? 'cyan' : 'red'}-500/20 to-${isAnoxia ? 'cyan' : 'red'}-500/80"></div>
+                        <div class="absolute right-0 w-[40%] h-[1px] bg-gradient-to-l from-transparent via-${cTheme}-500/20 to-${cTheme}-500/80"></div>
                     </div>
-                    <h2 class="text-white text-xl md:text-2xl font-bold tracking-[0.6em] uppercase mt-2 opacity-90 drop-shadow-[0_4px_4px_rgba(0,0,0,1)] text-${isAnoxia ? '[#a5f3fc]' : '[#fca5a5]'}">${reason}</h2>
+                    <h2 class="text-white text-xl md:text-2xl font-bold tracking-[0.6em] uppercase mt-2 opacity-90 drop-shadow-[0_4px_4px_rgba(0,0,0,1)] text-[${primaryColor}]">${reason}</h2>
                 </div>
 
                 <!-- Mensaje de Lore Style Terminal -->
-                <div class="w-full max-w-xl mx-auto mb-10 relative ${bodyClass} border border-${isAnoxia ? 'cyan' : 'red'}-500/20 p-6 shadow-[inset_0_0_40px_${isAnoxia ? 'rgba(6,182,212,0.05)' : 'rgba(239,68,68,0.05)'},0_15px_30px_rgba(0,0,0,0.8)] rounded-sm overflow-hidden transform relative">
-                    <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-${isAnoxia ? 'cyan' : 'red'}-500/50 to-transparent opacity-50"></div>
-                    <div class="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-${isAnoxia ? 'cyan' : 'red'}-600/80 to-${isAnoxia ? 'cyan' : 'red'}-900 shadow-[0_0_10px_${primaryColor}]"></div>
-                    <div class="flex items-center gap-3 mb-4 border-b border-${isAnoxia ? 'cyan' : 'red'}-500/20 pb-2">
-                        <div class="w-2 h-2 rounded-sm bg-${isAnoxia ? 'cyan' : 'red'}-500 animate-pulse shadow-[0_0_5px_${primaryColor}]"></div>
-                        <span class="${isAnoxia ? 'text-cyan-400' : 'text-red-400'} text-[10px] font-mono tracking-[0.2em] uppercase">SYSTEM_LOG :: ${isAnoxia ? 'ASPHYXIATION_ALERT' : 'TOXICITY_ALERT'}</span>
+                <div class="w-full max-w-xl mx-auto mb-10 relative ${bodyClass} border border-${cTheme}-500/20 p-6 shadow-[inset_0_0_40px_${primaryColor}0D,0_15px_30px_rgba(0,0,0,0.8)] rounded-sm overflow-hidden transform relative">
+                    <div class="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-${cTheme}-500/50 to-transparent opacity-50"></div>
+                    <div class="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-${cTheme}-600/80 to-${cTheme}-900 shadow-[0_0_10px_${primaryColor}]"></div>
+                    <div class="flex items-center gap-3 mb-4 border-b border-${cTheme}-500/20 pb-2">
+                        <div class="w-2 h-2 rounded-sm bg-${cTheme}-500 animate-pulse shadow-[0_0_5px_${primaryColor}]"></div>
+                        <span class="text-${cTheme}-400 text-[10px] font-mono tracking-[0.2em] uppercase">SYSTEM_LOG :: ${logTitle}</span>
                     </div>
                     
-                    <p class="${isAnoxia ? 'text-cyan-100/70' : 'text-red-100/70'} text-sm font-mono leading-relaxed text-left pl-3 tracking-wide">
-                        ${isAnoxia ? 
-                            "La saturación de oxígeno en cabina ha caído por debajo del umbral mínimo biológico. El personal ha perdido la consciencia debido a una anoxia cerebral masiva. Los sistemas automatizados han cesado su actividad." : 
-                            "Los sistemas de soporte vital han colapsado irremediablemente. La deficiencia en el purgado de toxinas ha resultado en niveles letales de la atmósfera interna."
-                        }<br><br>
+                    <p class="${textColor} text-sm font-mono leading-relaxed text-left pl-3 tracking-wide">
+                        ${logText}<br><br>
                         <strong>PROTOCOLOS DE REANIMACIÓN: NO DISPONIBLES.</strong><br>
                         <span class="${accentColor} font-bold block mt-3">> ESTADO DE LA MISIÓN: PERDIDA_ <span class="animate-pulse">|</span></span>
                     </p>
                 </div>
 
                 <!-- Botón de Reinicio -->
-                <button id="restart-btn" class="group relative px-10 md:px-16 py-6 bg-[#000205] border border-${isAnoxia ? 'cyan' : 'red'}-500/40 ${accentColor} font-black uppercase tracking-[0.3em] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.9)] transition-all active:scale-[0.98] duration-200" style="margin-bottom: 50px;">
-                    <div class="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,${isAnoxia ? 'rgba(6,182,212,0.05)' : 'rgba(239,68,68,0.05)'}_10px,${isAnoxia ? 'rgba(6,182,212,0.05)' : 'rgba(239,68,68,0.05)'}_20px)] opacity-50 z-0 pointer-events-none"></div>
-                    <div class="absolute inset-x-0 bottom-0 h-0 bg-${isAnoxia ? 'cyan-600' : 'red-600'} group-hover:h-full transition-all duration-300 ease-out pointer-events-none z-0"></div>
+                <button id="restart-btn" class="group relative px-10 md:px-16 py-6 bg-[#000205] border border-${cTheme}-500/40 ${accentColor} font-black uppercase tracking-[0.3em] overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.9)] transition-all active:scale-[0.98] duration-200" style="margin-bottom: 50px;">
+                    <div class="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,${primaryColor}0D_10px,${primaryColor}0D_20px)] opacity-50 z-0 pointer-events-none"></div>
+                    <div class="absolute inset-x-0 bottom-0 h-0 bg-${cTheme}-600 group-hover:h-full transition-all duration-300 ease-out pointer-events-none z-0"></div>
                     <span class="relative z-10 flex items-center justify-center gap-3 text-sm md:text-base group-hover:text-black transition-colors duration-300">
                         <i data-lucide="rotate-ccw" class="w-5 h-5 ${accentColor} group-hover:text-black transition-colors duration-300"></i>
                         INICIAR SECUENCIA DE REINICIO
                     </span>
-                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-${isAnoxia ? 'cyan' : 'red'}-500 group-hover:bg-black transition-colors z-10"></div>
-                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-${isAnoxia ? 'cyan' : 'red'}-500 group-hover:bg-black transition-colors z-10"></div>
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-${cTheme}-500 group-hover:bg-black transition-colors z-10"></div>
+                    <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-${cTheme}-500 group-hover:bg-black transition-colors z-10"></div>
                 </button>
             </div>
 
             <!-- Datos Técnicos Footer -->
-            <div class="absolute bottom-0 left-0 w-full overflow-hidden bg-${isAnoxia ? 'cyan' : 'red'}-900/30 border-t border-${isAnoxia ? 'cyan' : 'red'}-500/40 py-2.5 shadow-[0_-5px_20px_${isAnoxia ? 'rgba(6,182,212,0.15)' : 'rgba(239,68,68,0.15)'}] flex">
-                <div class="flex gap-16 font-mono text-[9px] uppercase font-bold text-${isAnoxia ? 'cyan-300/60' : 'red-300/60'} whitespace-nowrap marquee-animation">
+            <div class="absolute bottom-0 left-0 w-full overflow-hidden bg-${cTheme}-900/30 border-t border-${cTheme}-500/40 py-2.5 shadow-[0_-5px_20px_${primaryColor}26] flex">
+                <div class="flex gap-16 font-mono text-[9px] uppercase font-bold text-${cTheme}-300/60 whitespace-nowrap marquee-animation">
                     <span>• SIGNAL_LOST_0x882</span>
-                    <span>• FATAL_LOG_O2</span>
+                    <span>• FATAL_LOG_TEMP</span>
                     <span>• SYSTEM_HALT</span>
                     <span>• DEEP_RECOVERY_OFFLINE</span>
                     <span>• CREW_STATUS_KIA</span>
-                    <span>• ABNORMAL_PRESSURE_DETECTED</span>
+                    <span>• ABNORMAL_ENVIRONMENT_DETECTED</span>
                     <span>• ALL_CHANNELS_SILENT</span>
                 </div>
             </div>

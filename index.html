@@ -730,15 +730,14 @@
         /* Submarine Management Modal - PREMIUM DESIGN */
         #sub-management-modal {
             position: fixed;
-            top: 50%;
+            top: 60%;
             left: 50%;
             transform: translate(-50%, -50%) scale(0.9);
             width: 90%;
             max-width: 1000px;
-            height: 85%;
+            height: 75%;
             max-height: 850px;
-            background: linear-gradient(135deg, #0a1118 0%, #050a0f 100%);
-            backdrop-filter: blur(25px);
+            background: linear-gradient(135deg, rgba(10, 17, 24, 0.95) 0%, rgba(5, 10, 15, 0.95) 100%);
             border: 2px solid rgba(6, 182, 212, 0.2);
             border-radius: 32px;
             z-index: 250;
@@ -755,6 +754,33 @@
             display: flex;
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
+        }
+
+        /* Operational Blindness - Humidity Peak Effect */
+        body.humidity-blindness #sub-management-modal {
+            backdrop-filter: blur(50px) contrast(0.8) brightness(1.2);
+            filter: blur(8px);
+            pointer-events: auto !important;
+        }
+
+        /* Targeted extreme blur for Energy and Oxygen panels to hinder survival */
+        body.humidity-blindness #panel-energia,
+        body.humidity-blindness #panel-oxigeno {
+            filter: blur(14px) opacity(0.3);
+            pointer-events: auto !important;
+            transition: all 2s ease;
+        }
+
+        body.humidity-blindness::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(200, 220, 255, 0.4) 0%, rgba(200, 220, 255, 0.8) 100%);
+            pointer-events: none;
+            z-index: 10000;
+            mix-blend-mode: screen;
+            opacity: 0.8;
+            transition: opacity 2s ease-in-out;
         }
 
         /* Cylindrical Tank Styling */
@@ -2251,70 +2277,110 @@
                             <!-- LEFT COLUMN: SENSORS & SELDS -->
                             <div class="w-[55%] flex flex-col justify-between gap-6 z-10 relative">
 
-                                <div class="relative bg-gradient-to-br from-[#0c1322] to-[#04080e] border border-cyan-500/10 rounded-3xl p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_0_30px_rgba(34,211,238,0.02)] overflow-hidden h-[270px] group">
+                                <div
+                                    class="relative bg-gradient-to-br from-[#0c1322] to-[#04080e] border border-cyan-500/10 rounded-3xl p-8 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_0_30px_rgba(34,211,238,0.02)] overflow-hidden h-[240px] group">
                                     <!-- Background Glow -->
-                                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-cyan-500/5 blur-[100px] pointer-events-none"></div>
+                                    <div
+                                        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-cyan-500/5 blur-[100px] pointer-events-none">
+                                    </div>
 
                                     <!-- Card Header -->
                                     <div class="flex justify-between items-start z-10">
                                         <div class="flex items-center gap-3">
-                                            <div id="temp-status-dot" class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee]"></div>
-                                            <span id="temp-status-text" class="text-[12px] text-cyan-400 font-black uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">TEMPERATURA ESTABLE</span>
+                                            <div id="temp-status-dot"
+                                                class="w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee]">
+                                            </div>
+                                            <span id="temp-status-text"
+                                                class="text-[12px] text-cyan-400 font-black uppercase tracking-[0.4em] drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]">TEMPERATURA
+                                                ESTABLE</span>
                                         </div>
-                                        <div class="px-5 py-1.5 bg-cyan-950/20 border border-cyan-500/30 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.05)]">
-                                            <span class="text-[10px] text-cyan-400/90 uppercase tracking-[0.2em] font-black">MONITOREO</span>
+                                        <div
+                                            class="px-5 py-1.5 bg-cyan-950/20 border border-cyan-500/30 rounded-lg backdrop-blur-sm shadow-[0_0_15px_rgba(34,211,238,0.05)]">
+                                            <span
+                                                class="text-[10px] text-cyan-400/90 uppercase tracking-[0.2em] font-black">MONITOREO</span>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Main Value -->
                                     <div class="flex flex-col z-10 mt-2">
-                                        <h3 class="text-white/80 font-black text-[22px] uppercase tracking-[0.5em] mb-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">CLIMA CABINA</h3>
+                                        <h3
+                                            class="text-white/80 font-black text-[22px] uppercase tracking-[0.5em] mb-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                                            CLIMA CABINA</h3>
                                         <div class="flex items-baseline gap-3">
-                                            <span id="temp-internal-val" class="text-[90px] text-white font-mono font-black tracking-tighter leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">20.0</span>
-                                            <span class="text-cyan-400 text-4xl font-black drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">°C</span>
+                                            <span id="temp-internal-val"
+                                                class="text-[78px] text-white font-mono font-black tracking-tighter leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">20.0</span>
+                                            <span
+                                                class="text-cyan-400 text-4xl font-black drop-shadow-[0_0_10px_rgba(34,211,238,0.4)]">°C</span>
                                         </div>
                                     </div>
 
                                     <!-- Dynamic History Bars -->
-                                    <div class="absolute bottom-8 right-10 flex gap-2 z-10 items-end h-10" id="temp-history-bars">
-                                        <div class="w-2.5 bg-cyan-400/20 rounded-sm transition-all duration-500" style="height: 20%"></div>
-                                        <div class="w-2.5 bg-cyan-400/30 rounded-sm transition-all duration-500" style="height: 40%"></div>
-                                        <div class="w-2.5 bg-cyan-400/40 rounded-sm transition-all duration-500" style="height: 60%"></div>
-                                        <div class="w-2.5 bg-cyan-400/60 rounded-sm transition-all duration-500" style="height: 80%"></div>
-                                        <div class="w-2.5 bg-cyan-400 rounded-sm shadow-[0_0_15px_#22d3ee] transition-all duration-500" style="height: 100%"></div>
+                                    <div class="absolute bottom-8 right-10 flex gap-2 z-10 items-end h-10"
+                                        id="temp-history-bars">
+                                        <div class="w-2.5 bg-cyan-400/20 rounded-sm transition-all duration-500"
+                                            style="height: 20%"></div>
+                                        <div class="w-2.5 bg-cyan-400/30 rounded-sm transition-all duration-500"
+                                            style="height: 40%"></div>
+                                        <div class="w-2.5 bg-cyan-400/40 rounded-sm transition-all duration-500"
+                                            style="height: 60%"></div>
+                                        <div class="w-2.5 bg-cyan-400/60 rounded-sm transition-all duration-500"
+                                            style="height: 80%"></div>
+                                        <div class="w-2.5 bg-cyan-400 rounded-sm shadow-[0_0_15px_#22d3ee] transition-all duration-500"
+                                            style="height: 100%"></div>
                                     </div>
 
                                     <!-- Digital Scanlines Overlay -->
-                                    <div class="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] z-20 pointer-events-none bg-[length:100%_4px]"></div>
+                                    <div
+                                        class="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] z-20 pointer-events-none bg-[length:100%_4px]">
+                                    </div>
                                 </div>
 
 
                                 <!-- Lower Left: Humidity & Ext Temp Row -->
-                                <div class="flex gap-6 h-[160px]">
+                                <div class="flex gap-6 h-[130px]">
                                     <!-- Humidity -->
-                                    <div class="flex-1 bg-gradient-to-b from-[#0a0f1a] to-[#02040a] border border-[#1a2333] rounded-2xl p-6 flex flex-col items-center justify-center relative shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)]">
-                                        <span class="text-[10px] text-white/40 uppercase tracking-[0.4em] font-bold absolute top-5 drop-shadow-md">Humedad Interna</span>
+                                    <div
+                                        class="flex-1 bg-gradient-to-b from-[#0a0f1a] to-[#02040a] border border-[#1a2333] rounded-2xl p-6 flex flex-col items-center justify-center relative shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)]">
+                                        <span
+                                            class="text-[10px] text-white/40 uppercase tracking-[0.4em] font-bold absolute top-5 drop-shadow-md">Humedad
+                                            Interna</span>
                                         <div class="relative w-[90px] h-[90px] mt-4 flex items-center justify-center">
-                                            <svg viewBox="0 0 100 100" class="absolute inset-0 w-full h-full -rotate-90">
+                                            <svg viewBox="0 0 100 100"
+                                                class="absolute inset-0 w-full h-full -rotate-90">
                                                 <!-- Subtle Inner circle -->
-                                                <circle cx="50" cy="50" r="35" fill="#04060a" stroke="#111827" stroke-width="2" />
+                                                <circle cx="50" cy="50" r="35" fill="#04060a" stroke="#111827"
+                                                    stroke-width="2" />
                                                 <!-- Dashed background track -->
-                                                <circle cx="50" cy="50" r="42" fill="none" stroke="#064e3b" stroke-width="8" stroke-dasharray="7 4" />
+                                                <circle cx="50" cy="50" r="42" fill="none" stroke="#064e3b"
+                                                    stroke-width="8" stroke-dasharray="7 4" />
                                                 <!-- Solid main track (humidity value) -->
-                                                <circle id="temp-humidity-arc" cx="50" cy="50" r="42" fill="none" stroke="#34d399" stroke-width="8" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="145" class="transition-all duration-700 ease-out drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
+                                                <circle id="temp-humidity-arc" cx="50" cy="50" r="42" fill="none"
+                                                    stroke="#34d399" stroke-width="8" stroke-linecap="round"
+                                                    stroke-dasharray="264" stroke-dashoffset="145"
+                                                    class="transition-all duration-700 ease-out drop-shadow-[0_0_6px_rgba(52,211,153,0.4)]" />
                                             </svg>
-                                            <span id="temp-humidity-val" class="text-[#34d399] font-mono text-2xl font-black drop-shadow-[0_0_10px_rgba(52,211,153,0.5)] relative z-10">44%</span>
+                                            <span id="temp-humidity-val"
+                                                class="text-[#34d399] font-mono text-2xl font-black drop-shadow-[0_0_10px_rgba(52,211,153,0.5)] relative z-10">44%</span>
                                         </div>
                                     </div>
 
                                     <!-- External Temp -->
-                                    <div class="flex-1 bg-gradient-to-b from-[#0a0f1a] to-[#02040a] border border-[#1a2333] rounded-2xl p-6 flex flex-col items-center justify-between relative shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)]">
-                                        <span class="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1">Exterior (Océano)</span>
-                                        <div class="w-full flex-1 mt-4 bg-[#050810] rounded-xl border border-white/5 flex items-center justify-center shadow-inner relative overflow-hidden group-hover:border-indigo-900/50 transition-colors">
-                                            <div class="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.05)_1px,transparent_1px)] bg-[length:100%_3px] pointer-events-none"></div>
-                                            <div class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-indigo-900/20 to-transparent blur-md"></div>
+                                    <div
+                                        class="flex-1 bg-gradient-to-b from-[#0a0f1a] to-[#02040a] border border-[#1a2333] rounded-2xl p-6 flex flex-col items-center justify-between relative shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)]">
+                                        <span
+                                            class="text-[10px] text-white/40 uppercase tracking-[0.3em] font-bold mt-1">Exterior
+                                            (Océano)</span>
+                                        <div
+                                            class="w-full flex-1 mt-4 bg-[#050810] rounded-xl border border-white/5 flex items-center justify-center shadow-inner relative overflow-hidden group-hover:border-indigo-900/50 transition-colors">
+                                            <div
+                                                class="absolute inset-0 bg-[linear-gradient(rgba(99,102,241,0.05)_1px,transparent_1px)] bg-[length:100%_3px] pointer-events-none">
+                                            </div>
+                                            <div
+                                                class="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-indigo-900/20 to-transparent blur-md">
+                                            </div>
                                             <div class="flex items-start z-10">
-                                                <span id="temp-external-val" class="text-[40px] text-[#818cf8] font-mono font-black tracking-tighter drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]">28.4</span>
+                                                <span id="temp-external-val"
+                                                    class="text-[40px] text-[#818cf8] font-mono font-black tracking-tighter drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]">28.4</span>
                                                 <span class="text-[#6366f1] text-xl ml-1 mt-1 font-bold">°C</span>
                                             </div>
                                         </div>
@@ -2326,118 +2392,207 @@
                             <div class="w-[45%] flex flex-col justify-between z-10 relative pl-4">
 
                                 <!-- Top Right: Setpoint Target -->
-                                <div class="bg-gradient-to-br from-[#0c111a] to-[#05070a] border border-[#1a2333] rounded-2xl p-6 flex items-center justify-between shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)] h-[110px]">
+                                <div
+                                    class="bg-gradient-to-br from-[#0c111a] to-[#05070a] border border-[#1a2333] rounded-2xl p-6 flex items-center justify-between shadow-[inset_0_0_15px_rgba(0,0,0,0.8),_0_5px_15px_rgba(0,0,0,0.5)] h-[110px]">
                                     <div class="flex flex-col gap-3">
-                                        <span class="text-[9px] text-white/40 uppercase tracking-[0.3em] font-black">Objetivo Temperatura</span>
-                                        <div class="px-5 py-2.5 bg-[#020408] rounded-xl border border-cyan-500/20 shadow-inner flex items-center w-fit">
-                                            <span id="temp-setpoint-val" class="text-cyan-400 font-mono text-[22px] font-black tracking-widest drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">19.5°C</span>
+                                        <span
+                                            class="text-[9px] text-white/40 uppercase tracking-[0.3em] font-black">Objetivo
+                                            Temperatura</span>
+                                        <div
+                                            class="px-5 py-2.5 bg-[#020408] rounded-xl border border-cyan-500/20 shadow-inner flex items-center w-fit">
+                                            <span id="temp-setpoint-val"
+                                                class="text-cyan-400 font-mono text-[22px] font-black tracking-widest drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]">19.5°C</span>
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button id="temp-btn-minus" onclick="window.temperatureManager && window.temperatureManager.adjustSetpoint(-0.5)" class="w-12 h-12 bg-gradient-to-br from-[#0c1322] to-[#050810] hover:bg-cyan-900/30 border border-[#1a2333] border-b-[#050810] border-r-[#050810] hover:border-cyan-500/40 rounded-xl flex items-center justify-center text-cyan-500/50 hover:text-cyan-400 transition-all shadow-[inset_0_2px_5px_rgba(255,255,255,0.05),_0_5px_15px_rgba(0,0,0,0.8)] active:scale-95 disabled:opacity-30 group/btn">
-                                            <svg class="w-6 h-6 drop-shadow-[0_0_5px_rgba(34,211,238,0)] group-hover/btn:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"></path></svg>
+                                        <button id="temp-btn-minus"
+                                            onclick="window.temperatureManager && window.temperatureManager.adjustSetpoint(-0.5)"
+                                            class="w-12 h-12 bg-gradient-to-br from-[#0c1322] to-[#050810] hover:bg-cyan-900/30 border border-[#1a2333] border-b-[#050810] border-r-[#050810] hover:border-cyan-500/40 rounded-xl flex items-center justify-center text-cyan-500/50 hover:text-cyan-400 transition-all shadow-[inset_0_2px_5px_rgba(255,255,255,0.05),_0_5px_15px_rgba(0,0,0,0.8)] active:scale-95 disabled:opacity-30 group/btn">
+                                            <svg class="w-6 h-6 drop-shadow-[0_0_5px_rgba(34,211,238,0)] group-hover/btn:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                                stroke-linecap="round">
+                                                <path d="M5 12h14"></path>
+                                            </svg>
                                         </button>
-                                        <button id="temp-btn-plus" onclick="window.temperatureManager && window.temperatureManager.adjustSetpoint(0.5)" class="w-12 h-12 bg-gradient-to-br from-[#0c1322] to-[#050810] hover:bg-cyan-900/30 border border-[#1a2333] border-b-[#050810] border-r-[#050810] hover:border-cyan-500/40 rounded-xl flex items-center justify-center text-cyan-500/50 hover:text-cyan-400 transition-all shadow-[inset_0_2px_5px_rgba(255,255,255,0.05),_0_5px_15px_rgba(0,0,0,0.8)] active:scale-95 disabled:opacity-30 group/btn">
-                                            <svg class="w-6 h-6 drop-shadow-[0_0_5px_rgba(34,211,238,0)] group-hover/btn:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+                                        <button id="temp-btn-plus"
+                                            onclick="window.temperatureManager && window.temperatureManager.adjustSetpoint(0.5)"
+                                            class="w-12 h-12 bg-gradient-to-br from-[#0c1322] to-[#050810] hover:bg-cyan-900/30 border border-[#1a2333] border-b-[#050810] border-r-[#050810] hover:border-cyan-500/40 rounded-xl flex items-center justify-center text-cyan-500/50 hover:text-cyan-400 transition-all shadow-[inset_0_2px_5px_rgba(255,255,255,0.05),_0_5px_15px_rgba(0,0,0,0.8)] active:scale-95 disabled:opacity-30 group/btn">
+                                            <svg class="w-6 h-6 drop-shadow-[0_0_5px_rgba(34,211,238,0)] group-hover/btn:drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                                stroke-linecap="round">
+                                                <path d="M12 5v14"></path>
+                                                <path d="M5 12h14"></path>
+                                            </svg>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Middle Right: Modes -->
                                 <div class="flex flex-col gap-3">
-                                    <span class="text-[9px] text-white/50 uppercase tracking-[0.3em] font-black ml-1">Climatización de Soporte Vital</span>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <button id="temp-btn-auto" onclick="window.temperatureManager && window.temperatureManager.setMode('AUTO')" class="temp-mode-btn relative overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#020617] border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)] rounded-xl py-3.5 px-4 flex items-center gap-3 transition-all group active-mode">
-                                            <div class="w-1.5 h-full absolute left-0 top-0 bg-cyan-400 shadow-[0_0_15px_#22d3ee] indicator"></div>
-                                            <svg class="w-5 h-5 label z-10 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect>
-                                                <line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line>
-                                                <line x1="9" y1="20" x2="9" y2="20"></line><line x1="15" y1="20" x2="15" y2="20"></line>
-                                                <line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line>
-                                                <line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line>
+                                    <span
+                                        class="text-[9px] text-white/50 uppercase tracking-[0.3em] font-black ml-1">Climatización
+                                        de Soporte Vital</span>
+                                    <div class="grid grid-cols-2 gap-3 h-[104px]">
+                                        <button id="temp-btn-auto"
+                                            onclick="window.temperatureManager && window.temperatureManager.setMode('AUTO')"
+                                            class="row-span-2 temp-mode-btn relative overflow-hidden bg-gradient-to-br from-[#0f172a] to-[#020617] border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)] rounded-xl py-3.5 px-4 flex flex-col items-center justify-center gap-3 transition-all group active-mode">
+                                            <div
+                                                class="w-1.5 h-full absolute left-0 top-0 bg-cyan-400 shadow-[0_0_15px_#22d3ee] indicator">
+                                            </div>
+                                            <svg class="w-6 h-6 label z-10 text-cyan-400" viewBox="0 0 24 24"
+                                                fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                                                <rect x="9" y="9" width="6" height="6"></rect>
+                                                <line x1="9" y1="1" x2="9" y2="4"></line>
+                                                <line x1="15" y1="1" x2="15" y2="4"></line>
+                                                <line x1="9" y1="20" x2="9" y2="20"></line>
+                                                <line x1="15" y1="20" x2="15" y2="20"></line>
+                                                <line x1="20" y1="9" x2="23" y2="9"></line>
+                                                <line x1="20" y1="14" x2="23" y2="14"></line>
+                                                <line x1="1" y1="9" x2="4" y2="9"></line>
+                                                <line x1="1" y1="14" x2="4" y2="14"></line>
                                             </svg>
-                                            <span class="text-cyan-400 font-black text-[11px] tracking-[0.2em] uppercase label z-10 drop-shadow-[0_0_5px_rgba(34,211,238,0.6)]">Auto</span>
+                                            <span
+                                                class="text-cyan-400 font-black text-[12px] tracking-[0.2em] uppercase label z-10 drop-shadow-[0_0_5px_rgba(34,211,238,0.6)]">Auto</span>
                                         </button>
-                                        <button id="temp-btn-cooling" onclick="window.temperatureManager && window.temperatureManager.setMode('COOLING')" class="temp-mode-btn relative overflow-hidden bg-[#0A0D14] border border-[#1a2333] rounded-xl py-3.5 px-4 flex items-center gap-3 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-blue-500/40 hover:bg-[#0D121C] transition-all opacity-80 group">
-                                            <div class="w-1 h-full absolute left-0 top-0 bg-transparent indicator transition-colors"></div>
-                                            <svg class="w-5 h-5 label z-10 text-blue-400/50 group-hover:text-blue-400/80 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <line x1="12" y1="2" x2="12" y2="22"></line><line x1="12" y1="12" x2="22" y2="12"></line><line x1="12" y1="12" x2="2" y2="12"></line>
-                                                <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line><line x1="19.07" y1="19.07" x2="4.93" y2="4.93"></line>
-                                                <line x1="12" y1="7" x2="15.5" y2="3.5"></line><line x1="12" y1="7" x2="8.5" y2="3.5"></line>
-                                                <line x1="12" y1="17" x2="15.5" y2="20.5"></line><line x1="12" y1="17" x2="8.5" y2="20.5"></line>
-                                                <line x1="19" y1="12" x2="22.5" y2="8.5"></line><line x1="19" y1="12" x2="22.5" y2="15.5"></line>
-                                                <line x1="5" y1="12" x2="1.5" y2="8.5"></line><line x1="5" y1="12" x2="1.5" y2="15.5"></line>
+                                        <button id="temp-btn-cooling"
+                                            onclick="window.temperatureManager && window.temperatureManager.setMode('COOLING')"
+                                            class="temp-mode-btn relative overflow-hidden bg-[#0A0D14] border border-[#1a2333] rounded-xl py-2 px-3 flex items-center gap-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-blue-500/40 hover:bg-[#0D121C] transition-all opacity-80 group">
+                                            <div
+                                                class="w-1 h-full absolute left-0 top-0 bg-transparent indicator transition-colors">
+                                            </div>
+                                            <svg class="w-4 h-4 label z-10 text-blue-400/50 group-hover:text-blue-400/80 transition-colors"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="12" y1="2" x2="12" y2="22"></line>
+                                                <line x1="12" y1="12" x2="22" y2="12"></line>
+                                                <line x1="12" y1="12" x2="2" y2="12"></line>
+                                                <line x1="19.07" y1="4.93" x2="4.93" y2="19.07"></line>
+                                                <line x1="19.07" y1="19.07" x2="4.93" y2="4.93"></line>
+                                                <line x1="12" y1="7" x2="15.5" y2="3.5"></line>
+                                                <line x1="12" y1="7" x2="8.5" y2="3.5"></line>
+                                                <line x1="12" y1="17" x2="15.5" y2="20.5"></line>
+                                                <line x1="12" y1="17" x2="8.5" y2="20.5"></line>
+                                                <line x1="19" y1="12" x2="22.5" y2="8.5"></line>
+                                                <line x1="19" y1="12" x2="22.5" y2="15.5"></line>
+                                                <line x1="5" y1="12" x2="1.5" y2="8.5"></line>
+                                                <line x1="5" y1="12" x2="1.5" y2="15.5"></line>
                                             </svg>
-                                            <span class="text-white/50 font-black text-[11px] tracking-[0.2em] uppercase label z-10 transition-colors group-hover:text-white/80">Cold</span>
+                                            <span
+                                                class="text-white/50 font-black text-[10px] tracking-[0.2em] uppercase label z-10 transition-colors group-hover:text-white/80">Cold</span>
                                         </button>
-                                        <button id="temp-btn-heat" onclick="window.temperatureManager && window.temperatureManager.setMode('HEAT')" class="temp-mode-btn relative overflow-hidden bg-[#0A0D14] border border-[#1a2333] rounded-xl py-3.5 px-4 flex items-center gap-3 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-orange-500/40 hover:bg-[#120C06] transition-all opacity-80 group">
-                                            <div class="w-1 h-full absolute left-0 top-0 bg-transparent indicator transition-colors"></div>
-                                            <svg class="w-5 h-5 label z-10 text-orange-400/50 group-hover:text-orange-400/80 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path><path d="M12 9v5"></path><path d="M5.5 5.5 6 6"></path><path d="M2 12h1"></path><path d="M18.5 5.5 18 6"></path><path d="M22 12h-1"></path><path d="M12 2v1"></path><path d="M2 19h20"></path>
+                                        <button id="temp-btn-heat"
+                                            onclick="window.temperatureManager && window.temperatureManager.setMode('HEAT')"
+                                            class="temp-mode-btn relative overflow-hidden bg-[#0A0D14] border border-[#1a2333] rounded-xl py-2 px-3 flex items-center gap-2 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-orange-500/40 hover:bg-[#120C06] transition-all opacity-80 group">
+                                            <div
+                                                class="w-1 h-full absolute left-0 top-0 bg-transparent indicator transition-colors">
+                                            </div>
+                                            <svg class="w-4 h-4 label z-10 text-orange-400/50 group-hover:text-orange-400/80 transition-colors"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path>
+                                                <path d="M12 9v5"></path>
+                                                <path d="M5.5 5.5 6 6"></path>
+                                                <path d="M2 12h1"></path>
+                                                <path d="M18.5 5.5 18 6"></path>
+                                                <path d="M22 12h-1"></path>
+                                                <path d="M12 2v1"></path>
+                                                <path d="M2 19h20"></path>
                                             </svg>
-                                            <span class="text-white/50 font-black text-[11px] tracking-[0.2em] uppercase label z-10 transition-colors group-hover:text-white/80">Heat</span>
-                                        </button>
-                                        <button id="temp-btn-off" onclick="window.temperatureManager && window.temperatureManager.setMode('OFF')" class="temp-mode-btn relative overflow-hidden bg-[#0A0D14] border border-[#1a2333] rounded-xl py-3.5 px-4 flex items-center gap-3 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-red-500/40 hover:bg-[#120606] transition-all opacity-80 group">
-                                            <div class="w-1 h-full absolute left-0 top-0 bg-transparent indicator transition-colors"></div>
-                                            <svg class="w-5 h-5 label z-10 text-red-500/50 group-hover:text-red-500/80 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line>
-                                            </svg>
-                                            <span class="text-white/50 font-black text-[11px] tracking-[0.2em] uppercase label z-10 transition-colors group-hover:text-white/80">Off</span>
+                                            <span
+                                                class="text-white/50 font-black text-[10px] tracking-[0.2em] uppercase label z-10 transition-colors group-hover:text-white/80">Heat</span>
                                         </button>
                                     </div>
                                 </div>
 
                                 <!-- Bottom Right: Heavy Switches -->
-                                <div class="bg-black/30 border border-white/5 rounded-2xl p-4 flex gap-6 h-28 items-center justify-center overflow-hidden shadow-inner relative">
+                                <div
+                                    class="bg-black/30 border border-white/5 rounded-2xl p-4 flex gap-6 h-28 items-center justify-center shadow-inner relative">
                                     <!-- Pump -->
                                     <div class="flex items-center gap-4 z-10">
-                                        <div class="w-12 h-16 bg-[#0f1115] rounded-xl border-2 border-[#222] shadow-[inset_0_4px_10px_rgba(0,0,0,0.8),0_5px_10px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center p-1 relative">
-                                            <div id="temp-pump-btn" onclick="window.temperatureManager && window.temperatureManager.togglePump()" class="w-6 h-10 bg-gradient-to-b from-[#2a2d36] to-[#12141a] rounded border border-[#333] cursor-pointer hover:border-[#555] transition-all relative overflow-hidden shadow-[0_4px_6px_rgba(0,0,0,0.6)]">
-                                                <div id="temp-pump-handle" class="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-emerald-500/40 to-emerald-900/10 border-b border-emerald-500/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all"></div>
-                                                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-[1px] bg-black/80"></div>
+                                        <div
+                                            class="w-12 h-16 bg-[#0f1115] rounded-xl border-2 border-[#222] shadow-[inset_0_4px_10px_rgba(0,0,0,0.8),0_5px_10px_rgba(0,0,0,0.5)] flex flex-col items-center justify-center p-1 relative">
+                                            <div id="temp-pump-btn"
+                                                onclick="window.temperatureManager && window.temperatureManager.togglePump()"
+                                                class="w-6 h-10 bg-gradient-to-b from-[#2a2d36] to-[#12141a] rounded border border-[#333] cursor-pointer hover:border-[#555] transition-all relative overflow-hidden shadow-[0_4px_6px_rgba(0,0,0,0.6)]">
+                                                <div id="temp-pump-handle"
+                                                    class="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-emerald-500/40 to-emerald-900/10 border-b border-emerald-500/50 shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all">
+                                                </div>
+                                                <div
+                                                    class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-[1px] bg-black/80">
+                                                </div>
                                             </div>
-                                            <div id="temp-pump-led" class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] border border-black/50"></div>
+                                            <div id="temp-pump-led"
+                                                class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981] border border-black/50">
+                                            </div>
                                         </div>
-                                        <span class="text-[9px] text-white/50 uppercase tracking-[0.1em] font-bold leading-tight">Bomba<br>Externa</span>
+                                        <span
+                                            class="text-[9px] text-white/50 uppercase tracking-[0.1em] font-bold leading-tight">Bomba<br>Externa</span>
                                     </div>
 
                                     <!-- Emergency -->
                                     <div class="flex items-center gap-4 z-10">
-                                        <div class="relative w-16 h-20 bg-gradient-to-br from-[#1c1e24] to-[#0a0a0c] rounded-xl border-2 border-[#2a2c33] shadow-[inset_0_4px_15px_rgba(0,0,0,0.9),_0_8px_20px_rgba(0,0,0,0.8)] flex items-center justify-center p-2 group" style="box-shadow: inset 0 2px 2px rgba(255,255,255,0.05), inset 0 10px 20px rgba(0,0,0,1), 0 10px 20px rgba(0,0,0,0.8);">
-                                            
-                                            <!-- Danger Decals / Hazard border -->
-                                            <div class="absolute inset-0 border border-red-500/20 rounded-xl pointer-events-none transition-colors group-hover:border-red-500/40"></div>
+                                        <div class="relative w-16 h-20 bg-gradient-to-br from-[#1c1e24] to-[#0a0a0c] rounded-xl border-2 border-[#2a2c33] shadow-[inset_0_4px_15px_rgba(0,0,0,0.9),_0_8px_20px_rgba(0,0,0,0.8)] flex items-center justify-center p-2 group"
+                                            style="box-shadow: inset 0 2px 2px rgba(255,255,255,0.05), inset 0 10px 20px rgba(0,0,0,1), 0 10px 20px rgba(0,0,0,0.8);">
 
-                                            <!-- LED Status Indicator -->
-                                            <div class="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-3 bg-[#0a0c10] border border-[#222] rounded flex items-center justify-center shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10">
-                                                <div id="temp-emerg-led" class="w-2.5 h-1.5 bg-red-500/30 rounded-sm transition-colors shadow-inner"></div>
+                                            <!-- Danger Decals / Hazard border -->
+                                            <div
+                                                class="absolute inset-0 border border-red-500/20 rounded-xl pointer-events-none transition-colors group-hover:border-red-500/40">
                                             </div>
 
-                                            <div id="temp-emerg-container" class="relative group/switch w-full h-full flex flex-col items-center justify-end pb-1">
+                                            <!-- LED Status Indicator -->
+                                            <div
+                                                class="absolute -top-3 left-1/2 -translate-x-1/2 w-5 h-3 bg-[#0a0c10] border border-[#222] rounded flex items-center justify-center shadow-[0_2px_4px_rgba(0,0,0,0.8)] z-10">
+                                                <div id="temp-emerg-led"
+                                                    class="w-2.5 h-1.5 bg-red-500/30 rounded-sm transition-colors shadow-inner">
+                                                </div>
+                                            </div>
+
+                                            <div id="temp-emerg-container"
+                                                class="relative group/switch w-full h-full flex flex-col items-center justify-end pb-1 [perspective:800px]">
 
                                                 <!-- Flap / Guard (Molly guard) -->
-                                                <div id="temp-emerg-guard" class="absolute -inset-[2px] -top-2 transition-all duration-300 origin-top z-20 flex flex-col items-center cursor-pointer" onclick="window.temperatureManager && window.temperatureManager.toggleEmergencyGuard(event)" style="transform: rotateX(0deg); filter: drop-shadow(0 15px 10px rgba(0,0,0,0.8));">
+                                                <div id="temp-emerg-guard"
+                                                    class="absolute -inset-[2px] -top-2 transition-all duration-300 origin-top z-20 flex flex-col items-center cursor-pointer"
+                                                    onclick="window.temperatureManager && window.temperatureManager.toggleEmergencyGuard(event)"
+                                                    style="transform: rotateX(0deg); transform-style: preserve-3d; filter: drop-shadow(0 15px 10px rgba(0,0,0,0.8));">
                                                     <!-- Cover Bracket Pivot -->
-                                                    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-2 bg-gradient-to-b from-[#2a2d34] to-[#111] rounded-t-md border border-[#333] shadow-inner z-10"></div>
+                                                    <div
+                                                        class="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-2 bg-gradient-to-b from-[#2a2d34] to-[#111] rounded-t-md border border-[#333] shadow-inner z-10">
+                                                    </div>
                                                     <!-- Glass/Plastic Guard Body -->
-                                                    <div class="absolute top-1 w-[48px] h-[64px] bg-red-900/40 backdrop-blur-[2px] border-2 border-red-500/60 rounded-b-lg shadow-[inset_0_2px_10px_rgba(239,68,68,0.5),_0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col items-center group-hover/switch:border-red-400">
-                                                        <div class="w-full h-2 bg-[repeating-linear-gradient(45deg,#000,#000_2px,#ef4444_2px,#ef4444_4px)] opacity-60"></div>
-                                                        <div class="absolute top-0 left-[-20%] w-[140%] h-[30%] bg-white/20 -rotate-12 blur-[1px]"></div>
-                                                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 font-bold text-[8px] text-white/80 tracking-widest uppercase" style="text-shadow: 0 0 2px black;">WARN</div>
+                                                    <div
+                                                        class="absolute top-1 w-[48px] h-[64px] bg-red-900/40 backdrop-blur-[2px] border-2 border-red-500/60 rounded-b-lg shadow-[inset_0_2px_10px_rgba(239,68,68,0.5),_0_5px_15px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col items-center group-hover/switch:border-red-400">
+                                                        <div
+                                                            class="w-full h-2 bg-[repeating-linear-gradient(45deg,#000,#000_2px,#ef4444_2px,#ef4444_4px)] opacity-60">
+                                                        </div>
+                                                        <div
+                                                            class="absolute top-0 left-[-20%] w-[140%] h-[30%] bg-white/20 -rotate-12 blur-[1px]">
+                                                        </div>
+                                                        <div class="absolute bottom-1 left-1/2 -translate-x-1/2 font-bold text-[8px] text-white/80 tracking-widest uppercase"
+                                                            style="text-shadow: 0 0 2px black;">WARN</div>
                                                     </div>
                                                 </div>
 
                                                 <!-- Heavy Metallic Switch -->
-                                                <div class="relative w-6 h-10 bg-gradient-to-b from-[#1a1c22] to-[#0d0e12] border border-[#2a2d34] rounded shadow-[inset_0_2px_5px_rgba(0,0,0,0.8)] z-10 flex flex-col justify-center cursor-pointer" onclick="window.temperatureManager && window.temperatureManager.toggleEmergency(event)">
-                                                    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[10px] h-[30px] bg-[#050505] rounded-[2px] shadow-[inset_0_2px_5px_rgba(0,0,0,1)]"></div>
-                                                    <div id="temp-emerg-handle" class="absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[8px] h-[16px] rounded-sm transition-all duration-300 z-10 shadow-[0_5px_10px_rgba(0,0,0,1)] flex flex-col items-center justify-center gap-[2px]" style="background: linear-gradient(to top, #333, #666); border-top: 2px solid #aaa;">
+                                                <div class="relative w-6 h-10 bg-gradient-to-b from-[#1a1c22] to-[#0d0e12] border border-[#2a2d34] rounded shadow-[inset_0_2px_5px_rgba(0,0,0,0.8)] z-10 flex flex-col justify-center cursor-pointer"
+                                                    onclick="window.temperatureManager && window.temperatureManager.toggleEmergency(event)">
+                                                    <div
+                                                        class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[10px] h-[30px] bg-[#050505] rounded-[2px] shadow-[inset_0_2px_5px_rgba(0,0,0,1)]">
+                                                    </div>
+                                                    <div id="temp-emerg-handle"
+                                                        class="absolute bottom-[2px] left-1/2 -translate-x-1/2 w-[8px] h-[16px] rounded-sm transition-all duration-300 z-10 shadow-[0_5px_10px_rgba(0,0,0,1)] flex flex-col items-center justify-center gap-[2px]"
+                                                        style="background: linear-gradient(to top, #333, #666); border-top: 2px solid #aaa;">
                                                         <div class="w-full h-[1px] bg-black/40"></div>
                                                         <div class="w-full h-[1px] bg-black/40"></div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <span class="text-[10px] text-red-500/80 uppercase tracking-[0.2em] font-black leading-tight drop-shadow-[0_0_5px_rgba(239,68,68,0.2)]" id="emerg-text">Emergencia<br>Abierta</span>
+                                        <span
+                                            class="text-[10px] text-red-500/80 uppercase tracking-[0.2em] font-black leading-tight drop-shadow-[0_0_5px_rgba(239,68,68,0.2)]"
+                                            id="emerg-text">Emergencia<br>Abierta</span>
                                     </div>
                                 </div>
                             </div>
@@ -3022,7 +3177,7 @@
                             <!-- Selector Central -->
                             <div class="flex flex-col items-center gap-8">
                                 <div id="knob-tactical-unit"
-                                    class="relative w-36 h-36 flex items-center justify-center group cursor-pointer">
+                                    class="relative w-36 h-36 flex items-center justify-center group cursor-pointer z-30">
                                     <!-- Outer rim / chassis scale markings -->
                                     <svg
                                         class="absolute inset-0 w-full h-full text-white/10 group-hover:text-cyan-500/30 transition-colors duration-500">
@@ -3073,18 +3228,18 @@
 
                                     <!-- Legend Labels -->
                                     <div
-                                        class="absolute -left-16 top-1/2 -translate-y-1/2 flex flex-col items-end pointer-events-none">
+                                        class="absolute -left-6 top-1/2 -translate-y-1/2 flex flex-col items-end z-50 pointer-events-none">
                                         <span
-                                            class="text-white text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">A</span>
+                                            class="text-white text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] leading-none">A</span>
                                         <span
-                                            class="text-cyan-500 text-[8px] uppercase font-bold tracking-widest mt-1">MAIN</span>
+                                            class="text-cyan-500 text-[8px] uppercase font-bold tracking-widest mt-1 leading-none">MAIN</span>
                                     </div>
                                     <div
-                                        class="absolute -right-16 top-1/2 -translate-y-1/2 flex flex-col items-start pointer-events-none">
+                                        class="absolute -right-6 top-1/2 -translate-y-1/2 flex flex-col items-start z-50 pointer-events-none">
                                         <span
-                                            class="text-white text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">B</span>
+                                            class="text-white text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(255,255,255,0.4)] leading-none">B</span>
                                         <span
-                                            class="text-cyan-500 text-[8px] uppercase font-bold tracking-widest mt-1">AUX</span>
+                                            class="text-cyan-500 text-[8px] uppercase font-bold tracking-widest mt-1 leading-none">AUX</span>
                                     </div>
                                 </div>
                                 <span class="text-white/20 text-[9px] uppercase font-bold tracking-[0.3em]">Conmutador
@@ -3560,6 +3715,16 @@
         style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, rgba(6,182,212,0.4) 50%, rgba(0,20,40,0.95) 100%); transition: backdrop-filter 0.5s ease;">
     </div>
 
+    <!-- EFECTO DE HIPERTERMIA (ALARMA NARANJA) -->
+    <div id="hyperthermia-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+        style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(249,115,22,0.1) 0%, rgba(249,115,22,0.4) 50%, rgba(30,10,0,0.95) 100%); transition: opacity 0.5s ease, backdrop-filter 0.5s ease;">
+    </div>
+
+    <!-- EFECTO DE HIPOTERMIA (ALARMA AZUL CONGELADO) -->
+    <div id="hypothermia-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+        style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, rgba(59,130,246,0.3) 50%, rgba(0,5,20,0.95) 100%); transition: opacity 0.5s ease, backdrop-filter 0.5s ease;">
+    </div>
+
     <!-- CUENTA ATRÁS CRÍTICA (REFINADA Y PEQUEÑA) -->
     <div id="co2-critical-countdown" class="absolute z-[1000] pointer-events-none hidden flex flex-col items-center">
         <div class="relative flex items-center justify-center">
@@ -3575,6 +3740,22 @@
         <span
             class="text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30">EMERGENCIA
             CO2</span>
+    </div>
+
+    <!-- CUENTA ATRÁS CRÍTICA TEMPERATURA -->
+    <div id="temp-critical-countdown" class="absolute z-[1000] pointer-events-none hidden flex flex-col items-center">
+        <div class="relative flex items-center justify-center">
+            <svg class="w-14 h-14">
+                <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(249,115,22,0.2)" stroke-width="4"></circle>
+                <circle cx="28" cy="28" r="24" fill="none" stroke="#f97316" stroke-width="4" stroke-dasharray="150"
+                    style="stroke-dashoffset: 0; transition: stroke-dashoffset 0.1s linear;"></circle>
+            </svg>
+            <div id="temp-timer-value"
+                class="absolute inset-0 flex items-center justify-center text-white text-lg font-black font-mono drop-shadow-[0_0_10px_#f97316]">
+                20.0</div>
+        </div>
+        <span id="temp-timer-label"
+            class="text-orange-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-orange-500/30">HIPERTERMIA</span>
     </div>
 
     <!-- PANTALLA DE GAME OVER (Gestionada dinámicamente por EndGame.js) -->
@@ -3617,6 +3798,107 @@
 
     <!-- Main game loop -->
     <script src="js/main.js"></script>
+</body>
+
+</html>ript src="js/main.js"></script>
+</body>
+
+</html> <span class="alarm-value" id="alarm-hud-value">—</span>
+</div>
+
+<!-- EFECTO DE INTOXICACIÓN POR CO2 (NUBRADO Y ALARMA ROJA) -->
+<div id="co2-poison-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+    style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(239,68,68,0.2) 0%, rgba(239,68,68,0.5) 50%, rgba(0,0,0,0.95) 100%); transition: backdrop-filter 0.5s ease;">
+</div>
+
+<!-- EFECTO DE ANOXIA (ALARMA AZUL CLARO) -->
+<div id="o2-anoxia-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+    style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(6,182,212,0.1) 0%, rgba(6,182,212,0.4) 50%, rgba(0,20,40,0.95) 100%); transition: backdrop-filter 0.5s ease;">
+</div>
+
+<!-- EFECTO DE HIPERTERMIA (ALARMA NARANJA) -->
+<div id="hyperthermia-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+    style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(249,115,22,0.1) 0%, rgba(249,115,22,0.4) 50%, rgba(30,10,0,0.95) 100%); transition: opacity 0.5s ease, backdrop-filter 0.5s ease;">
+</div>
+
+<!-- EFECTO DE HIPOTERMIA (ALARMA AZUL CONGELADO) -->
+<div id="hypothermia-overlay" class="fixed inset-0 z-[999] pointer-events-none opacity-0"
+    style="backdrop-filter: blur(0px); background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, rgba(59,130,246,0.3) 50%, rgba(0,5,20,0.95) 100%); transition: opacity 0.5s ease, backdrop-filter 0.5s ease;">
+</div>
+
+<!-- CUENTA ATRÁS CRÍTICA (REFINADA Y PEQUEÑA) -->
+<div id="co2-critical-countdown" class="absolute z-[1000] pointer-events-none hidden flex flex-col items-center">
+    <div class="relative flex items-center justify-center">
+        <svg class="w-14 h-14">
+            <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(239,68,68,0.2)" stroke-width="4"></circle>
+            <circle cx="28" cy="28" r="24" fill="none" stroke="#ef4444" stroke-width="4" stroke-dasharray="150"
+                style="stroke-dashoffset: 0; transition: stroke-dashoffset 0.1s linear;"></circle>
+        </svg>
+        <div id="co2-timer-value"
+            class="absolute inset-0 flex items-center justify-center text-white text-lg font-black font-mono drop-shadow-[0_0_10px_#ef4444]">
+            3.0</div>
+    </div>
+    <span
+        class="text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30">EMERGENCIA
+        CO2</span>
+</div>
+
+<!-- CUENTA ATRÁS CRÍTICA TEMPERATURA -->
+<div id="temp-critical-countdown" class="absolute z-[1000] pointer-events-none hidden flex flex-col items-center">
+    <div class="relative flex items-center justify-center">
+        <svg class="w-14 h-14">
+            <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(249,115,22,0.2)" stroke-width="4"></circle>
+            <circle cx="28" cy="28" r="24" fill="none" stroke="#f97316" stroke-width="4" stroke-dasharray="150"
+                style="stroke-dashoffset: 0; transition: stroke-dashoffset 0.1s linear;"></circle>
+        </svg>
+        <div id="temp-timer-value"
+            class="absolute inset-0 flex items-center justify-center text-white text-lg font-black font-mono drop-shadow-[0_0_10px_#f97316]">
+            20.0</div>
+    </div>
+    <span id="temp-timer-label"
+        class="text-orange-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-orange-500/30">HIPERTERMIA</span>
+</div>
+
+<!-- PANTALLA DE GAME OVER (Gestionada dinámicamente por EndGame.js) -->
+
+<!-- 
+      [ES] Carga de scripts del juego dividida y organizada por responsabilidades. 
+      [EN] Loading of game scripts split and matched by responsibilities. 
+    -->
+<!-- Módulos de configuración -->
+<script src="js/config/version.js"></script>
+<script src="js/config/constants.js"></script>
+<script src="js/config/fishes.js"></script>
+<script src="js/config/macros.js"></script>
+<script src="js/config/filters.js"></script>
+<script src="js/config/energy.js"></script>
+
+<!-- Módulos de utilidades -->
+<script src="js/utils/helpers.js"></script>
+
+<!-- Módulos de entidades -->
+<script src="js/entities/Particle.js"></script>
+<script src="js/entities/Bubble.js"></script>
+<script src="js/entities/Base.js"></script>
+<script src="js/entities/Fish.js"></script>
+
+<!-- Módulos del core -->
+<script src="js/core/Camera.js"></script>
+<script src="js/core/Player.js"></script>
+<script src="js/core/SplashScreen.js"></script>
+<script src="js/core/LoadingScreen.js"></script>
+<script src="js/core/macroManager.js"></script>
+<script src="js/core/SubTabManager.js"></script>
+<script src="js/core/OxygenManager.js"></script>
+<script src="js/core/SubManagementManager.js"></script>
+<script src="js/core/EnergyManager.js"></script>
+<script src="js/core/EndGame.js"></script>
+<script src="js/core/UI.js"></script>
+<script src="js/core/UITelemetry.js"></script>
+<script src="js/core/TemperatureManager.js"></script>
+
+<!-- Main game loop -->
+<script src="js/main.js"></script>
 </body>
 
 </html>ript src="js/main.js"></script>

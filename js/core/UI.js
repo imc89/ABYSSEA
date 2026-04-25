@@ -48,15 +48,26 @@ class UIManager {
     }
 
     /**
-     * [ES] Posicionamiento dinámico del contador de CO2 sobre la nave.
+     * [ES] Posicionamiento dinámico de contadores de emergencia sobre la nave.
      */
     updatePoisonCountdownPos(player, camera) {
-        const countdown = document.getElementById('co2-critical-countdown');
-        if (!countdown || countdown.classList.contains('hidden')) return;
         const screenPos = camera.worldToScreen(player.x, player.y);
-        countdown.style.left = `${screenPos.x}px`;
-        countdown.style.top = `${screenPos.y - 120}px`;
-        countdown.style.transform = 'translateX(-50%)';
+        
+        // CO2 / O2 Countdown
+        const countdown = document.getElementById('co2-critical-countdown');
+        if (countdown && !countdown.classList.contains('hidden')) {
+            countdown.style.left = `${screenPos.x}px`;
+            countdown.style.top = `${screenPos.y - 120}px`;
+            countdown.style.transform = 'translateX(-50%)';
+        }
+
+        // Temperature Countdown
+        const tempCountdown = document.getElementById('temp-critical-countdown');
+        if (tempCountdown && !tempCountdown.classList.contains('hidden')) {
+            tempCountdown.style.left = `${screenPos.x}px`;
+            tempCountdown.style.top = `${screenPos.y - 120}px`;
+            tempCountdown.style.transform = 'translateX(-50%)';
+        }
     }
 
     /**

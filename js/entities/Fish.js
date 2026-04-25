@@ -152,12 +152,12 @@ class Fish {
                     // --- Cohesión: Vel. deseada = dirección al centroide ---
                     const cxTarget = cohX / count;
                     const cyTarget = cohY / count;
-                    const cohDist = Math.hypot(cxTarget - this.x, cyTarget - this.y);
+                    const cohDist = Math.sqrt((cxTarget - this.x) * (cxTarget - this.x) + (cyTarget - this.y) * (cyTarget - this.y));
                     const cohDesX = cohDist > 0 ? (cxTarget - this.x) / cohDist * this.maxSpeed : 0;
                     const cohDesY = cohDist > 0 ? (cyTarget - this.y) / cohDist * this.maxSpeed : 0;
 
                     // --- Separación: Ya normalizada por fuerza ---
-                    const sepMag = Math.hypot(sepX, sepY);
+                    const sepMag = Math.sqrt(sepX * sepX + sepY * sepY);
                     const sepNX = sepMag > 0 ? sepX / sepMag : 0;
                     const sepNY = sepMag > 0 ? sepY / sepMag : 0;
 
@@ -166,7 +166,7 @@ class Fish {
                     let steerY = sepNY * 0.7 + (aliDesY - this.vy) * 0.3 + (cohDesY - this.vy) * 0.15;
 
                     // Limitar la fuerza de steering para suavidad
-                    const steerMag = Math.hypot(steerX, steerY);
+                    const steerMag = Math.sqrt(steerX * steerX + steerY * steerY);
                     if (steerMag > MAX_FORCE) {
                         steerX = (steerX / steerMag) * MAX_FORCE;
                         steerY = (steerY / steerMag) * MAX_FORCE;
@@ -238,14 +238,14 @@ class Fish {
         }
 
         // LÍMITE DE VELOCIDAD (techo)
-        let speed = Math.hypot(this.vx, this.vy);
+        let speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
         if (speed > this.maxSpeed) {
             this.vx *= this.maxSpeed / speed;
             this.vy *= this.maxSpeed / speed;
         }
 
         // VELOCIDAD MÍNIMA — el pez nunca se queda quieto
-        speed = Math.hypot(this.vx, this.vy);
+        speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
         if (speed < MIN_SPEED && speed > 0) {
             this.vx = (this.vx / speed) * MIN_SPEED;
             this.vy = (this.vy / speed) * MIN_SPEED;
@@ -458,7 +458,7 @@ class Fish {
                                 // Limitar actualizaciones del transform a pixeles enteros
                                 const transX = Math.round(sx + rx - power);
                                 const transY = Math.round(sy + ry - power);
-                                const rTransform = `translate(${transX}px, ${transY}px)`;
+                                const rTransform = `translate3d(${transX}px, ${transY}px, 0)`;
                                 
                                 if (el._lastTransform !== rTransform) {
                                     el.style.transform = rTransform;
@@ -489,7 +489,7 @@ class Fish {
                 const renderY = Math.round(sy - this.height / 2);
                 const renderAngle = Math.round(MathAngleDeg * 10) / 10; // Redondear angulo a 1 decimal
                 
-                const newTransform = `translate(${renderX}px, ${renderY}px) rotate(${renderAngle}deg) ${flip}`;
+                const newTransform = `translate3d(${renderX}px, ${renderY}px, 0) rotate(${renderAngle}deg) ${flip}`;
                 if (this._lastTransform !== newTransform) {
                     this.domElement.style.transform = newTransform;
                     this._lastTransform = newTransform;
