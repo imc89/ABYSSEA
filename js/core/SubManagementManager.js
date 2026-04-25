@@ -13,10 +13,9 @@ class SubManagementManager {
 
     generateParticles(index) {
         this.particles[index] = [];
-        // Aumento optimizado: menos partículas pero más grandes
-        const count = 500;
+        const count = 3200;
         for (let i = 0; i < count; i++) {
-            const r = 4.0 + Math.random() * 3.6;
+            const r = 1.5 + Math.random() * 2.0;
             const halfLen = r * (0.8 + Math.random() * 0.9);
             const base = 215 + Math.random() * 35;
 
