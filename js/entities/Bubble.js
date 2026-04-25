@@ -63,7 +63,8 @@ class Bubble {
 
         let visibility = ambientAlpha;
         const distToPlayerSq = distanceSq(this.x, this.y, player.x, player.y);
-        if (player.lightOn && player.lightBattery > 0) {
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (player.lightOn && mainBattery > 0) {
             if (distToPlayerSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
                 const distToPlayer = Math.sqrt(distToPlayerSq);
                 const angToBubble = Math.atan2(this.y - player.y, this.x - player.x);

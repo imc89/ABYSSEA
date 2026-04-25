@@ -85,7 +85,8 @@ class Particle {
 
         // ILUMINACIÓN POR CONO (Spotlight)
         let lightIntensity = 0;
-        if (player.lightOn && player.lightBattery > 0 && dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (player.lightOn && mainBattery > 0 && dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
             const dist = Math.sqrt(dSq);
             const angToParticle = Math.atan2(
                 (this.y + camera.y) - (player.y + WORLD.lightOffsetY),
@@ -93,10 +94,8 @@ class Particle {
             );
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
             
-            // Función auxiliar clampAngleDelta (debe estar disponible globalmente como en Fish.js)
-            const MathAngleDelta = typeof clampAngleDelta !== 'undefined' 
-                ? clampAngleDelta(angToParticle, lookDir)
-                : Math.abs(angToParticle - lookDir); // Fallback si no está definida
+            // Usar clampAngleDelta directamente (está disponible de forma global en Utils o Main)
+            const MathAngleDelta = clampAngleDelta(angToParticle, lookDir);
 
             if (MathAngleDelta < WORLD.lightAngle) {
                 // Dentro del cono: intensidad basada en distancia y factor de parpadeo
@@ -113,9 +112,7 @@ class Particle {
 
         if (finalAlpha > 0.01) {
             ctx.fillStyle = `rgba(200, 230, 255, ${finalAlpha})`;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.width, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillRect(this.x - this.width, this.y - this.width, this.width * 2, this.width * 2);
             return true;
         }
         return false;

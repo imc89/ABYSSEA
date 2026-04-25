@@ -18,9 +18,8 @@ class Player {
         this.h = PLAYER_CONFIG.height;
         this.dir = 1;  // 1 = derecha, -1 = izquierda
 
-        // Sistema de iluminación
+        // Sistema de iluminación (Faro)
         this.lightOn = false;
-        this.lightBattery = 100;
         this.lightFlickerIntensity = 1.0;
 
         // Sistema de sónar
@@ -32,6 +31,17 @@ class Player {
 
         this.energy = 100;
 
+        // Sistema de Soporte Vital
+        this.oxygen = 100;
+        this.co2 = 0.04; // Nivel base habitual 
+        this.poisonTimer = 0;
+        this.isDead = false;
+        this.activeScrubberIndex = 0; // 0 o 1
+        this.scrubbers = [
+            { percentage: 100, needsReplacement: false, replacementTimer: 0 },
+            { percentage: 100, needsReplacement: false, replacementTimer: 0 }
+        ];
+
         // Estado inicial: acoplado a la base
         this.isLocked = true;
         this.lockY = this.y;
@@ -42,12 +52,24 @@ class Player {
      * [EN] Main physics and logic loop for the player. Handles inputs, physics, battery drain, and collisions against level boundaries.
      */
     update(keys, controlScheme, world, canvas, dtMult = 1.0) {
+        // Pausa TOTAL si el menú de ESC está abierto
+        if (typeof isMenuOpen !== 'undefined' && isMenuOpen) {
+            return false; // No hay movimiento
+        }
+
         // Actualizar sónar
         if (this.sonarActive) {
-            this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
-            if (this.sonarRadius > PLAYER_CONFIG.sonarMaxRadius) {
+            // Si hay apagón o se apaga empíricamente el circuito, cancelar sonar
+            if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.sonar)) {
                 this.sonarActive = false;
-                this.sonarCharging = true;
+                this.sonarCharging = false;
+                this.sonarCooldown = 0;
+            } else {
+                this.sonarRadius += PLAYER_CONFIG.sonarExpansionSpeed * dtMult;
+                if (this.sonarRadius > PLAYER_CONFIG.sonarMaxRadius) {
+                    this.sonarActive = false;
+                    this.sonarCharging = true;
+                }
             }
         }
 
@@ -59,26 +81,18 @@ class Player {
             }
         }
 
-        // Gestión de batería del faro
-        if (this.lightOn) {
-            this.lightBattery -= PLAYER_CONFIG.lightDrainRate * dtMult;
-            if (this.lightBattery <= 0) {
-                this.lightBattery = 0;
-                this.lightOn = false;
-            }
-        } else if (this.lightBattery < 100) {
-            this.lightBattery += PLAYER_CONFIG.lightRechargeRate * dtMult;
+        // El consumo y regeneración del Faro ahora lo gestiona de forma centralizada el EnergyManager.
+        // Aquí solo nos aseguramos de apagar la luz si nos quedamos sin energía principal.
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.faro)) {
+            this.lightOn = false;
         }
 
-        // EFECTO DE BOMBILLA MURIÉNDOSE: parpadeo agresivo cuando la batería baja del 10%
-        if (this.lightOn && this.lightBattery < 10) {
-            // Cuánto de cerca está de 0 (0=llena al 10%, 1=muerta)
-            const dying = 1 - (this.lightBattery / 10);
-            // Frecuencia de parpadeo se acelera al morir
+        // EFECTO DE BOMBILLA MURIÉNDOSE: parpadeo agresivo cuando la reserva principal baja del 10%
+        if (this.lightOn && mainBattery < 10 && mainBattery > 0) {
+            const dying = 1 - (mainBattery / 10);
             const flickerSpeed = 0.015 + dying * 0.08;
-            // Ruido aleatorio que aumenta según se muere
             const noise = (Math.random() - 0.5) * dying * 1.2;
-            // Onda sinusoidal + ruido aleatorio
             this.lightFlickerIntensity = Math.max(0, Math.min(1,
                 0.5 + Math.sin(Date.now() * flickerSpeed) * 0.5 + noise
             ));
@@ -88,7 +102,13 @@ class Player {
 
         // Movimiento - velocidad horizontal reducida para juego vertical
         const horizontalSpeedReduction = 0.5;  // 50% de velocidad horizontal
-        const currentSpeed = this.speed * (keys['ShiftLeft'] ? this.boost : 1);
+        let currentSpeed = this.speed * (keys['ShiftLeft'] ? this.boost : 1);
+
+        // Bloquear motores de propulsión si no hay energía o están apagados en tablero
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.motores)) {
+            currentSpeed = 0;
+        }
+
         let moving = false;
 
         if (this.isKeyPressed('left', keys, controlScheme)) {
@@ -157,6 +177,21 @@ class Player {
             if (this.vy < 0) this.vy *= -0.3; // Rebote mecánico contra el metal grueso
         }
 
+        // LÍMITE DEL FONDO ABISAL (11000m = 110000 unidades de juego)
+        // Fase 1: Empuje progresivo cuando se acerca al lecho (los últimos 200 units)
+        const FLOOR_Y = 110000;
+        const distToFloor = FLOOR_Y - this.y;
+        if (distToFloor < 200 && distToFloor > 0) {
+            // Fuerza de rebote creciente cuanto más cerca del fondo
+            const pushForce = (1 - distToFloor / 200) * 1.5;
+            this.vy -= pushForce * dtMult;
+        }
+        // Fase 2: Clamp duro — player.y NUNCA puede superar 110000 exacto
+        if (this.y >= FLOOR_Y) {
+            this.y = FLOOR_Y;
+            if (this.vy > 0) this.vy = 0;
+        }
+
         // Si está bloqueado, forzar posición
         if (this.isLocked) {
             this.y = this.lockY;
@@ -165,6 +200,219 @@ class Player {
         }
 
         return moving;
+    }
+
+    /**
+     * [ES] Gestiona los sistemas de soporte vital: oxígeno, CO2 y filtros de cal sodada (scrubbers).
+     * [EN] Manages life support systems: oxygen, CO2, and soda lime filters (scrubbers).
+     */
+    updateLifeSupport(dtMult) {
+        const isMenuOpenGlobal = (typeof isMenuOpen !== 'undefined' ? isMenuOpen : false);
+        const canSimulate = !this.isLocked && !isMenuOpenGlobal;
+
+        // Factores de conversión
+        const co2ProdPerTick = (FILTER_CONFIG.cabinCo2RiseRate / 60);
+        const scrubberDrainPerTick = (100 / (FILTER_CONFIG.scrubberDuration * 60 * 60));
+        // Eficiencia del scrubber: debe ser capaz de contrarrestar el ascenso
+        const scrubberEfficiency = co2ProdPerTick * 1.5;
+
+        if (canSimulate) {
+            // Producción de CO2
+            this.co2 += co2ProdPerTick * dtMult;
+            if (this.co2 > 20.0) this.co2 = 20.0; // Cap sumidero suave
+
+            // Filtrado de CO2 (Scrubber activo)
+            const activeScrubber = this.scrubbers[this.activeScrubberIndex];
+
+            // Solo funciona si no hay apagón y el interruptor interno está activado
+            const hasPower = typeof energyManager !== 'undefined' ? (!energyManager.isBlackout && energyManager.switches.scrubbers) : true;
+
+            if (activeScrubber.percentage > 0 && hasPower) {
+                activeScrubber.percentage -= scrubberDrainPerTick * dtMult;
+                if (activeScrubber.percentage < 0) activeScrubber.percentage = 0;
+
+                // Eliminar CO2 (Solo si el filtro tiene carga)
+                this.co2 -= scrubberEfficiency * dtMult;
+            }
+        }
+
+        // Recuperar el scrubber activo fuera del if para la lógica de intoxicación
+        const activeScrubber = this.scrubbers[this.activeScrubberIndex];
+        const overlay = document.getElementById('co2-poison-overlay');
+        const countdown = document.getElementById('co2-critical-countdown');
+
+        // Lógica de alerta y muerte por Anoxia (Oxígeno)
+        const isAnoxiaCritical = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 7.0);
+
+        // Detectar si el jugador está solucionando los problemas activamente
+        this.isCo2Improving = false;
+        if (typeof energyManager !== 'undefined') {
+            const hasPower = !energyManager.isBlackout && energyManager.switches.scrubbers;
+            if (activeScrubber && activeScrubber.percentage > 0 && hasPower) this.isCo2Improving = true;
+        }
+        if (typeof oxygenManager !== 'undefined' && oxygenManager.isPurging) {
+            this.isCo2Improving = true;
+        }
+
+        // Control de visibilidad del contador (Solo fuera de menús técnicos o generales)
+        const isTechMenuOpen =
+            (typeof subManagementManager !== 'undefined' && subManagementManager.isOpen) ||
+            (typeof uiManager !== 'undefined' && (
+                uiManager.isSubManagementOpen ||
+                uiManager.isDiscoveryModalOpen ||
+                uiManager.isScanModalOpen
+            ));
+        const canShowTimer = !isMenuOpenGlobal && !isTechMenuOpen;
+
+        if ((this.co2 >= 15.0 || isAnoxiaCritical) && !this.isDead) {
+            // Verificar si el problema específico que está causando la emergencia se está solucionando
+            const isCo2Fixing = (this.co2 >= 15.0 && this.isCo2Improving);
+            const isO2Fixing = (isAnoxiaCritical && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
+            
+            // Si hay emergencia por alguna de las dos o ambas, y se están arreglando TODAS las alarmas activas
+            const fixingAll = (this.co2 >= 15.0 ? isCo2Fixing : true) && (isAnoxiaCritical ? isO2Fixing : true);
+            
+            if (fixingAll) {
+                if (canSimulate && this.poisonTimer > 0) {
+                    this.poisonTimer -= (2 / 60) * dtMult;
+                    if (this.poisonTimer < 0) this.poisonTimer = 0;
+                }
+            } else if (canSimulate) {
+                this.poisonTimer += (1 / 60) * dtMult;
+
+                if (this.poisonTimer >= FILTER_CONFIG.co2PoisoningGracePeriod) {
+                    if (isAnoxiaCritical && !isO2Fixing) {
+                        this.triggerGameOver('MUERTE POR ANOXIA', 'anoxia');
+                    } else {
+                        this.triggerGameOver('INTOXICACIÓN POR CO2', 'critical');
+                    }
+                }
+            }
+        } else if (!isAnoxiaCritical && this.co2 < 15.0 && !this.isDead) {
+            if (canSimulate && this.poisonTimer > 0) {
+                this.poisonTimer -= (2 / 60) * dtMult;
+                if (this.poisonTimer < 0) this.poisonTimer = 0;
+            }
+        }
+
+        // Mostrar u ocultar el contador según estado y visibilidad de menús
+        if (countdown) {
+            const isCriticalAtmo = (this.co2 >= 15.0 || isAnoxiaCritical);
+            if (isCriticalAtmo && canShowTimer && !this.isDead) {
+                countdown.classList.remove('hidden');
+                const timerVal = document.getElementById('co2-timer-value');
+                const statusLabel = countdown.querySelector('span');
+                const timerCircle = countdown.querySelector('svg circle:nth-child(2)');
+
+                if (timerVal) {
+                    const remaining = Math.max(0, FILTER_CONFIG.co2PoisoningGracePeriod - this.poisonTimer);
+                    timerVal.innerText = remaining.toFixed(1);
+                }
+
+                if (statusLabel) {
+                    if (isAnoxiaCritical) {
+                        statusLabel.innerText = "EMERGENCIA O2";
+                        statusLabel.className = "text-cyan-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-cyan-500/30";
+                    } else {
+                        statusLabel.innerText = "EMERGENCIA CO2";
+                        statusLabel.className = "text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30";
+                    }
+                }
+
+                if (timerCircle) {
+                    timerCircle.style.stroke = isAnoxiaCritical ? "#06b6d4" : "#ef4444";
+                    const progress = Math.min(1, this.poisonTimer / FILTER_CONFIG.co2PoisoningGracePeriod);
+                    timerCircle.style.strokeDashoffset = (progress * 150).toString();
+                }
+            } else {
+                countdown.classList.add('hidden');
+            }
+        }
+
+        // Efecto visual progresivo de Rojo (Escalado a 15%)
+        if (overlay) {
+            let redOpacity = 0;
+            if (this.co2 >= 2.0 && this.co2 < 5.0) {
+                redOpacity = (this.co2 - 2.0) * 0.05;
+            } else if (this.co2 < 10.0) {
+                redOpacity = 0.15 + (this.co2 - 5.0) * 0.05;
+            } else if (this.co2 < 15.0) {
+                redOpacity = 0.4 + (this.co2 - 10.0) * 0.04;
+            } else if (this.co2 >= 15.0) {
+                redOpacity = 0.6;
+            }
+            
+            // Caching values
+            const rOpacity = (Math.round(redOpacity * 100) / 100).toString();
+            // Reducir la distorsión global haciéndolo jugable (max 3px de blur)
+            const rBlur = Math.round(redOpacity * 3).toString();
+            
+            if (overlay.dataset.lastOp !== rOpacity) {
+                overlay.style.opacity = rOpacity;
+                overlay.dataset.lastOp = rOpacity;
+            }
+            if (overlay.dataset.lastBlur !== rBlur) {
+                overlay.style.backdropFilter = `blur(${rBlur}px)`;
+                overlay.dataset.lastBlur = rBlur;
+            }
+        }
+
+        // Gestionar temporizadores de mantenimiento para los inactivos QUE NO ESTÉN LLENOS
+        this.scrubbers.forEach((s, idx) => {
+            // Un filtro está listo para mantenimiento si NO es el activo y NO está al 100%
+            if (idx !== this.activeScrubberIndex && s.percentage < 100) {
+                // Iniciar contador si no estaba ya en marcha o si acaba de ser desconectado
+                if (!s.needsReplacement) {
+                    s.needsReplacement = true;
+                    s.replacementTimer = FILTER_CONFIG.scrubberReplacementTime * 60;
+                }
+
+                // Descontar tiempo
+                if (s.replacementTimer > 0) {
+                    s.replacementTimer -= (1 / 60) * dtMult;
+                    if (s.replacementTimer < 0) s.replacementTimer = 0;
+                }
+            } else if (idx === this.activeScrubberIndex) {
+                // ...
+            }
+        });
+
+        // CO2 no puede ser negativo y se limita a 100
+        this.co2 = Math.max(0, Math.min(100, this.co2));
+    }
+
+    /**
+     * [ES] Activa la secuencia de fin de juego por intoxicación o asfixia.
+     */
+    triggerGameOver(reason = 'INTOXICACIÓN POR CO2', theme = 'critical') {
+        if (this.isDead) return;
+        this.isDead = true;
+
+        if (typeof endGame !== 'undefined' && endGame) {
+            endGame.show(reason, theme);
+        } else {
+            // Fallback de seguridad
+            location.reload();
+        }
+    }
+
+    switchScrubber(index) {
+        if (index >= 0 && index < this.scrubbers.length) {
+            this.activeScrubberIndex = index;
+            if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('toggle', 0.5);
+        }
+    }
+
+    replaceScrubber(index) {
+        const s = this.scrubbers[index];
+        if (s.needsReplacement && s.replacementTimer <= 0) {
+            s.percentage = 100;
+            s.needsReplacement = false;
+            s.replacementTimer = 0;
+            if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('hook', 0.6);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -201,6 +449,10 @@ class Player {
      * [EN] Activates the sonar system if it's not on cooldown, starting the detection wave.
      */
     activateSonar() {
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.sonar)) {
+            return false; // Sin energía
+        }
+
         if (this.sonarCooldown <= 0 && !this.sonarActive) {
             this.sonarActive = true;
             this.sonarRadius = 0;
@@ -215,7 +467,12 @@ class Player {
      * [EN] Toggles the main spotlight state (on/off) and plays the corresponding sound effect.
      */
     toggleLight() {
-        if (this.lightBattery > 2) {
+        if (typeof energyManager !== 'undefined' && (energyManager.isBlackout || !energyManager.switches.faro)) {
+            return;
+        }
+
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (mainBattery > 0.5) {
             this.lightOn = !this.lightOn;
             GlobalAudioPool.play('light', 0.4);
         }
@@ -262,7 +519,8 @@ class Player {
      * [EN] Draws the light halos (directional and radial) emitted by the submarine when the flashlight is on.
      */
     drawLight(ctx, camera) {
-        if (!this.lightOn) return;
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (!this.lightOn || mainBattery <= 0) return;
 
         const px = this.x - camera.x;
         const py = this.y - camera.y + WORLD.lightOffsetY;

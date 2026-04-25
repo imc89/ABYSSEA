@@ -10,6 +10,7 @@ let camera;
 let player;
 let uiManager;
 let uiTelemetry;
+let endGame;
 let imageCache;
 let splashScreen;
 
@@ -23,6 +24,7 @@ let scannableTarget = null;
 let bubblesAudio = null;
 let bgMusic = null;
 let lowBatteryAudio = null;
+let alarmAudio = null;
 let isMusicMuted = false;
 let isMenuOpen = false;
 
@@ -37,6 +39,9 @@ let telemetryData = {
 // Puntos de interés (Mini-descubrimientos)
 let discoveryPoints = [];
 let nearPOI = null;
+
+// Caché DOM global para optimización del Main Loop
+let domCache = {};
 
 /**
  * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
@@ -122,6 +127,7 @@ function setupGameCore() {
     if (fishLayer) fishLayer.innerHTML = '';
 
     uiManager = new UIManager();
+    endGame = new EndGame();
     uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
 
@@ -139,6 +145,10 @@ function setupGameCore() {
     lowBatteryAudio.loop = true;
     lowBatteryAudio.volume = 0.6;
 
+    alarmAudio = new Audio('audio/alarm.mp3');
+    alarmAudio.loop = true;
+    alarmAudio.volume = 0.5;
+
     // Precargar Audios
     GlobalAudioPool.initPool('fish_escape', 'audio/fish_escape.mp3', 5);
     GlobalAudioPool.initPool('light', 'audio/light.mp3', 2);
@@ -148,6 +158,8 @@ function setupGameCore() {
 
     // Cargar imagen del jugador
     imageCache.load('player', PLAYER_CONFIG.image);
+    // Cargar imagen del suelo abisal (límite 11000m)
+    imageCache.load('floor', 'img/floor/floor.png');
 
     // Generar partículas de nieve marina (ahora en espacio de pantalla)
     for (let i = 0; i < WORLD.particleCount; i++) {
@@ -192,6 +204,11 @@ function setupGameCore() {
 
     // Event listeners
     // setupEventHandlers(); // Movido a init() para responder desde el splash
+
+    // Caching global DOM elements para evitar consultar en cada loop (optimizacion rendimiento CPU 60fps)
+    domCache.alarmOverlay = document.getElementById('general-alarm-overlay');
+    domCache.alarmBanner = document.getElementById('alarm-hud-banner');
+    domCache.fishLayer = document.getElementById('fish-layer');
 }
 
 /**
@@ -200,6 +217,12 @@ function setupGameCore() {
  */
 function setupEventHandlers() {
     window.addEventListener('keydown', e => {
+        // El menú de settings tiene prioridad absoluta y bloquea el acceso a otros controles del juego
+        if (typeof isMenuOpen !== 'undefined' && isMenuOpen) {
+            // Permitir solo cerrar el menú con Escape o P
+            if (e.code !== 'Escape' && e.code !== 'KeyP') return;
+        }
+
         keys[e.code] = true;
 
         // Auto-detectar esquema de control según tecla usada
@@ -233,10 +256,24 @@ function setupEventHandlers() {
             }
         }
 
+        if (e.code === 'KeyC') {
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                uiManager.toggleSubManagement();
+            }
+        }
+
+        if (e.code === 'KeyV') {
+            if (typeof uiManager !== 'undefined' && uiManager) {
+                uiManager.toggleScrubberHUD();
+            }
+        }
+
         if (e.code === 'Escape' || e.code === 'KeyP') {
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
             if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
+            } else if (typeof uiManager !== 'undefined' && uiManager && uiManager.isSubManagementOpen) {
+                uiManager.toggleSubManagement();
             } else {
                 toggleMenu();
             }
@@ -314,6 +351,35 @@ function loop(timestamp) {
     const dtMult = dt / 16.666;
 
     update(dtMult);
+
+    // El Soporte Vital, Energía y la UI siempre se actualizan, incluso si el juego está pausado por menús
+    if (typeof player !== 'undefined' && player) {
+        player.updateLifeSupport(dtMult);
+    }
+    if (typeof energyManager !== 'undefined' && energyManager) {
+        // Le pasamos el deltatime en segundos reales
+        energyManager.update(dt / 1000, typeof player !== 'undefined' ? player : null);
+    }
+
+    if (typeof uiManager !== 'undefined' && uiManager) {
+        uiManager.update(player,
+            typeof scannableTarget !== 'undefined' ? scannableTarget : null,
+            typeof FISH_CATALOG !== 'undefined' ? FISH_CATALOG : null,
+            typeof nearPOI !== 'undefined' ? nearPOI : null,
+            typeof camera !== 'undefined' ? camera : null
+        );
+    }
+
+    if (typeof oxygenManager !== 'undefined' && oxygenManager) {
+        // Le pasamos dtMult modificado a segundos y player
+        // dtMult * (16.666/1000) nos da segundos para que encaje con la configuración de filtros
+        oxygenManager.update(dt / 1000, player);
+    }
+
+    if (typeof temperatureManager !== 'undefined' && temperatureManager) {
+        temperatureManager.update(dt / 1000, player);
+    }
+
     draw();
     requestAnimationFrame(loop);
 }
@@ -323,7 +389,13 @@ function loop(timestamp) {
  * [EN] Main update logic (without drawing). Calculates physics, collisions, musical, and discovery events.
  */
 function update(dtMult = 1.0) {
-    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen) return;
+    if (isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen) {
+        // Pausar audio de motor/burbujas si entramos a un menú mientras nos movíamos
+        if (typeof bubblesAudio !== 'undefined' && bubblesAudio && !bubblesAudio.paused) {
+            bubblesAudio.pause();
+        }
+        return;
+    }
 
     // Actualizar jugador (pasar canvas para límites dinámicos)
     const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);
@@ -365,8 +437,8 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // Lógica de audio para batería baja (< 10%)
-    if (player.lightOn && player.lightBattery < 10 && player.lightBattery > 0) {
+    // [ES] Lógica de audio para batería baja de la RESERVA PRINCIPAL (< 10%)
+    if (typeof energyManager !== 'undefined' && energyManager.battery < 10 && energyManager.battery > 0) {
         if (lowBatteryAudio && lowBatteryAudio.paused) {
             lowBatteryAudio.play().catch(e => { });
         }
@@ -377,6 +449,84 @@ function update(dtMult = 1.0) {
         }
     }
 
+    // [ES] Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2/Temperatura)
+    const isAnoxiaAlarm = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 15.0);
+    const isCo2Alarm = (typeof player !== 'undefined' && player.co2 >= 10.0);
+
+    // Alarmas de temperatura
+    const tempMgr = typeof window.temperatureManager !== 'undefined' ? window.temperatureManager : null;
+    const isHyperAlarm = tempMgr && tempMgr.hyperTimer > 0;
+    const isHypoAlarm = tempMgr && tempMgr.hypoTimer > 0;
+    // La alarma térmica se silencia si se activa la emergencia de purga (acción de salvación)
+    const isTempFixing = tempMgr && tempMgr.emergencyActive;
+    const isTempAlarm = (isHyperAlarm || isHypoAlarm) && !isTempFixing;
+
+    // Nueva verificación: Si se están tomando acciones de mejora para apagar la alarma de inmediato
+    const isO2Fixing = (isAnoxiaAlarm && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
+    const isCo2Fixing = (isCo2Alarm && typeof player !== 'undefined' && player.isCo2Improving);
+    const isPlayerDead = (typeof player !== 'undefined' && player.isDead);
+
+    const isAlarmActive = !isPlayerDead && (
+        (isAnoxiaAlarm && !isO2Fixing) ||
+        (isCo2Alarm && !isCo2Fixing) ||
+        isTempAlarm
+    );
+
+    const alarmOverlay = domCache.alarmOverlay;
+    const alarmBanner = domCache.alarmBanner;
+    const alarmLabel = document.getElementById('alarm-hud-label');
+    const alarmValue = document.getElementById('alarm-hud-value');
+
+    if (isAlarmActive) {
+        if (alarmAudio && alarmAudio.paused) {
+            alarmAudio.play().catch(e => { });
+        }
+
+        // Pulso visual del borde de alarma
+        if (alarmOverlay) {
+            const pulse = (Math.sin(Date.now() * 0.005) * 0.5 + 0.5) * 0.4;
+            alarmOverlay.style.opacity = pulse.toString();
+        }
+
+        // Banner superior: mostrar con texto específico según prioridad de alarma
+        if (alarmBanner) {
+            alarmBanner.classList.add('active');
+
+            if (isHyperAlarm && !isTempFixing) {
+                const secsLeft = Math.max(0, 10 - tempMgr.hyperTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPERTERMIA';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+            } else if (isHypoAlarm && !isTempFixing) {
+                const secsLeft = Math.max(0, 10 - tempMgr.hypoTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPOTERMIA';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+            } else if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
+                if (alarmLabel) alarmLabel.textContent = 'O₂ CRÍTICO · CO₂ CRÍTICO';
+                if (alarmValue) alarmValue.textContent = `O₂ ${(oxygenManager.cabinOxygen).toFixed(1)}%  ·  CO₂ ${(player.co2).toFixed(1)}%`;
+            } else if (isAnoxiaAlarm && !isO2Fixing) {
+                if (alarmLabel) alarmLabel.textContent = 'ALARMA — OXÍGENO BAJO';
+                if (alarmValue) alarmValue.textContent = `CABINA: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
+            } else {
+                if (alarmLabel) alarmLabel.textContent = 'ALARMA — CO₂ ELEVADO';
+                if (alarmValue) alarmValue.textContent = `CO₂: ${(player.co2).toFixed(1)}%`;
+            }
+        }
+    } else {
+        if (alarmAudio && !alarmAudio.paused) {
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+        }
+
+        if (alarmOverlay) {
+            alarmOverlay.style.opacity = '0';
+        }
+
+        // Ocultar banner
+        if (alarmBanner) {
+            alarmBanner.classList.remove('active');
+        }
+    }
+
     // Actualizar burbujas y filtrar las muertas
     bubbles = bubbles.filter(b => b.life > 0);
     bubbles.forEach(b => b.update(dtMult));
@@ -384,12 +534,15 @@ function update(dtMult = 1.0) {
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
     discoveryPoints.forEach(poi => {
+        // [ES] Obligatorio resetear el estado de iluminación en cada frame para evitar falsos positivos
+        poi.isLit = false;
+
         // Primero: Proximidad básica (para optimizar)
         const dist = Math.hypot(player.x - poi.x, player.y - poi.y);
 
         // Segundo: Verificación de cono de luz
-        poi.isLit = false;
-        if (player.lightOn && player.lightBattery > 0 && dist < WORLD.lightSpotRange) {
+        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+        if (player.lightOn && mainBattery > 0 && dist < WORLD.lightSpotRange) {
             const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
             const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
 
@@ -418,17 +571,33 @@ function update(dtMult = 1.0) {
 
     // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
     const proximateFishes = [];
+
+    // OPTIMIZACIÓN CRÍTICA (ALTA CALIDAD): Diccionario de grupos Boids para evitar O(N^2)
+    // Al filtrar aquí, cada pez solo se compara matemáticamente contra sus pocos 
+    // compañeros de banco exactos, no contra los 150 peces de pantalla.
+    const boidsGroups = {};
+
     fishes.forEach(f => {
         // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
         f.isSimulated = Math.abs(f.y - player.y) < 1500;
+
         if (f.isSimulated) {
             proximateFishes.push(f);
+
+            // Agrupación Hash O(1)
+            const groupId = `${f.config.id}_${f.groupIndex}`;
+            if (!boidsGroups[groupId]) boidsGroups[groupId] = [];
+            boidsGroups[groupId].push(f);
+
             telemetryData.activeFishes++;
         }
     });
 
-    // Solo actualizar IA y Posiciones locales de los que están simulados usando la lista truncada proximateFishes
-    proximateFishes.forEach(f => f.update(proximateFishes, player, canvas, dtMult));
+    // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
+    proximateFishes.forEach(f => {
+        const groupId = `${f.config.id}_${f.groupIndex}`;
+        f.update(boidsGroups[groupId], player, canvas, dtMult);
+    });
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
     scannableTarget = findScannableTarget();
@@ -442,7 +611,8 @@ function update(dtMult = 1.0) {
  * [EN] Find fish inside the light cone to activate scanner. Determines the closest focused entity.
  */
 function findScannableTarget() {
-    if (!player.lightOn) return null;
+    const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+    if (!player.lightOn || mainBattery <= 0) return null;
 
     let minDistSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
     let target = null;
@@ -469,6 +639,7 @@ function findScannableTarget() {
 
 let bgCache = {
     color: [0, 0, 0],
+    colorString: 'rgb(0,0,0)',
     lastDepth: -9999
 };
 
@@ -502,10 +673,11 @@ function draw() {
         }
 
         bgCache.color = bg;
+        bgCache.colorString = `rgb(${Math.round(bg[0])},${Math.round(bg[1])},${Math.round(bg[2])})`;
         bgCache.lastDepth = depthMeters;
     }
 
-    ctx.fillStyle = `rgb(${bgCache.color[0]},${bgCache.color[1]},${bgCache.color[2]})`;
+    ctx.fillStyle = bgCache.colorString;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Alpha ambiental basado en zonas científicas:
@@ -588,7 +760,8 @@ function draw() {
     );
 
     // Dibujar línea de tracking al pez objetivo
-    if (scannableTarget && player.lightOn && player.lightBattery > 0) {
+    const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+    if (scannableTarget && player.lightOn && mainBattery > 0) {
         const px = player.x - camera.x;
         const py = player.y - camera.y + WORLD.lightOffsetY;
         const tx = scannableTarget.x - camera.x;
@@ -656,6 +829,30 @@ function draw() {
     // Dibujar jugador
     const playerImage = imageCache.get('player');
     player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
+
+    // --- SUELO ABISAL (límite 11000m = Y 110000 en unidades de juego) ---
+    // El centro del submarino se detiene en Y=110000. El suelo visual empieza
+    // medio-alto del jugador más abajo para quedar justo bajo el casco.
+    const FLOOR_WORLD_Y = 110000 + (PLAYER_CONFIG.height / 2);
+    const floorScreenY = FLOOR_WORLD_Y - camera.y;
+
+    // Solo dibujar si está cerca de pantalla
+    if (floorScreenY < canvas.height + 600 && floorScreenY > -600) {
+        const floorImg = imageCache.get('floor');
+        if (floorImg) {
+            // Cubrir todo el ancho del canvas, anclar la parte superior de la imagen al límite
+            const fW = canvas.width;
+            const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
+            ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+        } else {
+            // Fallback si la imagen aún no ha cargado: línea sólida con degradado
+            const grad = ctx.createLinearGradient(0, floorScreenY, 0, floorScreenY + 120);
+            grad.addColorStop(0, 'rgba(30, 18, 8, 1)');
+            grad.addColorStop(1, 'rgba(10, 5, 2, 1)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, floorScreenY, canvas.width, canvas.height);
+        }
+    }
 }
 
 // Iniciar el juego cuando cargue la página
@@ -832,7 +1029,16 @@ function updateCursorVisibility() {
 
     const isScanOpen = uiManager.isScanModalOpen || false;
     const isDiscoveryOpen = uiManager.isDiscoveryModalOpen || false;
-    const shouldHide = !isMenuOpen && !isScanOpen && !isDiscoveryOpen;
+    const isSubManagementOpen = uiManager.isSubManagementOpen || false;
+    const isGameOverOpen = (typeof endGame !== 'undefined' && endGame && endGame.isOpen);
+    const isDead = (typeof player !== 'undefined' && player && player.isDead);
+
+    // Si cualquiera de estas condiciones se cumple, el cursor DEBE verse
+    const anyModalOpen = isMenuOpen || isScanOpen || isDiscoveryOpen || isSubManagementOpen || isGameOverOpen || isDead;
+    const shouldHide = !anyModalOpen;
 
     document.body.classList.toggle('hide-cursor', shouldHide);
+    if (!shouldHide) {
+        document.body.style.cursor = 'default';
+    }
 }
