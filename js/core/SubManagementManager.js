@@ -214,11 +214,11 @@ class SubManagementManager {
 
                     if (this._lastCo2Level !== co2Level) {
                         if (co2Level === 0) {
-                            leds[0].className = "w-1 h-3 bg-emerald-500 rounded-sm shadow-[0_0_5px_#10b981]";
+                            leds[0].className = "w-1 h-3 bg-emerald-500 rounded-sm";
                             leds[1].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
                             leds[2].className = "w-1 h-3 bg-emerald-500/10 rounded-sm";
-                            this.dom.co2Status.innerText = "Nominal";
-                            this.dom.co2Status.className = "text-[7px] text-emerald-500/40 font-bold uppercase text-center";
+                            this.dom.co2Status.innerText = "";
+                            this.dom.co2Status.className = "";
 
                             // Color dinámico del texto de CO2
                             this.dom.co2Display.className = "text-emerald-400 font-mono text-3xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
@@ -228,8 +228,8 @@ class SubManagementManager {
                                 this.dom.cabinCo2Display.className = "text-emerald-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
                             }
                             if (this.dom.cabinCo2Status) {
-                                this.dom.cabinCo2Status.innerText = "NOMINAL";
-                                this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                                this.dom.cabinCo2Status.innerText = "";
+                                this.dom.cabinCo2Status.className = "mt-1";
                             }
                         } else if (co2Level === 1) {
                             leds[0].className = "w-1 h-3 bg-amber-500 rounded-sm";

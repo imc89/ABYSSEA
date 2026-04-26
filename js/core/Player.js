@@ -51,7 +51,7 @@ class Player {
      * [ES] Bucle principal de físicas y lógica del jugador. Gestiona inputs, físicas, gasto de batería y colisiones contra límites del nivel.
      * [EN] Main physics and logic loop for the player. Handles inputs, physics, battery drain, and collisions against level boundaries.
      */
-    update(keys, controlScheme, world, canvas, dtMult = 1.0) {
+    update(keys, controlScheme, world, canvas, dtMult = 1.0, floorHeight = 0) {
         // Pausa TOTAL si el menú de ESC está abierto
         if (typeof isMenuOpen !== 'undefined' && isMenuOpen) {
             return false; // No hay movimiento
@@ -136,7 +136,7 @@ class Player {
             this.targetAngle *= 0.9;
         }
 
-        // Aplicar fricción (pow to keep it framerate independent if dtMult varies greatly, but * dtMult is acceptable for small diffs)
+        // Aplicar fricción
         this.vx *= Math.pow(world.friction, dtMult);
         this.vy *= Math.pow(world.friction, dtMult);
 
@@ -170,25 +170,25 @@ class Player {
         // Suavizar ángulo
         this.angle += (this.targetAngle - this.angle) * 0.1 * dtMult;
 
+        // --- LÍMITES VERTICALES Y FONDO ---
+
         // Bloqueo de ascenso (colisión con el casco inferior de la Base Abisal)
-        // La estructura térmica principal bloquea el paso por encima de la cota Y=160.
         if (!this.isLocked && this.y < 160) {
             this.y = 160;
-            if (this.vy < 0) this.vy *= -0.3; // Rebote mecánico contra el metal grueso
+            if (this.vy < 0) this.vy *= -0.3;
         }
 
-        // LÍMITE DEL FONDO ABISAL (11000m = 110000 unidades de juego)
-        // Fase 1: Empuje progresivo cuando se acerca al lecho (los últimos 200 units)
-        const FLOOR_Y = 110000;
-        const distToFloor = FLOOR_Y - this.y;
-        if (distToFloor < 200 && distToFloor > 0) {
-            // Fuerza de rebote creciente cuanto más cerca del fondo
-            const pushForce = (1 - distToFloor / 200) * 1.5;
-            this.vy -= pushForce * dtMult;
-        }
-        // Fase 2: Clamp duro — player.y NUNCA puede superar 110000 exacto
-        if (this.y >= FLOOR_Y) {
-            this.y = FLOOR_Y;
+        // LÍMITE DEL FONDO ABISAL DINÁMICO (Traspasable hasta la MITAD de la imagen)
+        const FLOOR_START_Y = 110000;
+        // El límite absoluto es ahora la MITAD de la altura de la imagen
+        const FLOOR_LIMIT_Y = FLOOR_START_Y + (floorHeight / 2) - (this.h / 2);
+        
+        // Eliminado el efecto de resistencia/empuje hacia arriba para permitir
+        // una navegación sencilla por la capa superior del suelo.
+
+        // Clamp duro final: el punto medio de la imagen/mundo
+        if (this.y >= FLOOR_LIMIT_Y) {
+            this.y = FLOOR_LIMIT_Y;
             if (this.vy > 0) this.vy = 0;
         }
 

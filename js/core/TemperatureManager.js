@@ -44,7 +44,15 @@ class TemperatureManager {
             setpointMinus: document.getElementById('temp-btn-minus'),
             historyGraph: document.getElementById('temp-history-bars'),
             statusText: document.getElementById('temp-status-text'),
-            statusDot: document.getElementById('temp-status-dot')
+            statusDot: document.getElementById('temp-status-dot'),
+            emergO2Displays: [
+                document.getElementById('emerg-o2-display-0'),
+                document.getElementById('emerg-o2-display-1')
+            ],
+            emergTankBars: [
+                document.getElementById('emerg-tank-bar-0'),
+                document.getElementById('emerg-tank-bar-1')
+            ]
         };
 
         // Interaction for Setpoint is handled via adjustSetpoint calls from the UI.
@@ -111,13 +119,32 @@ class TemperatureManager {
         this.emergencyActive = !this.emergencyActive;
 
         if (this.emergencyActive) {
-            // Coste: Consume un 20% del Oxígeno total
-            if (typeof window.oxygenManager !== 'undefined' && typeof window.oxygenManager.consume === 'function') {
-                window.oxygenManager.consume(20);
+            // Coste: Solo consume O2 si el submarino ya está desanclado
+            const isUnlocked = (typeof player !== 'undefined' && player && !player.isLocked)
+                             || (typeof window.player !== 'undefined' && window.player && !window.player.isLocked);
+
+            if (isUnlocked && typeof window.oxygenManager !== 'undefined') {
+                const om = window.oxygenManager;
+                const tank = om.tanks[om.activeTankIndex];
+                if (tank) {
+                    tank.percentage = Math.max(0, tank.percentage - 20);
+                    // Invalida el caché para forzar redibujado del tanque
+                    if (om._lastTankPercs) om._lastTankPercs[om.activeTankIndex] = null;
+                }
             }
             // Reset survival timers
             this.hyperTimer = 0;
             this.hypoTimer = 0;
+
+            // Auto-apagado y cierre de la tapa tras 2 segundos
+            if (this._emergencyResetTimer) clearTimeout(this._emergencyResetTimer);
+            this._emergencyResetTimer = setTimeout(() => {
+                this.emergencyActive = false;
+                this.emergencyGuardOpen = false;
+                if (typeof GlobalAudioPool !== 'undefined') GlobalAudioPool.play('toggle', 0.5);
+                this.updateUI();
+                this._emergencyResetTimer = null;
+            }, 2000);
         }
 
         this.updateUI();
@@ -574,8 +601,57 @@ class TemperatureManager {
                 if (txt) txt.className = 'text-[12px] text-red-500/50 uppercase tracking-[0.2em] font-black leading-tight drop-shadow-[0_0_5px_rgba(239,68,68,0.2)] transition-all duration-300';
             }
         }
+
+        // === DISPLAY DOS TANQUES O2 BAJO EMERGENCIA ===
+        if (this.dom.emergO2Displays && typeof window.oxygenManager !== 'undefined') {
+            const om = window.oxygenManager;
+            [0, 1].forEach(idx => {
+                const tank = om.tanks[idx];
+                if (!tank) return;
+                const pct = Math.round(tank.percentage);
+                const pctStr = pct + '%';
+                const displayEl = this.dom.emergO2Displays[idx];
+                const barEl = this.dom.emergTankBars[idx];
+                if (!displayEl) return;
+
+                if (displayEl._last !== pctStr) {
+                    displayEl.textContent = pctStr;
+
+                    // Color y barra según nivel
+                    let color;
+                    if (pct <= 0) {
+                        color = '#6b7280';
+                    } else if (pct < 20) {
+                        color = '#ef4444';
+                    } else if (pct < 40) {
+                        color = '#f97316';
+                    } else if (pct < 60) {
+                        color = '#fbbf24';
+                    } else {
+                        color = '#34d399';
+                    }
+
+                    displayEl.style.color = color;
+                    if (barEl) {
+                        barEl.style.width = pctStr;
+                        barEl.style.background = color;
+                    }
+
+                    // Resaltar el tanque activo
+                    if (idx === om.activeTankIndex) {
+                        displayEl.style.filter = `drop-shadow(0 0 6px ${color})`;
+                    } else {
+                        displayEl.style.filter = 'none';
+                        displayEl.style.opacity = tank.percentage <= 0 ? '0.4' : '0.6';
+                    }
+
+                    displayEl._last = pctStr;
+                }
+            });
+        }
     }
 }
 
 // Global instance
 window.temperatureManager = new TemperatureManager();
+

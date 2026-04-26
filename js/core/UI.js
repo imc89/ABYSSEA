@@ -39,6 +39,7 @@ class UIManager {
         this.updateScannerDisplay(scannableTarget, nearPOI);
         this.updateDepthSpeciesIndicators(player, fishCatalog);
         this.updateScrubberHUD(player);
+        this.updateEnvironmentalHUD(player);
 
         // Actualización de gestores internos
         this.subManager.update(player);
@@ -150,9 +151,17 @@ class UIManager {
         if (atmosStatus) {
             const co2Level = player.co2 < 40 ? 0 : (player.co2 < 80 ? 1 : 2);
             if (atmosStatus.dataset.last !== String(co2Level)) {
-                if (co2Level === 0) { atmosStatus.innerText = "ATM: NOMINAL"; atmosStatus.className = "text-[7px] text-emerald-500/60 uppercase font-bold tracking-widest font-mono"; }
-                else if (co2Level === 1) { atmosStatus.innerText = "ATM: WARNING"; atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono"; }
-                else { atmosStatus.innerText = "ATM: CRITICAL"; atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse"; }
+                if (co2Level === 0) { 
+                    atmosStatus.innerText = ""; 
+                }
+                else if (co2Level === 1) { 
+                    atmosStatus.innerText = "ATM: WARNING"; 
+                    atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono"; 
+                }
+                else { 
+                    atmosStatus.innerText = "ATM: CRITICAL"; 
+                    atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse"; 
+                }
                 atmosStatus.dataset.last = String(co2Level);
             }
         }
@@ -261,6 +270,49 @@ class UIManager {
             else if (co2Val >= 5.0) { hudCo2Dot.style.background = '#fbbf24'; hudCo2Dot.style.boxShadow = '0 0 6px #fbbf24'; }
             else { hudCo2Dot.style.background = '#34d399'; hudCo2Dot.style.boxShadow = '0 0 6px #34d399'; }
             hudCo2Dot.dataset.last = rCo2Str;
+        }
+    }
+
+    /**
+     * [ES] Sincronización de temperatura y humedad en el HUD (Menú V).
+     */
+    updateEnvironmentalHUD(player) {
+        if (typeof temperatureManager === 'undefined') return;
+
+        // Temp Cabina
+        const tempCabin = document.getElementById('hud-temp-cabin');
+        const tVal = temperatureManager.internalTemp.toFixed(1);
+        if (tempCabin && tempCabin.dataset.last !== tVal) {
+            tempCabin.textContent = `${tVal}°C`;
+            tempCabin.dataset.last = tVal;
+            // Alerta visual si la temperatura es crítica
+            if (temperatureManager.internalTemp > 35 || temperatureManager.internalTemp < 5) {
+                tempCabin.className = "text-[10px] text-red-500 font-mono font-bold animate-pulse";
+            } else if (temperatureManager.internalTemp > 28 || temperatureManager.internalTemp < 15) {
+                tempCabin.className = "text-[10px] text-orange-400 font-mono font-bold";
+            } else {
+                tempCabin.className = "text-[10px] text-amber-400 font-mono font-bold";
+            }
+        }
+
+        // Humedad Cabina
+        const humCabin = document.getElementById('hud-hum-cabin');
+        const hVal = temperatureManager.humidity.toFixed(1);
+        if (humCabin && humCabin.dataset.last !== hVal) {
+            humCabin.textContent = `${hVal}%`;
+            humCabin.dataset.last = hVal;
+            if (temperatureManager.humidity > 80 || temperatureManager.humidity < 20) {
+                humCabin.className = "text-[10px] text-red-400 font-mono font-bold";
+            } else {
+                humCabin.className = "text-[10px] text-cyan-400 font-mono font-bold";
+            }
+        }
+
+        // Humedad Exterior (Fijo al 100% por estar bajo el agua)
+        const humExt = document.getElementById('hud-hum-ext');
+        if (humExt && humExt.dataset.last !== '100') {
+            humExt.textContent = "100%";
+            humExt.dataset.last = '100';
         }
     }
 
