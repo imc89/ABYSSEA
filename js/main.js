@@ -568,6 +568,10 @@ function update(dtMult = 1.0) {
     // Actualizar partículas (ahora son world-space y necesitan la cámara para culling)
     marineSnow.forEach(p => p.update(player, canvas, camera, dtMult));
 
+    if (typeof hydrothermalManager !== 'undefined') {
+        hydrothermalManager.update(dtMult, camera, canvas);
+    }
+
     // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
     telemetryData.activeFishes = 0;
 
@@ -830,7 +834,7 @@ function draw() {
     // Se ancla en 110000 pero el límite físico (en Player.js) permitirá bajar hasta el fondo de la imagen.
     const floorImg = imageCache.get('floor');
     if (floorImg) {
-        const FLOOR_WORLD_Y = 110000; 
+        const FLOOR_WORLD_Y = 110000;
         const floorScreenY = FLOOR_WORLD_Y - camera.y;
         const fW = canvas.width;
         const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
@@ -838,35 +842,35 @@ function draw() {
         // Solo dibujar si está cerca de pantalla
         if (floorScreenY < canvas.height + 600 && floorScreenY > -fH - 200) {
             ctx.save();
-            
+
             // LÓGICA DE ILUMINACIÓN DINÁMICA PARA EL SUELO
             // Si hay oscuridad total (ambientAlpha ≈ 0), el suelo solo se ve si el foco le da.
             if (ambientAlpha < 0.2) {
                 const lx = player.x - camera.x;
                 const ly = player.y - camera.y + WORLD.lightOffsetY;
-                
+
                 // Creamos un gradiente de visibilidad centrado en la luz del submarino
                 // El rango de "revelación" del suelo es algo mayor que el foco visual para un efecto suave
                 const revealRange = player.lightOn ? WORLD.lightSpotRange * 1.5 : 50;
                 const maskGrad = ctx.createRadialGradient(lx, ly, 0, lx, ly, revealRange);
-                
+
                 // Si la luz está apagada, el suelo es casi invisible (0.05)
                 const baseAlpha = player.lightOn ? 1.0 : 0.05;
                 maskGrad.addColorStop(0, `rgba(0,0,0,${baseAlpha})`);
                 maskGrad.addColorStop(1, 'rgba(0,0,0,0)');
-                
+
                 // Usamos destination-in para que el suelo solo exista donde el gradiente sea opaco
                 // Pero primero dibujamos el suelo en un buffer temporal o simplemente usamos maskGrad como alpha global
                 // Forma simple: drawImage con el gradiente como máscara de opacidad (no nativo fácil)
                 // Forma efectiva: Pintar el suelo y luego aplicar el gradiente con 'destination-in'
-                
+
                 // Para no afectar a lo que ya se dibujó antes (peces, etc), limitamos el área de efecto
                 ctx.beginPath();
                 ctx.rect(0, floorScreenY, fW, fH);
                 ctx.clip();
-                
+
                 ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
-                
+
                 ctx.globalCompositeOperation = 'destination-in';
                 ctx.fillStyle = maskGrad;
                 ctx.fillRect(0, floorScreenY, fW, fH);
@@ -891,12 +895,64 @@ function draw() {
         }
     }
 
+    // Dibujar fumarolas hidrotermales (humo y chorros)
+    if (typeof hydrothermalManager !== 'undefined') {
+        hydrothermalManager.draw(ctx, camera);
+    }
+
     // Dibujar luz del jugador
     player.drawLight(ctx, camera);
 
     // Dibujar jugador
     const playerImage = imageCache.get('player');
     player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
+
+    // --- EFECTO SCHLIEREN (Distorsión por calor de fumarolas) ---
+    // Renderizado al final para que afecte a la luz del foco, al submarino y al fondo profundo
+    const hazeBottom = 115000;
+    const hazeTop = 109000;
+    const hazeScreenBottom = hazeBottom - camera.y;
+    const hazeScreenTop = hazeTop - camera.y;
+
+    if (hazeScreenBottom > 0 && hazeScreenTop < canvas.height) {
+        ctx.save();
+        const startY = Math.max(0, Math.floor(hazeScreenTop));
+        const endY = Math.min(canvas.height, Math.ceil(hazeScreenBottom));
+        const height = endY - startY;
+
+        if (height > 0) {
+            if (!window.hazeCanvas) {
+                window.hazeCanvas = document.createElement('canvas');
+                window.hazeCtx = window.hazeCanvas.getContext('2d');
+            }
+            window.hazeCanvas.width = canvas.width;
+            window.hazeCanvas.height = height;
+            // Capturar la imagen completa (incluyendo submarino)
+            window.hazeCtx.drawImage(canvas, 0, startY, canvas.width, height, 0, 0, canvas.width, height);
+
+            // Limpiar el fondo
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, startY, canvas.width, height);
+
+            const time = Date.now() * 0.003; // Velocidad suave
+            const sliceH = 4; 
+            for (let i = 0; i < height; i += sliceH) {
+                const wave = Math.sin(time + i * 0.04) * 3.5 + 
+                             Math.sin(time * 0.6 + i * 0.1) * 1.5;
+                
+                const distToTop = i;
+                const distToBottom = height - i;
+                const edgeDist = Math.min(distToTop, distToBottom);
+                const intensity = Math.min(1.0, edgeDist / 100); 
+                
+                const finalOffset = wave * intensity;
+                
+                ctx.globalAlpha = 1.0;
+                ctx.drawImage(window.hazeCanvas, 0, i, canvas.width, sliceH, finalOffset - 6, startY + i, canvas.width + 12, sliceH);
+            }
+        }
+        ctx.restore();
+    }
 }
 
 // Iniciar el juego cuando cargue la página
