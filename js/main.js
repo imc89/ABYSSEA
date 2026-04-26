@@ -397,8 +397,10 @@ function update(dtMult = 1.0) {
         return;
     }
 
-    // Actualizar jugador (pasar canvas para límites dinámicos)
-    const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult);
+    // Calcular altura del suelo para límites físicos dinámicos
+    const floorImg = imageCache.get('floor');
+    const floorHeight = floorImg ? (floorImg.naturalHeight * (canvas.width / floorImg.naturalWidth)) : 0;
+    const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult, floorHeight);
 
     // Lógica de desenganche de la base (S en WASD o ArrowDown)
     if (player.isLocked) {
@@ -823,29 +825,64 @@ function draw() {
     }
 
 
-    // Dibujar luz del jugador
-    player.drawLight(ctx, camera);
+    // --- SUELO ABISAL (Interacción con luz y límite físico) ---
+    // El suelo ahora se dibuja ANTES que el jugador y sus luces para que estas puedan actuar sobre él.
+    // Se ancla en 110000 pero el límite físico (en Player.js) permitirá bajar hasta el fondo de la imagen.
+    const floorImg = imageCache.get('floor');
+    if (floorImg) {
+        const FLOOR_WORLD_Y = 110000; 
+        const floorScreenY = FLOOR_WORLD_Y - camera.y;
+        const fW = canvas.width;
+        const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
 
-    // Dibujar jugador
-    const playerImage = imageCache.get('player');
-    player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
-
-    // --- SUELO ABISAL (límite 11000m = Y 110000 en unidades de juego) ---
-    // El centro del submarino se detiene en Y=110000. El suelo visual empieza
-    // medio-alto del jugador más abajo para quedar justo bajo el casco.
-    const FLOOR_WORLD_Y = 110000 + (PLAYER_CONFIG.height / 2);
-    const floorScreenY = FLOOR_WORLD_Y - camera.y;
-
-    // Solo dibujar si está cerca de pantalla
-    if (floorScreenY < canvas.height + 600 && floorScreenY > -600) {
-        const floorImg = imageCache.get('floor');
-        if (floorImg) {
-            // Cubrir todo el ancho del canvas, anclar la parte superior de la imagen al límite
-            const fW = canvas.width;
-            const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
-            ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
-        } else {
-            // Fallback si la imagen aún no ha cargado: línea sólida con degradado
+        // Solo dibujar si está cerca de pantalla
+        if (floorScreenY < canvas.height + 600 && floorScreenY > -fH - 200) {
+            ctx.save();
+            
+            // LÓGICA DE ILUMINACIÓN DINÁMICA PARA EL SUELO
+            // Si hay oscuridad total (ambientAlpha ≈ 0), el suelo solo se ve si el foco le da.
+            if (ambientAlpha < 0.2) {
+                const lx = player.x - camera.x;
+                const ly = player.y - camera.y + WORLD.lightOffsetY;
+                
+                // Creamos un gradiente de visibilidad centrado en la luz del submarino
+                // El rango de "revelación" del suelo es algo mayor que el foco visual para un efecto suave
+                const revealRange = player.lightOn ? WORLD.lightSpotRange * 1.5 : 50;
+                const maskGrad = ctx.createRadialGradient(lx, ly, 0, lx, ly, revealRange);
+                
+                // Si la luz está apagada, el suelo es casi invisible (0.05)
+                const baseAlpha = player.lightOn ? 1.0 : 0.05;
+                maskGrad.addColorStop(0, `rgba(0,0,0,${baseAlpha})`);
+                maskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+                
+                // Usamos destination-in para que el suelo solo exista donde el gradiente sea opaco
+                // Pero primero dibujamos el suelo en un buffer temporal o simplemente usamos maskGrad como alpha global
+                // Forma simple: drawImage con el gradiente como máscara de opacidad (no nativo fácil)
+                // Forma efectiva: Pintar el suelo y luego aplicar el gradiente con 'destination-in'
+                
+                // Para no afectar a lo que ya se dibujó antes (peces, etc), limitamos el área de efecto
+                ctx.beginPath();
+                ctx.rect(0, floorScreenY, fW, fH);
+                ctx.clip();
+                
+                ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+                
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.fillStyle = maskGrad;
+                ctx.fillRect(0, floorScreenY, fW, fH);
+            } else {
+                // En zonas con luz superficial, el suelo se ve normalmente según la profundidad
+                ctx.globalAlpha = ambientAlpha;
+                ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+            }
+            
+            ctx.restore();
+        }
+    } else {
+        // Fallback si la imagen aún no ha cargado
+        const FLOOR_WORLD_Y = 110000;
+        const floorScreenY = FLOOR_WORLD_Y - camera.y;
+        if (floorScreenY < canvas.height + 100) {
             const grad = ctx.createLinearGradient(0, floorScreenY, 0, floorScreenY + 120);
             grad.addColorStop(0, 'rgba(30, 18, 8, 1)');
             grad.addColorStop(1, 'rgba(10, 5, 2, 1)');
@@ -853,6 +890,13 @@ function draw() {
             ctx.fillRect(0, floorScreenY, canvas.width, canvas.height);
         }
     }
+
+    // Dibujar luz del jugador
+    player.drawLight(ctx, camera);
+
+    // Dibujar jugador
+    const playerImage = imageCache.get('player');
+    player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
 }
 
 // Iniciar el juego cuando cargue la página
