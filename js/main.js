@@ -897,7 +897,7 @@ function draw() {
 
     // Dibujar fumarolas hidrotermales (humo y chorros)
     if (typeof hydrothermalManager !== 'undefined') {
-        hydrothermalManager.draw(ctx, camera);
+        hydrothermalManager.draw(ctx, camera, player, ambientAlpha);
     }
 
     // Dibujar luz del jugador

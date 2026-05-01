@@ -20,21 +20,21 @@
 const FISH_CATALOG = [
     // ZONA EPIPELÁGICA (0-200m) - Aguas superficiales con luz
     {
-        id: 'pez_linterna',
-        nombre: 'Pez Linterna',
-        cientifico: 'Myctophidae',
-        imagen: './img/fishes/fish.gif',
-        descripcion: 'El pez linterna es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
+        id: 'sardina',
+        nombre: 'Sardina Comun',
+        cientifico: 'Sardina pilchardus',
+        imagen: './img/fishes/fish.png',
+        descripcion: 'La sardina comun es un pez que se encuentra en el océano profundo y que es conocido por su capacidad para emitir luz.',
         esCardumen: true,
         huyeDelJugador: true,
-        distanciaCardumen: 90,
+        distanciaCardumen: 0,
         minProf: 0,      // 0 metros
         maxProf: 100,    // 100 metros
-        cantidadGrupos: 3,
-        pecesPorGrupo: 20,
-        ancho: 40,
-        alto: 20,
-        velocidadBase: 1.2,
+        cantidadGrupos: 6,
+        pecesPorGrupo: 40,
+        ancho: 25,
+        alto: 10,
+        velocidadBase: 2,
 
     },
     {
