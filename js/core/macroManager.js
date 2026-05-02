@@ -781,6 +781,7 @@ class MacroManager {
         if (!this.isOpen) return;
         const modal = document.getElementById('discovery-modal');
         const rect = modal.getBoundingClientRect();
+
         this.state.crosshairX = e.clientX - rect.left;
         this.state.crosshairY = e.clientY - rect.top;
     }

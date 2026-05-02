@@ -53,20 +53,24 @@ class UIManager {
      */
     updatePoisonCountdownPos(player, camera) {
         const screenPos = camera.worldToScreen(player.x, player.y);
-        
+        const scale = window.scaleRatio || 1;
+
+        let currentOffset = 120 * scale;
+
         // CO2 / O2 Countdown
         const countdown = document.getElementById('co2-critical-countdown');
         if (countdown && !countdown.classList.contains('hidden')) {
-            countdown.style.left = `${screenPos.x}px`;
-            countdown.style.top = `${screenPos.y - 120}px`;
+            countdown.style.left = `${screenPos.x * scale}px`;
+            countdown.style.top = `${screenPos.y * scale - currentOffset}px`;
             countdown.style.transform = 'translateX(-50%)';
+            currentOffset += 60 * scale; // Stack offset para el siguiente
         }
 
         // Temperature Countdown
         const tempCountdown = document.getElementById('temp-critical-countdown');
         if (tempCountdown && !tempCountdown.classList.contains('hidden')) {
-            tempCountdown.style.left = `${screenPos.x}px`;
-            tempCountdown.style.top = `${screenPos.y - 120}px`;
+            tempCountdown.style.left = `${screenPos.x * scale}px`;
+            tempCountdown.style.top = `${screenPos.y * scale - currentOffset}px`;
             tempCountdown.style.transform = 'translateX(-50%)';
         }
     }
@@ -151,16 +155,16 @@ class UIManager {
         if (atmosStatus) {
             const co2Level = player.co2 < 40 ? 0 : (player.co2 < 80 ? 1 : 2);
             if (atmosStatus.dataset.last !== String(co2Level)) {
-                if (co2Level === 0) { 
-                    atmosStatus.innerText = ""; 
+                if (co2Level === 0) {
+                    atmosStatus.innerText = "";
                 }
-                else if (co2Level === 1) { 
-                    atmosStatus.innerText = "ATM: WARNING"; 
-                    atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono"; 
+                else if (co2Level === 1) {
+                    atmosStatus.innerText = "ATM: WARNING";
+                    atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono";
                 }
-                else { 
-                    atmosStatus.innerText = "ATM: CRITICAL"; 
-                    atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse"; 
+                else {
+                    atmosStatus.innerText = "ATM: CRITICAL";
+                    atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse";
                 }
                 atmosStatus.dataset.last = String(co2Level);
             }
@@ -449,7 +453,7 @@ class UIManager {
         if (scannableTarget && scannerUI) {
             scannerUI.style.opacity = "1"; scannerUI.style.transform = "translateX(0)";
             if (indicator) { indicator.innerText = "PULSA [ENTER] ANALIZAR"; indicator.style.display = 'block'; }
-            
+
             const cfg = scannableTarget.config;
             const scanName = document.getElementById('scan-name'); if (scanName) scanName.innerText = cfg.nombre;
             const scanGenus = document.getElementById('scan-genus'); if (scanGenus) scanGenus.innerText = cfg.cientifico;
