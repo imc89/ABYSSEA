@@ -29,7 +29,7 @@ El submarino cuenta con un sistema de energía integral gestionado por un tabler
 - **Apagón**: Si la batería se agota, sufrirás un apagón total (Blackout).
 - **Alarma**: Avisos visuales y sonoros cuando la reserva baja del 10%.
 
-#### 🫁 Soporte Vital (O₂, CO₂ y Temperatura)
+#### 🫧 Soporte Vital (O₂, CO₂ y Temperatura)
 El entorno hostil requiere gestionar los sistemas internos de la cabina.
 - **Scrubbers**: Filtros de cal sodada para limpiar el CO₂. Deben rotarse y reemplazarse cuando se agotan para evitar la intoxicación.
 - **Oxígeno**: Controla la mezcla de aire respirable en la cabina.
@@ -92,7 +92,7 @@ The submarine features a comprehensive power system managed via a tactical board
 - **Blackout**: Running out of battery causes a total system failure.
 - **Alarm**: Visual and audio warnings trigger below 10% reserve.
 
-#### 🫁 Life Support (O₂, CO₂, and Temperature)
+#### 🫧 Life Support (O₂, CO₂, and Temperature)
 The hostile environment demands managing cabin internals.
 - **Scrubbers**: Soda lime filters clean CO₂. Must be rotated and replaced to prevent poisoning.
 - **Oxygen**: Monitors the breathable air mix.
