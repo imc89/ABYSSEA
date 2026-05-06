@@ -43,6 +43,9 @@ let nearPOI = null;
 // Caché DOM global para optimización del Main Loop
 let domCache = {};
 
+// Cache global de grupos de Boids para evitar O(N^2) y asignación por frame
+let globalBoidsGroups = {};
+
 /**
  * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
  * [EN] Game initialization. Sets up the canvas, manages start screens and loads the world.
@@ -180,6 +183,12 @@ function setupGameCore() {
                 const offsetY = (Math.random() - 0.5) * 200;
                 f.x = Math.max(0, Math.min(1920, centerX + offsetX));
                 f.y = Math.max(minGameUnits, Math.min(maxGameUnits, centerY + offsetY));
+                
+                // Precomputar y asignar el grupo al que pertenece
+                f.groupId = `${specie.id}_${g}`;
+                if (!globalBoidsGroups[f.groupId]) globalBoidsGroups[f.groupId] = [];
+                globalBoidsGroups[f.groupId].push(f);
+                
                 fishes.push(f);
             }
         }
@@ -569,9 +578,14 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // Actualizar burbujas y filtrar las muertas
-    bubbles = bubbles.filter(b => b.life > 0);
-    bubbles.forEach(b => b.update(dtMult));
+    // Actualizar burbujas y filtrar las muertas in-place para no alocar arreglos por frame
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+        if (bubbles[i].life <= 0) {
+            bubbles.splice(i, 1);
+        } else {
+            bubbles[i].update(dtMult);
+        }
+    }
 
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
@@ -615,34 +629,15 @@ function update(dtMult = 1.0) {
     // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
     telemetryData.activeFishes = 0;
 
-    // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
-    const proximateFishes = [];
-
-    // OPTIMIZACIÓN CRÍTICA (ALTA CALIDAD): Diccionario de grupos Boids para evitar O(N^2)
-    // Al filtrar aquí, cada pez solo se compara matemáticamente contra sus pocos 
-    // compañeros de banco exactos, no contra los 150 peces de pantalla.
-    const boidsGroups = {};
-
     fishes.forEach(f => {
         // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
         f.isSimulated = Math.abs(f.y - player.y) < 1500;
 
         if (f.isSimulated) {
-            proximateFishes.push(f);
-
-            // Agrupación Hash O(1)
-            const groupId = `${f.config.id}_${f.groupIndex}`;
-            if (!boidsGroups[groupId]) boidsGroups[groupId] = [];
-            boidsGroups[groupId].push(f);
-
             telemetryData.activeFishes++;
+            // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
+            f.update(globalBoidsGroups[f.groupId], player, canvas, dtMult);
         }
-    });
-
-    // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
-    proximateFishes.forEach(f => {
-        const groupId = `${f.config.id}_${f.groupIndex}`;
-        f.update(boidsGroups[groupId], player, canvas, dtMult);
     });
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
