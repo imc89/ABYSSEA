@@ -2,15 +2,63 @@
   "name": "real-proyect-abyss-game",
   "version": "1.0.0",
   "description": "<p align=\"center\">   <a href=\"#español\">Español</a> | <a href=\"#english\">English</a> </p>",
-  "main": "index.js",
+  "main": "electron-main.js",
   "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^24.13.3",
     "gh-pages": "^6.3.0"
   },
   "scripts": {
+    "start": "electron .",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d .",
     "build": "echo 'No build step required for vanilla JS project'",
+    "mac": "electron-builder --mac dmg",
+    "win": "electron-builder --win nsis",
+    "linux": "electron-builder --linux AppImage",
+    "dist": "electron-builder --win --mac --linux",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.imc89.abyssea",
+    "productName": "ABYSSEA",
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    },
+    "mac": {
+      "category": "public.app-category.games",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 410,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 150,
+          "type": "file"
+        }
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*"
+    ]
   },
   "repository": {
     "type": "git",

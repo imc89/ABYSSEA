@@ -43,6 +43,9 @@ let nearPOI = null;
 // Caché DOM global para optimización del Main Loop
 let domCache = {};
 
+// Cache global de grupos de Boids para evitar O(N^2) y asignación por frame
+let globalBoidsGroups = {};
+
 /**
  * [ES] Inicialización del juego. Configura el lienzo, gestiona pantallas de inicio y carga el mundo.
  * [EN] Game initialization. Sets up the canvas, manages start screens and loads the world.
@@ -82,6 +85,8 @@ async function init() {
                         loading.finish(() => {
                             // 5. Iniciar loop solo cuando Loading desaparece
                             console.log("OSIRIS ENGINE: Systems Online. Starting game loop.");
+                            document.getElementById('ui-layer').style.opacity = '1';
+                            document.getElementById('gameCanvas').style.opacity = '1';
                             updateCursorVisibility(); // Ocultar cursor al empezar
                             requestAnimationFrame(loop);
                         });
@@ -171,15 +176,21 @@ function setupGameCore() {
         for (let g = 0; g < specie.cantidadGrupos; g++) {
             const minGameUnits = specie.minProf * WORLD.depthScale;
             const maxGameUnits = specie.maxProf * WORLD.depthScale;
-            const centerX = Math.random() * canvas.width;
+            const centerX = Math.random() * 1920;
             const centerY = minGameUnits + Math.random() * (maxGameUnits - minGameUnits);
 
             for (let i = 0; i < specie.pecesPorGrupo; i++) {
                 const f = new Fish(specie, g);
                 const offsetX = (Math.random() - 0.5) * 300;
                 const offsetY = (Math.random() - 0.5) * 200;
-                f.x = Math.max(0, Math.min(canvas.width, centerX + offsetX));
+                f.x = Math.max(0, Math.min(1920, centerX + offsetX));
                 f.y = Math.max(minGameUnits, Math.min(maxGameUnits, centerY + offsetY));
+
+                // Precomputar y asignar el grupo al que pertenece
+                f.groupId = `${specie.id}_${g}`;
+                if (!globalBoidsGroups[f.groupId]) globalBoidsGroups[f.groupId] = [];
+                globalBoidsGroups[f.groupId].push(f);
+
                 fishes.push(f);
             }
         }
@@ -187,18 +198,32 @@ function setupGameCore() {
 
     // Puntos de Descubrimiento (POIs)
     Object.values(MACRO_CATALOG).forEach(specie => {
-        for (let i = 0; i < (specie.cantidadPoints || 0); i++) {
-            const minGameUnits = specie.minProf * WORLD.depthScale;
-            const maxGameUnits = specie.maxProf * WORLD.depthScale;
-            discoveryPoints.push({
-                id: `${specie.id}_${i}`,
-                specieId: specie.id,
-                x: 100 + Math.random() * (canvas.width - 200),
-                y: minGameUnits + Math.random() * (maxGameUnits - minGameUnits),
-                radius: 40,
-                discovered: false,
-                pulse: 0
+        if (specie.posiciones && specie.posiciones.length > 0) {
+            specie.posiciones.forEach((pos, i) => {
+                discoveryPoints.push({
+                    id: `${specie.id}_fixed_${i}`,
+                    specieId: specie.id,
+                    x: pos.x,
+                    y: pos.y,
+                    radius: 40,
+                    discovered: false,
+                    pulse: 0
+                });
             });
+        } else {
+            for (let i = 0; i < (specie.cantidadPoints || 0); i++) {
+                const minGameUnits = specie.minProf * WORLD.depthScale;
+                const maxGameUnits = specie.maxProf * WORLD.depthScale;
+                discoveryPoints.push({
+                    id: `${specie.id}_${i}`,
+                    specieId: specie.id,
+                    x: 100 + Math.random() * (1920 - 200),
+                    y: minGameUnits + Math.random() * (maxGameUnits - minGameUnits),
+                    radius: 40,
+                    discovered: false,
+                    pulse: 0
+                });
+            }
         }
     });
 
@@ -310,8 +335,34 @@ function setupEventHandlers() {
  * [EN] Adjusts the canvas to window size and reconfigures resolution-dependent entities.
  */
 function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    // Definimos el ancho lógico inmutable para la coherencia espacial y jugabilidad
+    const LOGICAL_WIDTH = 1920;
+
+    // Calculamos la escala necesaria para encajar en la pantalla física
+    window.scaleRatio = window.innerWidth / LOGICAL_WIDTH;
+    const logicalHeight = window.innerHeight / window.scaleRatio;
+
+    // El canvas opera en resolución lógica constante
+    canvas.width = LOGICAL_WIDTH;
+    canvas.height = logicalHeight;
+
+    // Escalar únicamente el entorno de simulación (Canvas y Peces)
+    // Dejamos el body intacto para que la UI (modales, menús, HUD) mantenga su tamaño real y responsive
+    document.body.style.transform = '';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+
+    canvas.style.transformOrigin = 'top left';
+    canvas.style.transform = `scale(${window.scaleRatio})`;
+    // NOTA: No seteamos canvas.style.width porque el transform ya lo redimensiona visualmente
+
+    const fishLayer = document.getElementById('fish-layer');
+    if (fishLayer) {
+        fishLayer.style.transformOrigin = 'top left';
+        fishLayer.style.transform = `scale(${window.scaleRatio})`;
+        fishLayer.style.width = `${LOGICAL_WIDTH}px`;
+        fishLayer.style.height = `${logicalHeight}px`;
+    }
 
     // Regenerar partículas al cambiar tamaño (Espacio de pantalla)
     marineSnow = [];
@@ -529,9 +580,14 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // Actualizar burbujas y filtrar las muertas
-    bubbles = bubbles.filter(b => b.life > 0);
-    bubbles.forEach(b => b.update(dtMult));
+    // Actualizar burbujas y filtrar las muertas in-place para no alocar arreglos por frame
+    for (let i = bubbles.length - 1; i >= 0; i--) {
+        if (bubbles[i].life <= 0) {
+            bubbles.splice(i, 1);
+        } else {
+            bubbles[i].update(dtMult);
+        }
+    }
 
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
@@ -575,34 +631,15 @@ function update(dtMult = 1.0) {
     // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
     telemetryData.activeFishes = 0;
 
-    // Lista temporal prioritaria (para evitar calcular IA contra toda la DB de peces en el Boids flocking)
-    const proximateFishes = [];
-
-    // OPTIMIZACIÓN CRÍTICA (ALTA CALIDAD): Diccionario de grupos Boids para evitar O(N^2)
-    // Al filtrar aquí, cada pez solo se compara matemáticamente contra sus pocos 
-    // compañeros de banco exactos, no contra los 150 peces de pantalla.
-    const boidsGroups = {};
-
     fishes.forEach(f => {
         // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
         f.isSimulated = Math.abs(f.y - player.y) < 1500;
 
         if (f.isSimulated) {
-            proximateFishes.push(f);
-
-            // Agrupación Hash O(1)
-            const groupId = `${f.config.id}_${f.groupIndex}`;
-            if (!boidsGroups[groupId]) boidsGroups[groupId] = [];
-            boidsGroups[groupId].push(f);
-
             telemetryData.activeFishes++;
+            // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
+            f.update(globalBoidsGroups[f.groupId], player, canvas, dtMult);
         }
-    });
-
-    // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
-    proximateFishes.forEach(f => {
-        const groupId = `${f.config.id}_${f.groupIndex}`;
-        f.update(boidsGroups[groupId], player, canvas, dtMult);
     });
 
     // Encontrar objetivo escaneable (pez en el cono de luz)
@@ -836,7 +873,7 @@ function draw() {
     if (floorImg) {
         const FLOOR_WORLD_Y = 110000;
         const floorScreenY = FLOOR_WORLD_Y - camera.y;
-        const fW = canvas.width;
+        const fW = canvas.width; // Ancho dependiente del canvas (que ahora es 1920 fijo lógicamente)
         const fH = floorImg.naturalHeight * (fW / floorImg.naturalWidth);
 
         // Solo dibujar si está cerca de pantalla
@@ -866,20 +903,20 @@ function draw() {
 
                 // Para no afectar a lo que ya se dibujó antes (peces, etc), limitamos el área de efecto
                 ctx.beginPath();
-                ctx.rect(0, floorScreenY, fW, fH);
+                ctx.rect(-camera.x, floorScreenY, fW, fH);
                 ctx.clip();
 
-                ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+                ctx.drawImage(floorImg, -camera.x, floorScreenY, fW, fH);
 
                 ctx.globalCompositeOperation = 'destination-in';
                 ctx.fillStyle = maskGrad;
-                ctx.fillRect(0, floorScreenY, fW, fH);
+                ctx.fillRect(-camera.x, floorScreenY, fW, fH);
             } else {
                 // En zonas con luz superficial, el suelo se ve normalmente según la profundidad
                 ctx.globalAlpha = ambientAlpha;
-                ctx.drawImage(floorImg, 0, floorScreenY, fW, fH);
+                ctx.drawImage(floorImg, -camera.x, floorScreenY, fW, fH);
             }
-            
+
             ctx.restore();
         }
     } else {
@@ -891,13 +928,13 @@ function draw() {
             grad.addColorStop(0, 'rgba(30, 18, 8, 1)');
             grad.addColorStop(1, 'rgba(10, 5, 2, 1)');
             ctx.fillStyle = grad;
-            ctx.fillRect(0, floorScreenY, canvas.width, canvas.height);
+            ctx.fillRect(-camera.x, floorScreenY, fW, canvas.height); // Ajustado a fW y -camera.x
         }
     }
 
     // Dibujar fumarolas hidrotermales (humo y chorros)
     if (typeof hydrothermalManager !== 'undefined') {
-        hydrothermalManager.draw(ctx, camera);
+        hydrothermalManager.draw(ctx, camera, player, ambientAlpha);
     }
 
     // Dibujar luz del jugador
@@ -935,18 +972,18 @@ function draw() {
             ctx.fillRect(0, startY, canvas.width, height);
 
             const time = Date.now() * 0.003; // Velocidad suave
-            const sliceH = 4; 
+            const sliceH = 4;
             for (let i = 0; i < height; i += sliceH) {
-                const wave = Math.sin(time + i * 0.04) * 3.5 + 
-                             Math.sin(time * 0.6 + i * 0.1) * 1.5;
-                
+                const wave = Math.sin(time + i * 0.04) * 3.5 +
+                    Math.sin(time * 0.6 + i * 0.1) * 1.5;
+
                 const distToTop = i;
                 const distToBottom = height - i;
                 const edgeDist = Math.min(distToTop, distToBottom);
-                const intensity = Math.min(1.0, edgeDist / 100); 
-                
+                const intensity = Math.min(1.0, edgeDist / 100);
+
                 const finalOffset = wave * intensity;
-                
+
                 ctx.globalAlpha = 1.0;
                 ctx.drawImage(window.hazeCanvas, 0, i, canvas.width, sliceH, finalOffset - 6, startY + i, canvas.width + 12, sliceH);
             }
@@ -996,7 +1033,6 @@ function toggleFullscreen() {
             .catch(err => {
                 console.error(`Error attempting to enable fullscreen: ${err.message}`);
             });
-        // Ya no cerramos el menú automáticamente por petición del usuario
     } else {
         if (document.exitFullscreen) {
             // Liberar el teclado al salir de pantalla completa
@@ -1007,6 +1043,17 @@ function toggleFullscreen() {
         }
     }
     updateSettingsUI();
+}
+
+function quitGame() {
+    GlobalAudioPool.play('toggle', 0.8);
+    // Intentar cerrar usando la API de Electron si está disponible
+    if (window.electronAPI && window.electronAPI.quit) {
+        window.electronAPI.quit();
+    } else {
+        // Fallback para navegador normal o si falla el bridge
+        window.close();
+    }
 }
 
 /**
@@ -1027,17 +1074,27 @@ function toggleMusicMute() {
  * [EN] Refreshes visual states of the interactive options menu based on global variables.
  */
 function updateSettingsUI() {
-    // Actualizar visual del Toggle de Fullscreen
-    const fsBg = document.getElementById('fs-toggle-bg');
-    const fsDot = document.getElementById('fs-toggle-dot');
-    const isFS = !!document.fullscreenElement;
+    // Detectar plataforma y mostrar/ocultar botones específicos
+    const isElectron = !!(window.electronAPI);
+    const fsBtn = document.getElementById('fs-menu-btn');
+    const quitBtn = document.getElementById('quit-menu-btn');
 
-    if (fsBg) fsBg.classList.toggle('bg-cyan-500', isFS);
-    if (fsBg) fsBg.classList.toggle('bg-white/10', !isFS);
-    if (fsDot) fsDot.classList.toggle('left-7', isFS);
-    if (fsDot) fsDot.classList.toggle('left-1', !isFS);
-    if (fsDot) fsDot.classList.toggle('bg-white', isFS);
-    if (fsDot) fsDot.classList.toggle('bg-white/40', !isFS);
+    if (fsBtn) fsBtn.classList.toggle('hidden', isElectron);
+    if (quitBtn) quitBtn.classList.toggle('hidden', !isElectron);
+
+    // Actualizar visual del Toggle de Fullscreen (solo si el elemento existe y no estamos en Electron)
+    if (!isElectron) {
+        const fsBg = document.getElementById('fs-toggle-bg');
+        const fsDot = document.getElementById('fs-toggle-dot');
+        const isFS = !!document.fullscreenElement;
+
+        if (fsBg) fsBg.classList.toggle('bg-cyan-500', isFS);
+        if (fsBg) fsBg.classList.toggle('bg-white/10', !isFS);
+        if (fsDot) fsDot.classList.toggle('left-7', isFS);
+        if (fsDot) fsDot.classList.toggle('left-1', !isFS);
+        if (fsDot) fsDot.classList.toggle('bg-white', isFS);
+        if (fsDot) fsDot.classList.toggle('bg-white/40', !isFS);
+    }
 
     // Actualizar visual del Toggle de Música
     const mBg = document.getElementById('music-toggle-bg');
@@ -1116,6 +1173,7 @@ document.addEventListener('fullscreenchange', updateSettingsUI);
 if (typeof window !== 'undefined') {
     window.setControls = setControls;
     window.toggleFullscreen = toggleFullscreen;
+    window.quitGame = quitGame;
     window.setQuality = setQuality;
     window.updateCursorVisibility = updateCursorVisibility;
 }

@@ -230,8 +230,7 @@ class Base {
         const worldSpotY = this.y + this.h + 35;
 
         // Las X de los focos en mundo (desde el centro del mundo, que coincide con x=0 de la cámara en inicio)
-        // La cámara.worldX del jugador arrancaría en 0, y canvas.width/2 es el centro de pantalla.
-        const worldCenterX = camera.x + ctx.canvas.width / 2;
+        const worldCenterX = ctx.canvas.width / 2;
         const lightOffsets = [-1200, -800, -400, 400, 800, 1200];
 
         for (let s = 0; s < lightOffsets.length; s++) {

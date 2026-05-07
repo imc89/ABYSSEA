@@ -19,9 +19,10 @@ sCtx.fillStyle = sGrad;
 sCtx.fillRect(0, 0, 128, 128);
 
 class HydrothermalVent {
-    constructor(x, y) {
-        this.x = x;
+    constructor(xRatio, y, density = 1.0) {
+        this.xRatio = xRatio; // Proporción del ancho de la pantalla (0.0 a 1.0)
         this.y = y;
+        this.density = Math.max(0.1, density); // Evita dividir por cero
         this.particles = [];
         this.emitTimer = 0;
         this.active = true;
@@ -32,45 +33,92 @@ class HydrothermalVent {
         const screenY = this.y - camera.y;
         if (screenY < -2000 || screenY > canvas.height + 2000) return;
 
-        // Emitir partículas de humo/fluido hidrotermal continuamente
+        // Fumarola continua: emitimos constantemente para evitar "nubecitas separadas"
         this.emitTimer += dtMult;
-        if (this.emitTimer > 0.8) { // Alta tasa de emisión para un humo denso y continuo
+
+        // Intervalo fijo y muy rápido para crear un chorro continuo
+        const spawnInterval = 0.2;
+
+        if (this.emitTimer > spawnInterval) {
             this.emitTimer = 0;
 
-            // Variación aleatoria para que no sea una línea recta perfecta
+            // La densidad afecta a la fuerza, al grosor inicial y a la opacidad visual, NO al número de cortes
+            const jetForce = 4 + (this.density * 3);
+            const baseSize = 8 + (this.density * 12);
+
+            // La posición X real depende del ancho de pantalla actual
+            const currentX = this.xRatio * canvas.width;
+
             this.particles.push({
-                x: this.x + (Math.random() * 20 - 10),
+                type: 'smoke',
+                x: currentX + (Math.random() * baseSize * 0.5 - baseSize * 0.25),
                 y: this.y,
-                vx: (Math.random() * 2.0 - 1.0),
-                vy: -(Math.random() * 5 + 4),     // Impulso inicial fuerte hacia arriba
+                vx: (Math.random() * 0.8 - 0.4),
+                vy: -(Math.random() * 2 + jetForce), // Impulso inicial
                 life: 1.0,
-                size: Math.random() * 40 + 30,    // Nace con un tamaño decente
-                maxLife: Math.random() * 150 + 100, // Tarda bastante en disiparse
-                rotation: Math.random() * Math.PI * 2,
-                rotSpeed: (Math.random() * 0.04 - 0.02)
+                size: Math.random() * 5 + baseSize,  // Nace estrecho en la boquilla
+                maxLife: Math.random() * 100 + 80,
+                stretch: Math.random() * 1.5 + 2.0,  // Factor de estiramiento vertical inicial
+                baseXRatio: this.xRatio              // Guardamos su proporción inicial para reescalados
             });
+
+            // Generar cenizas minerales pesadas proporcionalmente a la densidad de la fumarola
+            if (Math.random() < this.density) {
+                this.particles.push({
+                    type: 'ash',
+                    x: currentX + (Math.random() * baseSize * 0.6 - baseSize * 0.3),
+                    y: this.y,
+                    vx: (Math.random() * 1.8 - 0.9), // Se esparcen a los lados
+                    vy: -(Math.random() * 3 + jetForce * 1.3), // Impulso fuerte inicial
+                    life: 1.0,
+                    size: 0.8 + Math.random() * 2.2,  // Partículas finas
+                    maxLife: Math.random() * 180 + 120, // Duran un poco más para caer
+                    baseXRatio: this.xRatio              
+                });
+            }
         }
 
         // Actualizar partículas
         for (let i = this.particles.length - 1; i >= 0; i--) {
             let p = this.particles[i];
 
+            // Posición X
             p.x += p.vx * dtMult;
             p.y += p.vy * dtMult;
-            p.rotation += p.rotSpeed * dtMult;
+            
+            if (p.type === 'smoke' || !p.type) {
+                const targetX = p.baseXRatio * canvas.width;
+                // Anclaje al centro para que el humo mantenga la forma de la columna
+                p.x += (targetX - p.x) * 0.1 * dtMult;
+                
+                p.vx += (Math.random() * 0.2 - 0.1) * dtMult;
+                p.vx *= 0.98;
 
-            // Turbulencia natural (corrientes de agua)
-            p.vx += (Math.random() * 0.3 - 0.15) * dtMult;
-            // Tendencia suave a ir hacia un lado u otro para simular corrientes
-            p.vx *= 0.99;
+                // Fricción pesada del agua: frena el chorro de humo a medida que sube
+                p.vy *= Math.pow(0.96, dtMult);
 
-            // Se frena un poco la subida con la fricción del agua pesada
-            p.vy *= Math.pow(0.985, dtMult);
+                // El humo hidrotermal se expande lateralmente rápido a medida que pierde velocidad
+                const expandRate = 1.0 + (1.0 - Math.min(1.0, Math.abs(p.vy) / 10));
+                p.size += expandRate * 1.5 * dtMult;
+
+                // El estiramiento vertical se reduce a medida que frena, volviéndose más redondo arriba
+                p.stretch = Math.max(1.0, p.stretch - 0.03 * dtMult);
+            } else if (p.type === 'ash') {
+                // Turbulencia mayor para crear una nube de dispersión
+                p.vx += (Math.random() * 0.8 - 0.4) * dtMult;
+                // Retienen más su inercia horizontal para expandirse a lo ancho
+                p.vx *= 0.99;
+
+                // Leve balanceo horizontal simulando caída en un medio denso (agua)
+                p.x += Math.sin(p.life * 15) * 0.8 * dtMult;
+
+                // Las cenizas son frenadas rápidamente por el agua...
+                p.vy *= Math.pow(0.92, dtMult);
+                // ...y al perder velocidad hacia arriba (enfriarse), caen por gravedad mineral
+                p.vy += 0.12 * dtMult;
+            }
 
             p.life -= (1 / p.maxLife) * dtMult;
-
-            // El humo hidrotermal se expande muchísimo a medida que pierde calor y presión
-            p.size += 1.2 * dtMult;
 
             if (p.life <= 0) {
                 this.particles.splice(i, 1);
@@ -78,30 +126,121 @@ class HydrothermalVent {
         }
     }
 
-    draw(ctx, camera) {
+    draw(ctx, camera, player, ambientAlpha) {
         const screenY = this.y - camera.y;
         // Solo dibujar si la base está cerca o si las partículas pueden llegar
         if (screenY < -3000 || screenY > ctx.canvas.height + 1000) return;
 
-        // Utilizamos screen para que el humo se acumule y brille de forma volumétrica
+        const currentX = this.xRatio * ctx.canvas.width;
+
+        // "No se verán por partes, se veran totalmente o no se verán dependiendo si les da un minimo de luz o no"
+        let isIlluminated = false;
+
+        if (ambientAlpha > 0.05) {
+            isIlluminated = true; // Superficie / aguas iluminadas
+        } else {
+            const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+            if (player.lightOn && mainBattery > 0) {
+                // Iteramos sobre las partículas. Si la luz roza a AL MENOS UNA, iluminamos TODO el chorro.
+                // Esto permite que apuntes a la punta de la columna de humo y se vea entera hacia abajo.
+                for (let p of this.particles) {
+                    const dSq = distanceSq(p.x, p.y, player.x, player.y + WORLD.lightOffsetY);
+
+                    if (dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+                        const dist = Math.sqrt(dSq);
+                        const angToParticle = Math.atan2(
+                            p.y - (player.y + WORLD.lightOffsetY),
+                            p.x - player.x
+                        );
+                        const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+                        const MathAngleDelta = clampAngleDelta(angToParticle, lookDir);
+
+                        if (MathAngleDelta < WORLD.lightAngle || dist < WORLD.lightGlowRange) {
+                            isIlluminated = true;
+                            break; // Con que reciba un mínimo de luz una parte, iluminamos totalmente
+                        }
+                    }
+                }
+            }
+        }
+
+        // Si no recibe un mínimo de luz, no dibujamos ninguna partícula de este chorro
+        if (!isIlluminated) return;
+
+        // Dibujamos primero las cenizas minerales sólidas (Source-Over normal)
+        ctx.globalCompositeOperation = 'source-over';
+        for (let p of this.particles) {
+            if (p.type === 'ash') {
+                const pScreenX = p.x - camera.x;
+                const pScreenY = p.y - camera.y;
+                
+                // Las cenizas tienen un ciclo de vida térmico muy corto y luego caen como escoria fría
+                let ashAlpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 8));
+                
+                if (ashAlpha > 0.01) {
+                    // Parpadeo (Scintillation) simulando que la escama rota y refleja la luz
+                    const twinkle = 0.6 + 0.4 * Math.sin(p.life * 40 + p.x);
+                    const alpha = (ashAlpha * twinkle).toFixed(3);
+                    const softAlpha = (ashAlpha * twinkle * 0.4).toFixed(3);
+                    
+                    let r, g, b;
+                    if (p.life > 0.85) {
+                        const heat = (p.life - 0.85) / 0.15;
+                        r = 255;
+                        g = Math.floor(100 + heat * 155);
+                        b = Math.floor(heat * 200);
+                    } else {
+                        r = 130;
+                        g = 140;
+                        b = 150;
+                        const darkening = p.life / 0.85; 
+                        r = Math.floor(r * darkening);
+                        g = Math.floor(g * darkening);
+                        b = Math.floor(b * darkening);
+                    }
+                    
+                    // Las cenizas son escamas irregulares: simulamos rotación 3D modificando su alto visual
+                    const apparentSizeY = p.size * (0.3 + 0.7 * Math.abs(Math.sin(p.life * 18 + p.y)));
+                    
+                    // Núcleo sólido
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.ellipse(pScreenX, pScreenY, p.size, Math.max(0.2, apparentSizeY), p.vx * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Halo orgánico difuminado (evita que se vean cuadradas/pixeladas)
+                    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${softAlpha})`;
+                    ctx.beginPath();
+                    ctx.ellipse(pScreenX, pScreenY, p.size * 1.8, Math.max(0.3, apparentSizeY * 1.8), p.vx * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Utilizamos screen para que el humo blanquecino se acumule de forma volumétrica
         ctx.globalCompositeOperation = 'screen';
+        const baseAlpha = 0.6 * Math.min(1.0, this.density);
 
         for (let p of this.particles) {
+            if (p.type === 'ash') continue;
+
             const pScreenX = p.x - camera.x;
             const pScreenY = p.y - camera.y;
 
-            // Transición suave de opacidad
-            // Al nacer (life=1) es visible, y muere lentamente
-            const alpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 5) * 0.8);
+            // Transición suave de opacidad ligada únicamente a la vida de la partícula (ya está 100% iluminada globalmente)
+            const alpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 5) * baseAlpha);
 
             if (alpha > 0.01) {
                 ctx.globalAlpha = alpha;
 
-                // Rotación y dibujo centrado
                 ctx.translate(pScreenX, pScreenY);
-                ctx.rotate(p.rotation);
-                ctx.drawImage(smokeCanvas, -p.size / 2, -p.size / 2, p.size, p.size);
-                ctx.rotate(-p.rotation);
+
+                // Efecto de rastro de fluido (Streak)
+                const width = p.size;
+                const height = p.size * p.stretch;
+
+                ctx.drawImage(smokeCanvas, -width / 2, -height, width, height);
+
                 ctx.translate(-pScreenX, -pScreenY);
             }
         }
@@ -115,29 +254,53 @@ class HydrothermalManager {
     constructor() {
         this.vents = [];
         this.initialized = false;
+        this.audio = new Audio('audio/hydrothermal.mp3');
+        this.audio.loop = true;
+        this.audio.volume = 0;
     }
 
-    init(canvasWidth) {
-        // El fondo del juego está en Y = 110000. Restauramos este valor.
-        // Si se pone en 0, las fumarolas se renderizarán en la superficie del océano.
-        const floorY = 110000;
+    init() {
+        // El fondo del juego está en Y = 110000. 
+        const floorY = 110100;
 
-        // Distribuimos 6 fumarolas a lo ancho de la pantalla
+        // Las posiciones X ahora son proporciones relativas al tamaño de pantalla (0.0 a 1.0).
+        // Así, si se abre el inspector o se encoge la ventana, la fumarola se reubica 
+        // dinámicamente y siempre se dibuja sobre la misma roca de la textura de fondo.
+        // Ejemplo: 0.21 = 21% de la pantalla (aprox 410px en Full HD).
         this.vents = [
-            new HydrothermalVent(canvasWidth * 0.15, floorY + 40),
-            new HydrothermalVent(canvasWidth * 0.32, floorY + 25),
-            new HydrothermalVent(canvasWidth * 0.48, floorY + 50),
-            new HydrothermalVent(canvasWidth * 0.65, floorY + 30),
-            new HydrothermalVent(canvasWidth * 0.82, floorY + 15),
-            new HydrothermalVent(canvasWidth * 0.90, floorY + 45)
+            new HydrothermalVent(0.41, floorY - 0, 0.1),    // Pequeña y poco densa (aprox 410px)
+            new HydrothermalVent(0.15, floorY + 60, 0.1),    // Pequeña y poco densa (aprox 410px)
+
         ];
 
         this.initialized = true;
     }
 
     update(dtMult, camera, canvas) {
-        if (!this.initialized && canvas) {
-            this.init(canvas.width);
+        if (!this.initialized) {
+            this.init();
+        }
+
+        // Control de audio basado en profundidad
+        if (typeof player !== 'undefined' && typeof WORLD !== 'undefined') {
+            const depthMeters = player.y / WORLD.depthScale;
+
+            if (depthMeters >= 10800) {
+                // Interpolar volumen: 0 en 10800m, 1 en 10900m
+                let vol = (depthMeters - 10800) / 100;
+                vol = Math.max(0, Math.min(1, vol));
+
+                this.audio.volume = vol;
+
+                if (this.audio.paused && vol > 0) {
+                    this.audio.play().catch(e => { });
+                }
+            } else {
+                if (!this.audio.paused) {
+                    this.audio.volume = 0;
+                    this.audio.pause();
+                }
+            }
         }
 
         for (let vent of this.vents) {
@@ -145,11 +308,11 @@ class HydrothermalManager {
         }
     }
 
-    draw(ctx, camera) {
+    draw(ctx, camera, player, ambientAlpha) {
         if (!this.initialized) return;
 
         for (let vent of this.vents) {
-            vent.draw(ctx, camera);
+            vent.draw(ctx, camera, player, ambientAlpha);
         }
     }
 }

@@ -44,7 +44,7 @@ class SplashScreen {
                 <div class="absolute -top-32 -left-32 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl opacity-40"></div>
                 
                 <div class="flex flex-col items-center gap-2 relative z-10">
-                    <h2 class="text-cyan-400 text-3xl font-bold tracking-[0.4em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.4)]">ABYSSEA</h2>
+                    <h2 class="text-cyan-400 text-3xl font-bold tracking-[0.4em] uppercase drop-shadow-[0_0_10px_rgba(6,182,212,0.4)]" style="font-family: 'Glech', sans-serif;">ABYSSEA</h2>
                     <span class="app-version-display text-[10px] text-cyan-500/50 tracking-[0.2em] uppercase">${this.version}</span>
                 </div>
                 
@@ -74,7 +74,7 @@ class SplashScreen {
         const portal = document.getElementById('start-mission-portal');
         if (portal) {
             if (this.splashMusic) this.splashMusic.play().catch(() => { });
-            
+
             const modalContent = portal.querySelector('.futuristic-border');
             portal.classList.add('opacity-0', 'pointer-events-none');
             if (modalContent) {
@@ -156,14 +156,14 @@ class SplashScreen {
                     <!-- Título Premium Nítido -->
                     <div class="relative">
                         <h1 class="text-white text-8xl md:text-9xl font-bold tracking-[0.4em] relative z-10 select-none" 
-                            style="font-family: 'JetBrains Mono', monospace; text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
+                            style="font-family: 'Glech', sans-serif; text-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
                             ABYSSEA
                         </h1>
                         <!-- Línea de Escaneo Biométrico -->
                         <div class="absolute inset-x-0 h-[1px] bg-cyan-400/50 shadow-[0_0_10px_#06b6d4] z-20 animate-[bioScan_4s_linear_infinite] pointer-events-none"></div>
                         <!-- Pulso Holográfico Sutil -->
                         <h1 class="absolute inset-0 text-cyan-400 tracking-[0.4em] font-bold text-8xl md:text-9xl z-0 opacity-10 animate-[hologramPulse_3s_ease-in-out_infinite]" 
-                            style="font-family: 'JetBrains Mono', monospace;">
+                            style="font-family: 'Glech', sans-serif;">
                             ABYSSEA
                         </h1>
                     </div>

@@ -15,7 +15,7 @@ class Camera {
      * [EN] Updates the camera position centered on the player, applying interpolation for smooth movement and restricting scroll to the vertical axis only.
      */
     update(player, canvas) {
-        // NO SCROLL HORIZONTAL - mundo del ancho de pantalla
+        // NO SCROLL HORIZONTAL - el mundo es exactamente igual al lienzo en nuestra resolución lógica
         this.x = 0;
 
         // SCROLL VERTICAL SOLAMENTE - seguir al jugador en profundidad

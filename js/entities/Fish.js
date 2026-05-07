@@ -117,9 +117,7 @@ class Fish {
                 let count = 0;
 
                 for (let other of others) {
-                    if (other === this ||
-                        other.config.id !== this.config.id ||
-                        other.groupIndex !== this.groupIndex) continue;
+                    if (other === this || !other.isSimulated) continue;
 
                     const dx = other.x - this.x;
                     const dy = other.y - this.y;
