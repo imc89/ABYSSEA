@@ -675,14 +675,14 @@ class MacroManager {
                 const p2 = 2 * l - q;
                 const hue2rgb = (p, q, t) => {
                     if (t < 0) t += 1; if (t > 1) t -= 1;
-                    if (t < 1/6) return p + (q - p) * 6 * t;
-                    if (t < 1/2) return q;
-                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
                     return p;
                 };
-                const pr = Math.round(hue2rgb(p2, q, h + 1/3) * 255);
+                const pr = Math.round(hue2rgb(p2, q, h + 1 / 3) * 255);
                 const pg = Math.round(hue2rgb(p2, q, h) * 255);
-                const pb = Math.round(hue2rgb(p2, q, h - 1/3) * 255);
+                const pb = Math.round(hue2rgb(p2, q, h - 1 / 3) * 255);
                 this.state.particles.push({
                     type: 'plankton',
                     x: Math.random() * W,
@@ -1246,10 +1246,10 @@ class MacroManager {
                 const twinkle = 0.6 + 0.4 * Math.sin(p.life * 40 + p.x);
                 const alpha = Math.max(0, 0.8 * twinkle).toFixed(3);
                 const softAlpha = Math.max(0, 0.3 * twinkle).toFixed(3);
-                
+
                 const val = Math.floor(120 + Math.sin(p.life * 10) * 30);
                 const apparentSizeY = p.size * (0.3 + 0.7 * Math.abs(Math.sin(p.life * 18 + p.y)));
-                
+
                 // Núcleo sólido de la ceniza
                 ctx.fillStyle = `rgba(${val}, ${val + 10}, ${val + 20}, ${alpha})`;
                 ctx.beginPath();
