@@ -85,6 +85,8 @@ async function init() {
                         loading.finish(() => {
                             // 5. Iniciar loop solo cuando Loading desaparece
                             console.log("OSIRIS ENGINE: Systems Online. Starting game loop.");
+                            document.getElementById('ui-layer').style.opacity = '1';
+                            document.getElementById('gameCanvas').style.opacity = '1';
                             updateCursorVisibility(); // Ocultar cursor al empezar
                             requestAnimationFrame(loop);
                         });
@@ -183,12 +185,12 @@ function setupGameCore() {
                 const offsetY = (Math.random() - 0.5) * 200;
                 f.x = Math.max(0, Math.min(1920, centerX + offsetX));
                 f.y = Math.max(minGameUnits, Math.min(maxGameUnits, centerY + offsetY));
-                
+
                 // Precomputar y asignar el grupo al que pertenece
                 f.groupId = `${specie.id}_${g}`;
                 if (!globalBoidsGroups[f.groupId]) globalBoidsGroups[f.groupId] = [];
                 globalBoidsGroups[f.groupId].push(f);
-                
+
                 fishes.push(f);
             }
         }
@@ -1031,7 +1033,6 @@ function toggleFullscreen() {
             .catch(err => {
                 console.error(`Error attempting to enable fullscreen: ${err.message}`);
             });
-        // Ya no cerramos el menú automáticamente por petición del usuario
     } else {
         if (document.exitFullscreen) {
             // Liberar el teclado al salir de pantalla completa
@@ -1042,6 +1043,17 @@ function toggleFullscreen() {
         }
     }
     updateSettingsUI();
+}
+
+function quitGame() {
+    GlobalAudioPool.play('toggle', 0.8);
+    // Intentar cerrar usando la API de Electron si está disponible
+    if (window.electronAPI && window.electronAPI.quit) {
+        window.electronAPI.quit();
+    } else {
+        // Fallback para navegador normal o si falla el bridge
+        window.close();
+    }
 }
 
 /**
@@ -1062,17 +1074,27 @@ function toggleMusicMute() {
  * [EN] Refreshes visual states of the interactive options menu based on global variables.
  */
 function updateSettingsUI() {
-    // Actualizar visual del Toggle de Fullscreen
-    const fsBg = document.getElementById('fs-toggle-bg');
-    const fsDot = document.getElementById('fs-toggle-dot');
-    const isFS = !!document.fullscreenElement;
+    // Detectar plataforma y mostrar/ocultar botones específicos
+    const isElectron = !!(window.electronAPI);
+    const fsBtn = document.getElementById('fs-menu-btn');
+    const quitBtn = document.getElementById('quit-menu-btn');
 
-    if (fsBg) fsBg.classList.toggle('bg-cyan-500', isFS);
-    if (fsBg) fsBg.classList.toggle('bg-white/10', !isFS);
-    if (fsDot) fsDot.classList.toggle('left-7', isFS);
-    if (fsDot) fsDot.classList.toggle('left-1', !isFS);
-    if (fsDot) fsDot.classList.toggle('bg-white', isFS);
-    if (fsDot) fsDot.classList.toggle('bg-white/40', !isFS);
+    if (fsBtn) fsBtn.classList.toggle('hidden', isElectron);
+    if (quitBtn) quitBtn.classList.toggle('hidden', !isElectron);
+
+    // Actualizar visual del Toggle de Fullscreen (solo si el elemento existe y no estamos en Electron)
+    if (!isElectron) {
+        const fsBg = document.getElementById('fs-toggle-bg');
+        const fsDot = document.getElementById('fs-toggle-dot');
+        const isFS = !!document.fullscreenElement;
+
+        if (fsBg) fsBg.classList.toggle('bg-cyan-500', isFS);
+        if (fsBg) fsBg.classList.toggle('bg-white/10', !isFS);
+        if (fsDot) fsDot.classList.toggle('left-7', isFS);
+        if (fsDot) fsDot.classList.toggle('left-1', !isFS);
+        if (fsDot) fsDot.classList.toggle('bg-white', isFS);
+        if (fsDot) fsDot.classList.toggle('bg-white/40', !isFS);
+    }
 
     // Actualizar visual del Toggle de Música
     const mBg = document.getElementById('music-toggle-bg');
@@ -1151,6 +1173,7 @@ document.addEventListener('fullscreenchange', updateSettingsUI);
 if (typeof window !== 'undefined') {
     window.setControls = setControls;
     window.toggleFullscreen = toggleFullscreen;
+    window.quitGame = quitGame;
     window.setQuality = setQuality;
     window.updateCursorVisibility = updateCursorVisibility;
 }
