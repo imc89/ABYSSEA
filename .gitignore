@@ -12,5 +12,29 @@ Thumbs.db
 *.swp
 *.swo
 
-# Project specific
-.DS_Store
+# Electron Build Output
+dist/
+out/
+release/
+
+# Electron-builder artifacts
+builder-debug.yml
+builder-effective-config.yaml
+dist-native/
+
+# Executables and installers
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.pkg
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
