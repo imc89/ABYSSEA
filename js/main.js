@@ -937,12 +937,12 @@ function draw() {
         hydrothermalManager.draw(ctx, camera, player, ambientAlpha);
     }
 
-    // Dibujar luz del jugador
-    player.drawLight(ctx, camera);
-
     // Dibujar jugador
     const playerImage = imageCache.get('player');
     player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
+
+    // Dibujar luz del jugador (ahora con mayor Z-index)
+    player.drawLight(ctx, camera);
 
     // --- EFECTO SCHLIEREN (Distorsión por calor de fumarolas) ---
     // Renderizado al final para que afecte a la luz del foco, al submarino y al fondo profundo

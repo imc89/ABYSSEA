@@ -71,7 +71,9 @@ const WORLD = {
     lightGlowRange: 250,     // Radio del halo radial alrededor del submarino
     lightGlowIntensity: 0.24, // Opacidad máxima del halo radial (0.0 a 1.0)
     lightAngle: 0.24,
-    lightOffsetY: 12,
+    lightOffsetY: 51,
+    lightOffsetX: 75,
+    lightStartWidth: 20,
 
     // Límites horizontales más estrictos
     horizontalBoundary: 100,  // Margen antes de empujar al jugador de vuelta
@@ -108,8 +110,8 @@ const PLAYER_CONFIG = {
     startY: 220,
     speed: 0.42,
     boost: 2.2,
-    width: 150,
-    height: 120,
+    width: 185,
+    height: 220,
     sonarMaxCooldown: 9,     // 10 segundos
     sonarMaxRadius: 2500,
     sonarExpansionSpeed: 25,

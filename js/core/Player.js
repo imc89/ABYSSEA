@@ -182,7 +182,7 @@ class Player {
         const FLOOR_START_Y = 110000;
         // El límite absoluto es ahora la MITAD de la altura de la imagen
         const FLOOR_LIMIT_Y = FLOOR_START_Y + (floorHeight / 2) - (this.h / 2);
-        
+
         // Eliminado el efecto de resistencia/empuje hacia arriba para permitir
         // una navegación sencilla por la capa superior del suelo.
 
@@ -268,10 +268,10 @@ class Player {
             // Verificar si el problema específico que está causando la emergencia se está solucionando
             const isCo2Fixing = (this.co2 >= 15.0 && this.isCo2Improving);
             const isO2Fixing = (isAnoxiaCritical && typeof oxygenManager !== 'undefined' && oxygenManager.isO2Improving);
-            
+
             // Si hay emergencia por alguna de las dos o ambas, y se están arreglando TODAS las alarmas activas
             const fixingAll = (this.co2 >= 15.0 ? isCo2Fixing : true) && (isAnoxiaCritical ? isO2Fixing : true);
-            
+
             if (fixingAll) {
                 if (canSimulate && this.poisonTimer > 0) {
                     this.poisonTimer -= (2 / 60) * dtMult;
@@ -341,12 +341,12 @@ class Player {
             } else if (this.co2 >= 15.0) {
                 redOpacity = 0.6;
             }
-            
+
             // Caching values
             const rOpacity = (Math.round(redOpacity * 100) / 100).toString();
             // Reducir la distorsión global haciéndolo jugable (max 3px de blur)
             const rBlur = Math.round(redOpacity * 3).toString();
-            
+
             if (overlay.dataset.lastOp !== rOpacity) {
                 overlay.style.opacity = rOpacity;
                 overlay.dataset.lastOp = rOpacity;
@@ -522,7 +522,7 @@ class Player {
         const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
         if (!this.lightOn || mainBattery <= 0) return;
 
-        const px = this.x - camera.x;
+        const px = this.x - camera.x + (WORLD.lightOffsetX * this.dir);
         const py = this.y - camera.y + WORLD.lightOffsetY;
 
         ctx.save();
@@ -540,21 +540,28 @@ class Player {
         ctx.arc(0, 0, WORLD.lightGlowRange, 0, Math.PI * 2);
         ctx.fill();
 
-        // Foco direccional configurable desde WORLD.lightSpotRange
-        // El gradiente empieza OSCURO en el submarino y alcanza su máximo brillo más adelante,
-        // evitando el falso "glow radial" causado por el centro brillante del gradiente.
-        const spotlightGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, WORLD.lightSpotRange);
-        spotlightGrad.addColorStop(0, `rgba(255, 255, 250, 0)`);                                       // oscuro en el origen
-        spotlightGrad.addColorStop(0.08, `rgba(255, 255, 250, ${0.45 * this.lightFlickerIntensity})`);    // pico de brillo cercano
-        spotlightGrad.addColorStop(0.5, `rgba(255, 255, 240, ${0.25 * this.lightFlickerIntensity})`);    // se va apagando
-        spotlightGrad.addColorStop(1, 'transparent');                                                   // transparent en el borde
+        // Foco direccional: Trapecio Isósceles
+        const halfStartW = WORLD.lightStartWidth / 2;
+        const endW = WORLD.lightStartWidth + (2 * WORLD.lightSpotRange * Math.tan(WORLD.lightAngle));
+        const halfEndW = endW / 2;
 
+        const spotlightGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, WORLD.lightSpotRange);
+        spotlightGrad.addColorStop(0, `rgba(255, 255, 250, 0)`);
+        spotlightGrad.addColorStop(0.08, `rgba(255, 255, 250, ${0.45 * this.lightFlickerIntensity})`);
+        spotlightGrad.addColorStop(0.5, `rgba(255, 255, 240, ${0.25 * this.lightFlickerIntensity})`);
+        spotlightGrad.addColorStop(1, 'transparent');
+
+        ctx.save();
+        ctx.rotate(lightDir); // Orientar según dirección del submarino
         ctx.fillStyle = spotlightGrad;
         ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.arc(0, 0, WORLD.lightSpotRange, lightDir - WORLD.lightAngle, lightDir + WORLD.lightAngle);
+        ctx.moveTo(0, -halfStartW);
+        ctx.lineTo(WORLD.lightSpotRange, -halfEndW);
+        ctx.lineTo(WORLD.lightSpotRange, halfEndW);
+        ctx.lineTo(0, halfStartW);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
 
         ctx.restore();
     }

@@ -144,20 +144,20 @@ class HydrothermalVent {
                 // Iteramos sobre las partículas. Si la luz roza a AL MENOS UNA, iluminamos TODO el chorro.
                 // Esto permite que apuntes a la punta de la columna de humo y se vea entera hacia abajo.
                 for (let p of this.particles) {
-                    const dSq = distanceSq(p.x, p.y, player.x, player.y + WORLD.lightOffsetY);
+                    // El foco emana desde una posición desplazada (OffsetX y OffsetY)
+                    const spotX = player.x + (WORLD.lightOffsetX * player.dir);
+                    const spotY = player.y + WORLD.lightOffsetY;
+                    const dSq = distanceSq(p.x, p.y, spotX, spotY);
 
                     if (dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
-                        const dist = Math.sqrt(dSq);
-                        const angToParticle = Math.atan2(
-                            p.y - (player.y + WORLD.lightOffsetY),
-                            p.x - player.x
-                        );
+                        const angToParticle = Math.atan2(p.y - spotY, p.x - spotX);
                         const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
                         const MathAngleDelta = clampAngleDelta(angToParticle, lookDir);
 
-                        if (MathAngleDelta < WORLD.lightAngle || dist < WORLD.lightGlowRange) {
+                        // Solo el foco direccional (cono/trapecio) influye, no el halo radial
+                        if (MathAngleDelta < WORLD.lightAngle) {
                             isIlluminated = true;
-                            break; // Con que reciba un mínimo de luz una parte, iluminamos totalmente
+                            break;
                         }
                     }
                 }
