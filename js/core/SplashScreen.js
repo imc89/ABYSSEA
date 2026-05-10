@@ -118,13 +118,6 @@ class SplashScreen {
                 <div id="splash-particles-near" class="absolute inset-0 opacity-80 blur-[1px]"></div>
             </div>
 
-            <!-- Botón de Configuración Superior Derecha -->
-            <div class="absolute top-8 right-8 z-[600]">
-                <button id="splash-config-btn" class="p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all group pointer-events-auto">
-                    <i data-lucide="settings" class="w-6 h-6 text-cyan-400 group-hover:rotate-90 transition-transform duration-500"></i>
-                </button>
-            </div>
-
             <div class="absolute inset-0 pointer-events-none p-10 font-mono text-[7px] text-cyan-500/40 hidden md:block">
                 <div class="flex flex-col gap-1 animate-[fadeIn_2s_ease-out]">
                     <span><span data-i18n="splash_coord_label">COORD:</span> 11.3483° N, 142.2000° E</span>
@@ -173,7 +166,58 @@ class SplashScreen {
 
                 <!-- Panel de Inicio (Mission Control UI) -->
                 <div class="bg-[#000a14]/60 backdrop-blur-2xl p-1 rounded-2xl border border-white/5 shadow-2xl group/panel transition-transform duration-700 hover:scale-[1.02]">
-                    <div class="bg-gradient-to-b from-cyan-500/10 to-transparent p-3 rounded-2xl flex flex-col items-center gap-2 w-80">
+                    <div class="bg-gradient-to-b from-cyan-500/10 to-transparent p-3 rounded-2xl flex flex-col items-center gap-4 w-80">
+                        
+                        <!-- Mini Configuración Premium -->
+                        <div class="w-full px-2 pt-1 pb-3 border-b border-white/5 flex flex-col gap-3.5 pointer-events-auto">
+                            <!-- Idioma -->
+                            <div class="flex items-center justify-between group/row">
+                                <div class="flex items-center gap-2 select-none cursor-pointer hover:opacity-80 transition-opacity" 
+                                     onclick="window.i18n.setLanguage(window.i18n.currentLang === 'es' ? 'en' : 'es')">
+                                    <i data-lucide="languages" class="w-3 h-3 text-cyan-400/30 group-hover/row:text-cyan-400 transition-colors"></i>
+                                    <span class="text-[8px] text-white/30 uppercase tracking-[0.2em] font-bold group-hover/row:text-white/60 transition-colors" data-i18n="menu_lang">Idioma</span>
+                                </div>
+                                <div class="flex gap-1.5 bg-white/5 p-1 rounded-lg border border-white/5 shadow-inner">
+                                    <button onclick="window.i18n.setLanguage('es')" id="splash-lang-es" class="px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 hover:bg-cyan-500/40 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]">ESPAÑOL</button>
+                                    <button onclick="window.i18n.setLanguage('en')" id="splash-lang-en" class="px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 hover:bg-cyan-500/40 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]">ENGLISH</button>
+                                </div>
+                            </div>
+
+                            <!-- Audio -->
+                            <div class="flex items-center justify-between group/row">
+                                <div class="flex items-center gap-2 select-none cursor-pointer hover:opacity-80 transition-opacity" 
+                                     onclick="toggleMusicMute()">
+                                    <i data-lucide="volume-2" id="splash-audio-icon" class="w-3 h-3 text-cyan-400/30 group-hover/row:text-cyan-400 transition-colors"></i>
+                                    <span class="text-[8px] text-white/30 uppercase tracking-[0.2em] font-bold group-hover/row:text-white/60 transition-colors" data-i18n="menu_music">Audio</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <!-- Mini Bars Visualizer (Elegante y Sutil) -->
+                                    <div id="splash-audio-bars" class="flex items-end gap-1 h-2 opacity-0 transition-opacity pointer-events-none mb-0.5">
+                                        <div class="bar-elem w-0.5 h-1 bg-cyan-400/80"></div>
+                                        <div class="bar-elem w-0.5 h-2 bg-cyan-400/80"></div>
+                                        <div class="bar-elem w-0.5 h-1.5 bg-cyan-400/80"></div>
+                                    </div>
+                                    <button onclick="toggleMusicMute()" id="splash-music-btn" class="relative w-10 h-5 bg-white/5 rounded-full border border-white/10 transition-all hover:border-cyan-500/50 group/toggle">
+                                        <div id="splash-music-dot" class="absolute top-1 left-1 w-2.5 h-2.5 bg-white/20 rounded-full transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)"></div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Calidad -->
+                            <div class="flex items-center justify-between group/row">
+                                <div class="flex items-center gap-2 select-none cursor-pointer hover:opacity-80 transition-opacity" 
+                                     onclick="const nextQ = { 'LOW': 'MED', 'MED': 'HIGH', 'HIGH': 'LOW' }[window.GRAPHICS_QUALITY]; setQuality(nextQ);">
+                                    <i data-lucide="monitor" class="w-3 h-3 text-cyan-400/30 group-hover/row:text-cyan-400 transition-colors"></i>
+                                    <span class="text-[8px] text-white/30 uppercase tracking-[0.2em] font-bold group-hover/row:text-white/60 transition-colors" data-i18n="menu_graphics">Calidad</span>
+                                </div>
+                                <div class="flex gap-1.5">
+                                    <button onclick="setQuality('LOW')" id="sq-low" class="px-2.5 py-0.5 rounded border border-white/5 text-[7px] font-black transition-all hover:bg-cyan-500/30 hover:border-cyan-500/50 hover:text-white" data-i18n="menu_low">BAJO</button>
+                                    <button onclick="setQuality('MED')" id="sq-med" class="px-2.5 py-0.5 rounded border border-white/5 text-[7px] font-black transition-all hover:bg-cyan-500/30 hover:border-cyan-500/50 hover:text-white" data-i18n="menu_med">MEDIO</button>
+                                    <button onclick="setQuality('HIGH')" id="sq-high" class="px-2.5 py-0.5 rounded border border-white/5 text-[7px] font-black transition-all hover:bg-cyan-500/30 hover:border-cyan-500/50 hover:text-white" data-i18n="menu_high">ALTO</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <button id="start-mission-btn" class="animate-heartbeat group relative w-full py-4 bg-cyan-400/5 border border-cyan-400/30 rounded-xl transition-all duration-500 hover:bg-cyan-400/15 hover:border-cyan-400 hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] overflow-hidden">
                             <!-- Barra de Escaneo en Hover -->
                             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
@@ -185,8 +229,8 @@ class SplashScreen {
                             </div>
                         </button>
                         
-                        <div class="text-center mt-1">
-                            <span class="app-version-display text-[8px] text-cyan-400/50 uppercase tracking-[0.4em] font-mono">${this.version}</span>
+                        <div class="text-center -mt-2 mb-1">
+                            <span class="app-version-display text-[7px] text-cyan-400/40 uppercase tracking-[0.4em] font-mono">${this.version}</span>
                         </div>
                     </div>
                 </div>
@@ -211,11 +255,13 @@ class SplashScreen {
         const btn = document.getElementById('start-mission-btn');
         if (btn) btn.addEventListener('click', () => this.hide());
 
-        const configBtn = document.getElementById('splash-config-btn');
-        if (configBtn) configBtn.addEventListener('click', () => {
-            if (typeof toggleMenu === 'function') {
-                toggleMenu();
-            }
+        // Inicializar estados visuales de configuración
+        if (typeof updateSettingsUI === 'function') {
+            updateSettingsUI();
+        }
+        // Listener de idioma para actualizar el splash
+        document.addEventListener('languageChanged', () => {
+            if (typeof updateSettingsUI === 'function') updateSettingsUI();
         });
 
         // Manejador de teclado para Enter (Mission Start / Close Portal)
@@ -283,6 +329,17 @@ class SplashScreen {
                     filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.8)) drop-shadow(0 0 20px rgba(0, 242, 255, 0.4));
                 }
             }
+            @keyframes bar {
+                0%, 100% { transform: scaleY(1); opacity: 0.3; }
+                50% { transform: scaleY(1.6); opacity: 1; }
+            }
+            .bar-elem {
+                transform-origin: bottom;
+                transition: transform 0.5s ease, opacity 0.5s ease;
+            }
+            #splash-audio-bars.animated .bar-elem:nth-child(1) { animation: bar 0.8s infinite; }
+            #splash-audio-bars.animated .bar-elem:nth-child(2) { animation: bar 1.2s infinite 0.1s; }
+            #splash-audio-bars.animated .bar-elem:nth-child(3) { animation: bar 1.0s infinite 0.2s; }
             .animate-heartbeat {
                 animation: heartbeat 6s ease-in-out infinite;
                 will-change: transform, opacity, filter;

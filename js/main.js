@@ -294,6 +294,10 @@ function setupEventHandlers() {
         }
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
+            // [ES] No permitir el menú de configuración si el Splash está activo (ya tiene su propia config)
+            // [EN] Do not allow settings menu if Splash is active (it already has its own config)
+            if (document.getElementById('splash-screen')) return;
+
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
             if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
@@ -1111,23 +1115,68 @@ function updateSettingsUI() {
     if (mDot) mDot.classList.toggle('bg-white', active);
     if (mDot) mDot.classList.toggle('bg-white/40', !active);
 
+    // Splash Music Toggle & Visuals
+    const sMusicDot = document.getElementById('splash-music-dot');
+    const sMusicBars = document.getElementById('splash-audio-bars');
+    const sMusicBtn = document.getElementById('splash-music-btn');
+    
+    if (sMusicDot) {
+        sMusicDot.style.left = active ? 'calc(100% - 14px)' : '4px';
+        sMusicDot.classList.toggle('bg-cyan-400', active);
+        sMusicDot.classList.toggle('bg-white/20', !active);
+        sMusicDot.classList.toggle('shadow-[0_0_10px_rgba(6,182,212,0.8)]', active);
+    }
+    if (sMusicBars) {
+        sMusicBars.style.opacity = active ? '1' : '0.3';
+        sMusicBars.classList.toggle('animated', active);
+    }
+    if (sMusicBtn) {
+        sMusicBtn.classList.toggle('bg-cyan-500/10', active);
+        sMusicBtn.classList.toggle('border-cyan-500/30', active);
+        sMusicBtn.classList.toggle('bg-white/5', !active);
+        sMusicBtn.classList.toggle('border-white/10', !active);
+    }
+
     // Actualizar visual de Calidad Gráfica
     const btnLow = document.getElementById('q-btn-low');
     const btnMed = document.getElementById('q-btn-med');
     const btnHigh = document.getElementById('q-btn-high');
 
-    if (btnLow && btnMed && btnHigh) {
-        // Reset all
-        const inactiveClass = "flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white";
-        btnLow.className = inactiveClass;
-        btnMed.className = inactiveClass;
-        btnHigh.className = inactiveClass;
+    // Splash Quality
+    const sqLow = document.getElementById('sq-low');
+    const sqMed = document.getElementById('sq-med');
+    const sqHigh = document.getElementById('sq-high');
 
-        // Set active
-        const activeClass = "flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400";
-        if (window.GRAPHICS_QUALITY === 'LOW') btnLow.className = activeClass;
-        if (window.GRAPHICS_QUALITY === 'MED') btnMed.className = activeClass;
-        if (window.GRAPHICS_QUALITY === 'HIGH') btnHigh.className = activeClass;
+    const updateQualityButtons = (low, med, high, activeCls, inactiveCls) => {
+        if (low && med && high) {
+            low.className = inactiveCls;
+            med.className = inactiveCls;
+            high.className = inactiveCls;
+            if (window.GRAPHICS_QUALITY === 'LOW') low.className = activeCls;
+            if (window.GRAPHICS_QUALITY === 'MED') med.className = activeCls;
+            if (window.GRAPHICS_QUALITY === 'HIGH') high.className = activeCls;
+        }
+    };
+
+    const mainInactive = "flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white";
+    const mainActive = "flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400";
+    updateQualityButtons(btnLow, btnMed, btnHigh, mainActive, mainInactive);
+
+    const splashInactive = "px-2.5 py-0.5 rounded border border-white/5 text-[7px] font-black transition-all hover:border-cyan-500/50 text-white/30";
+    const splashActive = "px-2.5 py-0.5 rounded border border-cyan-500/50 text-[7px] font-black transition-all bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]";
+    updateQualityButtons(sqLow, sqMed, sqHigh, splashActive, splashInactive);
+
+    // Actualizar visual de Idioma (Splash Premium)
+    const langEs = document.getElementById('splash-lang-es');
+    const langEn = document.getElementById('splash-lang-en');
+    const currentLang = window.i18n ? window.i18n.currentLang : 'es';
+
+    if (langEs && langEn) {
+        const activeLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.6)] border border-cyan-400";
+        const inactiveLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 text-white/20 hover:bg-cyan-500/40 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]";
+        
+        langEs.className = (currentLang === 'es') ? activeLangCls : inactiveLangCls;
+        langEn.className = (currentLang === 'en') ? activeLangCls : inactiveLangCls;
     }
 }
 

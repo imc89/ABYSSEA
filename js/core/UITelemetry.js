@@ -38,7 +38,7 @@ class UITelemetry {
         container.innerHTML = `
             <div class="flex items-center justify-between mb-2 border-b border-purple-500/30 pb-1">
                 <h1 class="text-purple-400 text-[9px] font-bold tracking-[0.2em] uppercase opacity-80">
-                    SISTEMA DE TELEMETRÍA
+                    ${window.i18n ? window.i18n.t("tel_title") : "SISTEMA DE TELEMETRÍA"}
                 </h1>
                 <span class="app-version-display text-[8px] text-purple-500/50 font-mono">${window.ABYSS_VERSION || 'v1.0.0'}</span>
             </div>
@@ -46,25 +46,25 @@ class UITelemetry {
             <div class="space-y-2 text-[10px] font-mono">
                 <!-- Rendimiento -->
                 <div class="flex justify-between items-center bg-white/5 p-1 rounded">
-                    <span class="text-white/40 uppercase tracking-tighter">Frecuencia (FPS)</span>
+                    <span class="text-white/40 uppercase tracking-tighter">${window.i18n ? window.i18n.t("tel_fps") : "Frecuencia (FPS)"}</span>
                     <span id="tel-fps" class="text-green-300 font-bold">60</span>
                 </div>
                 
                 <!-- Entidades -->
                 <div class="grid grid-cols-1 gap-1">
                     <div class="flex justify-between border-b border-white/5 pb-0.5">
-                        <span class="text-white/40 uppercase tracking-tighter">Peces Visibles</span>
+                        <span class="text-white/40 uppercase tracking-tighter">${window.i18n ? window.i18n.t("tel_fishes") : "Peces Visibles"}</span>
                         <span id="tel-fishes" class="text-cyan-400 font-bold">0 / 0</span>
                     </div>
-                    <p class="text-[8px] text-white/20 italic mb-1">Ratio: Renderizado vs Simulado (IA)</p>
+                    <p class="text-[8px] text-white/20 italic mb-1">${window.i18n ? window.i18n.t("tel_ratio") : "Ratio: Renderizado vs Simulado (IA)"}</p>
                     
                     <div class="flex justify-between">
-                        <span class="text-white/40 uppercase tracking-tighter">Nieve Marina</span>
+                        <span class="text-white/40 uppercase tracking-tighter">${window.i18n ? window.i18n.t("tel_particles") : "Nieve Marina"}</span>
                         <span id="tel-particles" class="text-emerald-400 font-bold">0</span>
                     </div>
 
                     <div class="flex justify-between">
-                        <span class="text-white/40 uppercase tracking-tighter">Burbujas (FX)</span>
+                        <span class="text-white/40 uppercase tracking-tighter">${window.i18n ? window.i18n.t("tel_bubbles") : "Burbujas (FX)"}</span>
                         <span id="tel-bubbles" class="text-yellow-400 font-bold">0</span>
                     </div>
                 </div>
@@ -72,7 +72,7 @@ class UITelemetry {
             
             <div class="mt-2 pt-1 border-t border-white/5 text-[8px] text-white/30 flex justify-between">
                 <span>ABYSS_ENGINE</span>
-                <span>CTRL: [<] TOGGLE</span>
+                <span>${window.i18n ? window.i18n.t("tel_toggle") : "CTRL: [<] TOGGLE"}</span>
             </div>
         `;
 
