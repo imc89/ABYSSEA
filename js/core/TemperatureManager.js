@@ -353,7 +353,7 @@ class TemperatureManager {
                 if (isHyperCritical) {
                     if (timerVal) timerVal.innerText = Math.max(0, 20 - this.hyperTimer).toFixed(1);
                     if (statusLabel) {
-                        statusLabel.innerText = "HIPERTERMIA";
+                        statusLabel.innerText = window.i18n ? window.i18n.t("warn_hyper") : "HIPERTERMIA";
                         statusLabel.className = "text-orange-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-orange-500/30";
                     }
                     if (timerCircle) {
@@ -364,7 +364,7 @@ class TemperatureManager {
                 } else if (isHypoCritical) {
                     if (timerVal) timerVal.innerText = Math.max(0, 60 - this.hypoTimer).toFixed(1);
                     if (statusLabel) {
-                        statusLabel.innerText = "HIPOTERMIA";
+                        statusLabel.innerText = window.i18n ? window.i18n.t("warn_hypo") : "HIPOTERMIA";
                         statusLabel.className = "text-blue-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-blue-500/30";
                     }
                     if (timerCircle) {
@@ -414,29 +414,29 @@ class TemperatureManager {
         // Dynamic Status Text and Color based on internalTemp
         if (this.dom.statusText && this.dom.statusDot) {
             let temp = this.internalTemp;
-            let status = "TEMPERATURA ESTABLE";
+            let status = "temp_stable";
             let color = "#34d399"; // emerald-400 (Green)
             let shadowColor = "rgba(52,211,153,0.5)";
 
             if (temp < 14) {
-                status = "FRÍO EXTREMO";
+                status = "temp_extreme_cold";
                 color = "#3b82f6"; // blue-500
                 shadowColor = "rgba(59,130,246,0.5)";
             } else if (temp < 18) {
-                status = "FRÍO";
+                status = "temp_cold";
                 color = "#60a5fa"; // blue-400
                 shadowColor = "rgba(96,165,250,0.5)";
             } else if (temp > 28) {
-                status = "CALOR EXTREMO";
+                status = "temp_extreme_heat";
                 color = "#ef4444"; // red-500
                 shadowColor = "rgba(239,68,68,0.5)";
             } else if (temp > 25) {
-                status = "CALOR";
+                status = "temp_heat";
                 color = "#fb923c"; // orange-400
                 shadowColor = "rgba(251,146,60,0.5)";
             }
 
-            this.dom.statusText.textContent = status;
+            this.dom.statusText.textContent = window.i18n ? window.i18n.t(status) : status;
             this.dom.statusText.style.color = color;
             this.dom.statusText.style.filter = `drop-shadow(0 0 8px ${shadowColor})`;
             this.dom.statusDot.style.backgroundColor = color;

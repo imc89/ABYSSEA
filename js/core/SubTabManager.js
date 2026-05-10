@@ -21,6 +21,9 @@ class SubTabManager {
         this.currentIndex = 0; // Energía activo por defecto
         this._keyHandler = this._onKey.bind(this);
         this._keyHandlerAttached = false;
+
+        // Sincronizar estado inicial (especialmente para que energyManager sepa que está en 'energia')
+        setTimeout(() => this._applySelection(), 100);
     }
 
     /** Devuelve el ID de la pestaña actualmente activa */
@@ -91,7 +94,8 @@ class SubTabManager {
             titleEl.style.transform = 'translateY(-4px)';
             titleEl.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
             setTimeout(() => {
-                titleEl.textContent = this.panelTitles[tabId] || tabId;
+                const titleKey = `mgmt_panel_${tabId}`;
+                titleEl.textContent = window.i18n ? window.i18n.t(titleKey) : (this.panelTitles[tabId] || tabId);
                 titleEl.style.opacity = '1';
                 titleEl.style.transform = 'translateY(0)';
             }, 120);
@@ -178,7 +182,7 @@ if (typeof window !== 'undefined') {
             // Mostraremos siempre los últimos 6 (los más recientes)
             window.ScannedSamples.push({
                 id: incomingId,
-                nombre: macroData.nombre || `SAMPLE ${window.ScannedSamples.length + 1}`,
+                nombre: (window.i18n && macroData.nombreKey) ? window.i18n.t(macroData.nombreKey) : (macroData.nombre || `SAMPLE ${window.ScannedSamples.length + 1}`),
                 imagen: macroData.imagen,
                 depth: macroData.minProf ? `-${macroData.minProf}M` : (macroData.depth ? `-${macroData.depth}M` : "-340M"), // Profundidad real
                 pointsYield: macroData.points || Math.floor(15 + Math.random() * 35),
@@ -238,30 +242,30 @@ if (typeof window !== 'undefined') {
                         <div class="w-full h-px bg-white/10 mb-1"></div>
                         
                         <div class="flex justify-between items-center text-[7px] tracking-widest text-white/60 mb-1">
-                            <span>PROFUNDIDAD</span>
+                            <span>${window.i18n ? window.i18n.t("lab_depth") : "PROFUNDIDAD"}</span>
                             <span class="font-bold text-white drop-shadow-[0_0_2px_rgba(255,255,255,0.5)]">${depthStr}</span>
                         </div>
                         <div class="flex justify-between items-center text-[7px] tracking-widest text-white/60 mb-2">
-                            <span>RENDIMIENTO</span>
+                            <span>${window.i18n ? window.i18n.t("lab_yield") : "RENDIMIENTO"}</span>
                             <span class="font-bold ${isSyn ? 'text-cyan-500/50' : 'text-emerald-400 drop-shadow-[0_0_2px_rgba(16,185,129,0.5)]'}">+${pointsStr} PTS</span>
                         </div>
 
                         ${isSyn ? `
                             <div class="flex flex-col gap-1 w-full mt-auto">
                                 <div class="w-full text-center py-1 bg-cyan-900/40 border border-cyan-500/40 rounded text-[7px] text-cyan-400 font-bold tracking-widest uppercase shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-                                    DATOS EXTRAÍDOS
+                                    ${window.i18n ? window.i18n.t("lab_extracted") : "DATOS EXTRAÍDOS"}
                                 </div>
                                 <button onclick="window.viewSampleInfo('${sample.id}')" class="w-full py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[6px] tracking-widest transition-all hover:shadow-[0_0_4px_white]">
-                                    INFO DE LA ESPECIE
+                                    ${window.i18n ? window.i18n.t("lab_info") : "INFO DE LA ESPECIE"}
                                 </button>
                             </div>
                         ` : `
                             <div class="flex gap-1 w-full mt-auto">
                                 <button onclick="window.viewSampleInfo('${sample.id}')" class="flex-1 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[6px] tracking-widest transition-all hover:shadow-[0_0_4px_white]">
-                                    INFO
+                                    ${window.i18n ? window.i18n.t("menu_resume") : "INFO"}
                                 </button>
                                 <button onclick="window.processSample('${sample.id}')" class="flex-[2] py-1 rounded bg-cyan-900/30 hover:bg-cyan-400 hover:text-black hover:drop-shadow-[0_0_8px_cyan] border border-cyan-500/30 text-cyan-400 font-bold text-[6px] tracking-widest transition-all">
-                                    ANALIZAR
+                                    ${window.i18n ? window.i18n.t("lab_analyze") : "ANALIZAR"}
                                 </button>
                             </div>
                         `}
@@ -280,14 +284,14 @@ if (typeof window !== 'undefined') {
                     </div>
                     <div class="flex flex-col flex-1 pb-1">
                         <h4 class="text-white/50 text-[11px] font-bold tracking-widest uppercase mb-0.5">SLOT ${sampleNum}</h4>
-                        <span class="text-[7px] text-white/40 tracking-[0.2em] mb-1">ESPERANDO MUESTRA</span>
+                        <span class="text-[7px] text-white/40 tracking-[0.2em] mb-1">${window.i18n ? window.i18n.t("lab_waiting_sample") : "ESPERANDO MUESTRA"}</span>
                         <div class="w-full h-px bg-white/10 mb-1"></div>
                         <div class="flex justify-between items-center text-[7px] tracking-widest text-white/60 mb-2">
-                            <span>PROFUNDIDAD</span>
+                            <span>${window.i18n ? window.i18n.t("lab_depth") : "PROFUNDIDAD"}</span>
                             <span class="font-bold text-white/40">--</span>
                         </div>
                         <div class="w-full py-1 mt-auto rounded bg-white/5 border border-white/10 text-white/20 font-bold text-[7px] tracking-widest text-center">
-                            DESCONECTADO
+                            ${window.i18n ? window.i18n.t("lab_disconnected") : "DESCONECTADO"}
                         </div>
                     </div>
                 </div>`;
@@ -327,7 +331,9 @@ if (typeof window !== 'undefined') {
         }
 
         if (seqStatus) {
-            seqStatus.innerText = "ANALIZANDO: " + (sample.nombre || "MUESTRA DESCONOCIDA").substring(0, 10).toUpperCase();
+            const analyzing = window.i18n ? window.i18n.t("seq_analyzing") : "ANALIZANDO";
+            const unknown = window.i18n ? window.i18n.t("seq_unknown") : "MUESTRA DESCONOCIDA";
+            seqStatus.innerText = analyzing + ": " + (window.i18n ? (window.i18n.t(sample.nombreKey) || sample.nombre) : (sample.nombre || unknown)).substring(0, 10).toUpperCase();
             seqStatus.classList.add('text-cyan-400', 'animate-pulse');
         }
 
@@ -364,7 +370,7 @@ if (typeof window !== 'undefined') {
                 if (laser) laser.classList.add('hidden');
             }
             if (seqStatus) {
-                seqStatus.innerText = "EN ESPERA";
+                seqStatus.innerText = window.i18n ? window.i18n.t("seq_waiting") : "EN ESPERA";
                 seqStatus.classList.remove('text-cyan-400', 'animate-pulse');
             }
             if (seqProgCont && seqProgBar) {
@@ -385,9 +391,9 @@ if (typeof window !== 'undefined') {
         if (typeof window.FISH_CATALOG !== 'undefined') {
             fullData = window.FISH_CATALOG.find(f => String(f.specieId) === String(id) || String(f.id) === String(id));
         }
-        if (!fullData && typeof window.macroDefinitions !== 'undefined') {
-            const key = Object.keys(window.macroDefinitions).find(k => String(window.macroDefinitions[k].id) === String(id) || String(window.macroDefinitions[k].specieId) === String(id));
-            if (key) fullData = window.macroDefinitions[key];
+        if (!fullData && typeof window.MACRO_CATALOG !== 'undefined') {
+            const key = Object.keys(window.MACRO_CATALOG).find(k => String(window.MACRO_CATALOG[k].id) === String(id) || String(window.MACRO_CATALOG[k].specieId) === String(id));
+            if (key) fullData = window.MACRO_CATALOG[key];
         }
 
         const infoHtml = `
@@ -396,16 +402,20 @@ if (typeof window !== 'undefined') {
                 <div class="flex items-start gap-6 border-b border-white/5 pb-6">
                     <img src="${sample.imagen}" class="w-40 h-40 object-contain drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] bg-cyan-900/10 rounded-xl p-4 border border-white/5" onerror="this.style.display='none'" />
                     <div class="flex flex-col gap-2 flex-1 pt-2">
-                        <h2 class="text-3xl font-bold tracking-wider text-cyan-400 capitalize drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">${sample.nombre}</h2>
-                        <span class="text-xs tracking-[0.3em] font-bold text-white/40 uppercase font-mono">${fullData ? (fullData.cientifico || fullData.scientific || fullData.nombre) : 'SPECIMEN_0xUNKNOWN'}</span>
+                        <h2 class="text-3xl font-bold tracking-wider text-cyan-400 capitalize drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
+                            ${window.i18n && fullData && fullData.nombreKey ? window.i18n.t(fullData.nombreKey) : (sample.nombre || 'UNKNOWN')}
+                        </h2>
+                        <span class="text-xs tracking-[0.3em] font-bold text-white/40 uppercase font-mono">
+                            ${fullData ? (window.i18n && fullData.cientificoKey ? window.i18n.t(fullData.cientificoKey) : (fullData.cientifico || fullData.scientific || fullData.nombre)) : 'SPECIMEN_0xUNKNOWN'}
+                        </span>
                         <div class="flex gap-2 text-[10px] mt-4 font-mono text-white/60">
                             <span class="bg-white/5 px-2 py-1 rounded">RANGO: ${fullData && fullData.minProf ? (fullData.minProf + 'm - ' + fullData.maxProf + 'm') : (sample.depth || 'Desconocido')}</span>
-                            <span class="bg-white/5 px-2 py-1 rounded border ${sample.status === 'ANALIZADO' ? 'border-emerald-500/30 text-emerald-400' : 'border-cyan-500/30 text-cyan-400'}">${sample.status === 'ANALIZADO' ? 'GENOMA EXTRAÍDO' : 'PENDIENTE DE ANÁLISIS'}</span>
+                            <span class="bg-white/5 px-2 py-1 rounded border ${sample.status === 'ANALIZADO' ? 'border-emerald-500/30 text-emerald-400' : 'border-cyan-500/30 text-cyan-400'}">${sample.status === 'ANALIZADO' ? (window.i18n ? window.i18n.t("lab_genoma_extracted") : 'GENOMA EXTRAÍDO') : (window.i18n ? window.i18n.t("lab_pending_analysis") : 'PENDIENTE DE ANÁLISIS')}</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-sm text-white/70 leading-relaxed max-h-48 overflow-y-auto pr-4 font-light tracking-wide">
-                    ${fullData ? (fullData.descripcion || fullData.desc || "Aún no se ha descifrado el genoma completo de esta especie en la base de datos de la expedición Borealis. Por favor procesa la muestra en el secuenciador.") : "Datos corruptos o no disponibles en la red neural de la nave. Es probable que se trate de un fragmento biológico genérico."}
+                    ${fullData ? (window.i18n ? (window.i18n.t(fullData.descripcionKey) || fullData.descripcion) : (fullData.descripcion || fullData.desc || (window.i18n ? window.i18n.t("lab_no_data") : "Aún no se ha descifrado el genoma completo de esta especie..."))) : (window.i18n ? window.i18n.t("lab_corrupt_data") : "Datos corruptos o no disponibles...")}
                 </div>
             </div>
         `;

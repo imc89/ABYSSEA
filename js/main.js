@@ -384,7 +384,10 @@ function setControls(mode) {
     controlScheme = mode;
     document.getElementById('ctrl-wasd').classList.toggle('control-active', mode === 'WASD');
     document.getElementById('ctrl-arrows').classList.toggle('control-active', mode === 'ARROWS');
-    document.getElementById('hint-move').innerText = mode === 'WASD' ? 'WASD' : '←↑↓→';
+    const hint = document.getElementById('hint-move');
+    if (hint) {
+        hint.innerText = mode === 'WASD' ? 'WASD' : '←↑↓→';
+    }
 }
 
 /**
@@ -546,21 +549,21 @@ function update(dtMult = 1.0) {
             alarmBanner.classList.add('active');
 
             if (isHyperAlarm && !isTempFixing) {
-                const secsLeft = Math.max(0, 10 - tempMgr.hyperTimer).toFixed(1);
-                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPERTERMIA';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+                const secsLeft = Math.max(0, 20 - tempMgr.hyperTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_hyper") : '⚠ ALARMA — HIPERTERMIA';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${tempMgr.internalTemp.toFixed(1)}°C · ${window.i18n ? window.i18n.t("alarm_game_over_in") : "GAME OVER EN"} ${secsLeft}s`;
             } else if (isHypoAlarm && !isTempFixing) {
-                const secsLeft = Math.max(0, 10 - tempMgr.hypoTimer).toFixed(1);
-                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPOTERMIA';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+                const secsLeft = Math.max(0, 60 - tempMgr.hypoTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_hypo") : '⚠ ALARMA — HIPOTERMIA';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${tempMgr.internalTemp.toFixed(1)}°C · ${window.i18n ? window.i18n.t("alarm_game_over_in") : "GAME OVER EN"} ${secsLeft}s`;
             } else if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
-                if (alarmLabel) alarmLabel.textContent = 'O₂ CRÍTICO · CO₂ CRÍTICO';
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_o2_co2") : 'O₂ CRÍTICO · CO₂ CRÍTICO';
                 if (alarmValue) alarmValue.textContent = `O₂ ${(oxygenManager.cabinOxygen).toFixed(1)}%  ·  CO₂ ${(player.co2).toFixed(1)}%`;
             } else if (isAnoxiaAlarm && !isO2Fixing) {
-                if (alarmLabel) alarmLabel.textContent = 'ALARMA — OXÍGENO BAJO';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_o2_low") : 'ALARMA — OXÍGENO BAJO';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
             } else {
-                if (alarmLabel) alarmLabel.textContent = 'ALARMA — CO₂ ELEVADO';
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_co2_high") : 'ALARMA — CO₂ ELEVADO';
                 if (alarmValue) alarmValue.textContent = `CO₂: ${(player.co2).toFixed(1)}%`;
             }
         }
@@ -772,7 +775,7 @@ function draw() {
         ctx.fillStyle = `rgba(0, 255, 255, ${pulse})`;
         ctx.font = 'bold 16px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
-        const prompt = 'PULSA [S] PARA COMENZAR EL DESCENSO';
+        const prompt = window.i18n ? window.i18n.t("splash_press_s") : 'PULSA [S] PARA COMENZAR EL DESCENSO';
         ctx.fillText(prompt, canvas.width / 2, canvas.height / 2 + 100);
         ctx.restore();
     }

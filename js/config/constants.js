@@ -81,11 +81,11 @@ const WORLD = {
     // Zonas de profundidad reales (Basadas en infografía científica)
     // El orden es importante para la interpolación de color
     zones: [
-        { depth: 0, color: [12, 74, 110], name: 'ZONA EPIPELÁGICA' },    // 0-200m
-        { depth: 200, color: [2, 16, 43], name: 'ZONA MESOPELÁGICA' },   // 200-1000m
-        { depth: 1000, color: [1, 5, 20], name: 'ZONA BATIPELÁGICA' },   // 1000-4000m
-        { depth: 4000, color: [0, 1, 5], name: 'ZONA ABISOPELÁGICA' },  // 4000-6000m
-        { depth: 6000, color: [0, 0, 0], name: 'ZONA HADALPELÁGICA' }   // 6000m+
+        { depth: 0, color: [12, 74, 110], name: 'zone_epipelagic' },    // 0-200m
+        { depth: 200, color: [2, 16, 43], name: 'zone_mesopelagic' },   // 200-1000m
+        { depth: 1000, color: [1, 5, 20], name: 'zone_bathypelagic' },   // 1000-4000m
+        { depth: 4000, color: [0, 1, 5], name: 'zone_abyssopelagic' },  // 4000-6000m
+        { depth: 6000, color: [0, 0, 0], name: 'zone_hadalpelagic' }   // 6000m+
     ]
 };
 

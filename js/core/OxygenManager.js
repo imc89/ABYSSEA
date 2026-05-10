@@ -345,10 +345,10 @@ class OxygenManager {
 
         if (this.isPurging) {
             this.dom.btnPurge.classList.add('shadow-[0_0_30px_rgba(239,68,68,0.8)]', 'animate-pulse');
-            if (purgeText) purgeText.innerText = "DETENER PURGA";
+            if (purgeText) purgeText.innerText = window.i18n ? window.i18n.t("oxy_stop_purge") : "DETENER PURGA";
         } else {
             this.dom.btnPurge.classList.remove('shadow-[0_0_30px_rgba(239,68,68,0.8)]', 'animate-pulse');
-            if (purgeText) purgeText.innerText = "PURGA DE ATMÓSFERA";
+            if (purgeText) purgeText.innerText = window.i18n ? window.i18n.t("oxy_purge_btn") : "PURGA DE ATMÓSFERA";
         }
 
         // ==== CABIN O2 ====
@@ -362,28 +362,28 @@ class OxygenManager {
             if (this.cabinOxygen < 7.0) {
                 if (this._lastCabinStatus !== "CRIT") {
                     this.dom.cabinDisplay.className = "text-red-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.5)] animate-pulse";
-                    this.dom.cabinStatusTag.innerText = "PELIGRO CRÍTICO";
+                    this.dom.cabinStatusTag.innerText = window.i18n ? window.i18n.t("status_danger_crit") : "PELIGRO CRÍTICO";
                     this.dom.cabinStatusTag.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse";
                     this._lastCabinStatus = "CRIT";
                 }
             } else if (this.cabinOxygen < 15.0) {
                 if (this._lastCabinStatus !== "WARN") {
                     this.dom.cabinDisplay.className = "text-red-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.2)]";
-                    this.dom.cabinStatusTag.innerText = "PELIGRO";
+                    this.dom.cabinStatusTag.innerText = window.i18n ? window.i18n.t("status_danger") : "PELIGRO";
                     this.dom.cabinStatusTag.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30";
                     this._lastCabinStatus = "WARN";
                 }
             } else if (this.cabinOxygen < 19.0) {
                 if (this._lastCabinStatus !== "LIGHTWARN") {
                     this.dom.cabinDisplay.className = "text-amber-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]";
-                    this.dom.cabinStatusTag.innerText = "PELIGRO LEVE";
+                    this.dom.cabinStatusTag.innerText = window.i18n ? window.i18n.t("status_danger_light") : "PELIGRO LEVE";
                     this.dom.cabinStatusTag.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30";
                     this._lastCabinStatus = "LIGHTWARN";
                 }
             } else {
                 if (this._lastCabinStatus !== "NORMAL") {
                     this.dom.cabinDisplay.className = "text-emerald-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
-                    this.dom.cabinStatusTag.innerText = "NORMAL";
+                    this.dom.cabinStatusTag.innerText = window.i18n ? window.i18n.t("status_normal") : "NORMAL";
                     this.dom.cabinStatusTag.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-green-500/20 text-green-400 border border-green-500/30";
                     this._lastCabinStatus = "NORMAL";
                 }
@@ -399,19 +399,19 @@ class OxygenManager {
                 const co2Level = player.co2 < 2.0 ? 0 : (player.co2 < 5.0 ? 1 : (player.co2 < 10.0 ? 2 : 3));
                 if (co2Level === 0) {
                     this.dom.cabinCo2Display.className = "text-emerald-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]";
-                    this.dom.cabinCo2Status.innerText = "NORMAL";
+                    this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_normal") : "NORMAL";
                     this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
                 } else if (co2Level === 1) {
                     this.dom.cabinCo2Display.className = "text-amber-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]";
-                    this.dom.cabinCo2Status.innerText = "PELIGRO LEVE";
+                    this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_danger_light") : "PELIGRO LEVE";
                     this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30";
                 } else if (co2Level === 2) {
                     this.dom.cabinCo2Display.className = "text-orange-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(249,115,22,0.3)]";
-                    this.dom.cabinCo2Status.innerText = "PELIGRO";
+                    this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_danger") : "PELIGRO";
                     this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-orange-500/20 text-orange-500 border border-orange-500/30";
                 } else {
                     this.dom.cabinCo2Display.className = "text-red-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse";
-                    this.dom.cabinCo2Status.innerText = "PELIGRO CRÍTICO";
+                    this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_danger_crit") : "PELIGRO CRÍTICO";
                     this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse";
                 }
             }
@@ -447,7 +447,7 @@ class OxygenManager {
                 }
                 
                 if (statEl._lastText !== "REFILL") {
-                    statEl.innerText = "Rellenando";
+                    statEl.innerText = window.i18n ? window.i18n.t("oxy_refilling") : "Rellenando";
                     statEl.className = "text-orange-400 text-[10px] font-bold uppercase animate-pulse";
                     statEl._lastText = "REFILL";
                 }
@@ -456,7 +456,7 @@ class OxygenManager {
                 if (!tank.isRefilling) {
                     btnEl.classList.remove('hidden');
                     if (statEl._lastText !== "EMPTY") {
-                        statEl.innerText = "Vacío";
+                        statEl.innerText = window.i18n ? window.i18n.t("oxy_empty") : "Vacío";
                         statEl.className = "text-red-500 text-[10px] font-bold uppercase";
                         statEl._lastText = "EMPTY";
                     }
@@ -466,13 +466,13 @@ class OxygenManager {
                 btnEl.classList.add('hidden');
                 if (active) {
                     if (statEl._lastText !== "ACTIVE") {
-                        statEl.innerText = "En Uso";
+                        statEl.innerText = window.i18n ? window.i18n.t("oxy_in_use") : "En Uso";
                         statEl.className = "text-cyan-400 text-[10px] font-bold uppercase";
                         statEl._lastText = "ACTIVE";
                     }
                 } else {
                     if (statEl._lastText !== "RESERVE") {
-                        statEl.innerText = "En Reserva";
+                        statEl.innerText = window.i18n ? window.i18n.t("oxy_in_reserve") : "En Reserva";
                         statEl.className = "text-white/30 text-[10px] font-bold uppercase";
                         statEl._lastText = "RESERVE";
                     }

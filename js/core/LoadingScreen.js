@@ -36,13 +36,13 @@ class LoadingScreen {
                     <div class="flex flex-col gap-1">
                         <div class="flex items-center gap-2">
                             <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i>
-                            <span class="text-cyan-400 text-[10px] font-bold uppercase tracking-[0.4em]">Sub-Surface Command OS <span class="app-version-display ml-1">${window.ABYSS_VERSION || 'v1.0.0'}</span></span>
+                            <span class="text-cyan-400 text-[10px] font-bold uppercase tracking-[0.4em]">${window.i18n ? window.i18n.t("load_os") : "Sub-Surface Command OS"} <span class="app-version-display ml-1">${window.ABYSS_VERSION || 'v1.0.0'}</span></span>
                         </div>
-                        <span class="text-cyan-500/30 text-[7px] uppercase tracking-widest pl-6">Deep Water Exploration Protocol // Mariana Trench</span>
+                        <span class="text-cyan-500/30 text-[7px] uppercase tracking-widest pl-6">${window.i18n ? window.i18n.t("load_protocol") : "Deep Water Exploration Protocol // Mariana Trench"}</span>
                     </div>
                     <div class="text-right">
                         <span id="loading-percent" class="text-white font-mono text-3xl font-black tracking-tighter transition-all duration-300">0%</span>
-                        <div class="text-[6px] text-cyan-500/40 uppercase tracking-widest mt-1">Sync Integrity</div>
+                        <div class="text-[6px] text-cyan-500/40 uppercase tracking-widest mt-1">${window.i18n ? window.i18n.t("load_sync") : "Sync Integrity"}</div>
                     </div>
                 </div>
 
@@ -72,8 +72,8 @@ class LoadingScreen {
                     <!-- Barra de Progreso Maestra -->
                     <div class="flex-grow space-y-3">
                         <div class="flex justify-between text-[7px] text-cyan-500/50 uppercase tracking-widest">
-                            <span>Main System Load</span>
-                            <span id="loading-status">Inicializando...</span>
+                            <span>${window.i18n ? window.i18n.t("load_main_load") : "Main System Load"}</span>
+                            <span id="loading-status">${window.i18n ? window.i18n.t("status_waiting") : "Inicializando..."}</span>
                         </div>
                         <div class="h-1.5 w-full bg-cyan-500/5 rounded-full border border-white/5 overflow-hidden">
                             <div id="loading-bar-fill" class="h-full bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all duration-300" style="width: 0%"></div>
@@ -85,7 +85,7 @@ class LoadingScreen {
             <!-- Marca de Agua / Seguridad -->
             <div class="absolute bottom-10 flex flex-col items-center opacity-10 gap-2">
                 <div class="w-40 h-[1px] bg-gradient-to-r from-transparent via-white to-transparent"></div>
-                <span class="text-[6px] text-white uppercase tracking-[1em]">Restricted Access // Abyss Corp</span>
+                <span class="text-[6px] text-white uppercase tracking-[1em]" data-i18n="load_restricted">Restricted Access // Abyss Corp</span>
             </div>
         `;
 
@@ -96,13 +96,13 @@ class LoadingScreen {
 
         // Inicializar las tareas
         this.tasks = [
-            { id: 'pressure', text: 'CALIBRANDO SENSORES DE PRESIÓN', weight: 15 },
-            { id: 'oxygen', text: 'COMPROBANDO TANQUES DE OXÍGENO', weight: 15 },
-            { id: 'lighting', text: 'COMPROBANDO SISTEMAS DE ILUMINACIÓN', weight: 15 },
-            { id: 'sonar', text: 'PROBANDO SISTEMA SONAR', weight: 15 },
-            { id: 'tracking', text: 'SINCRONIZANDO SISTEMA DE RASTREO', weight: 15 },
-            { id: 'thrusters', text: 'ENCENDIENDO PROPULSORES', weight: 15 },
-            { id: 'immersion', text: 'COMENZANDO INMERSIÓN', weight: 10 }
+            { id: 'pressure', text: window.i18n ? window.i18n.t("load_task_pressure") : 'CALIBRATING PRESSURE SENSORS', weight: 15 },
+            { id: 'oxygen', text: window.i18n ? window.i18n.t("load_task_oxygen") : 'CHECKING OXYGEN TANKS', weight: 15 },
+            { id: 'lighting', text: window.i18n ? window.i18n.t("load_task_lighting") : 'CHECKING LIGHTING SYSTEMS', weight: 15 },
+            { id: 'sonar', text: window.i18n ? window.i18n.t("load_task_sonar") : 'TESTING SONAR SYSTEM', weight: 15 },
+            { id: 'tracking', text: window.i18n ? window.i18n.t("load_task_tracking") : 'SYNCING TRACKING SYSTEM', weight: 15 },
+            { id: 'thrusters', text: window.i18n ? window.i18n.t("load_task_thrusters") : 'STARTING THRUSTERS', weight: 15 },
+            { id: 'immersion', text: window.i18n ? window.i18n.t("load_task_immersion") : 'BEGINNING IMMERSION', weight: 10 }
         ];
 
         this.renderTasks();
@@ -172,7 +172,7 @@ class LoadingScreen {
                     <div class="status-bar-container">
                         <div class="status-bar-fill"></div>
                     </div>
-                    <span class="text-[8px] text-cyan-500/40 status-text w-16 text-right">[PENDIENTE]</span>
+                    <span class="text-[8px] text-cyan-500/40 status-text w-16 text-right">${window.i18n ? window.i18n.t("load_pending") : "[PENDIENTE]"}</span>
                 </div>
             </div>
         `).join('');
@@ -229,7 +229,7 @@ class LoadingScreen {
         });
 
         if (this.progress >= 100 && status) {
-            status.innerText = "SISTEMAS LISTOS";
+            status.innerText = window.i18n ? window.i18n.t("load_ready") : "SISTEMAS LISTOS";
             status.style.color = "#4ade80";
         }
     }

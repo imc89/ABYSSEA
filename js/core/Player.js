@@ -282,9 +282,9 @@ class Player {
 
                 if (this.poisonTimer >= FILTER_CONFIG.co2PoisoningGracePeriod) {
                     if (isAnoxiaCritical && !isO2Fixing) {
-                        this.triggerGameOver('MUERTE POR ANOXIA', 'anoxia');
+                        this.triggerGameOver('death_anoxia', 'anoxia');
                     } else {
-                        this.triggerGameOver('INTOXICACIÓN POR CO2', 'critical');
+                        this.triggerGameOver('death_co2', 'critical');
                     }
                 }
             }
@@ -311,10 +311,10 @@ class Player {
 
                 if (statusLabel) {
                     if (isAnoxiaCritical) {
-                        statusLabel.innerText = "EMERGENCIA O2";
+                        statusLabel.innerText = window.i18n ? window.i18n.t("emergency_o2") : "EMERGENCIA O2";
                         statusLabel.className = "text-cyan-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-cyan-500/30";
                     } else {
-                        statusLabel.innerText = "EMERGENCIA CO2";
+                        statusLabel.innerText = window.i18n ? window.i18n.t("emergency_co2") : "EMERGENCIA CO2";
                         statusLabel.className = "text-red-500 text-[6px] font-black tracking-widest uppercase mt-1 bg-black/60 px-2 py-0.5 rounded border border-red-500/30";
                     }
                 }

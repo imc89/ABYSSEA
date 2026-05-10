@@ -49,14 +49,14 @@ class SplashScreen {
                 </div>
                 
                 <div class="text-white/80 text-[13px] leading-relaxed font-light opacity-95 relative z-10 ">
-                    <p>Este juego está destinado a ofrecer una pequeña visión de la asombrosa diversidad de vida que habita en los rincones más profundos de nuestro planeta. Su propósito es enseñar criaturas fascinantes que prosperan en la oscuridad total, permitiéndote descubrir la belleza de un ecosistema tan vital como desconocido.</p>
+                    <p data-i18n="splash_desc">Este juego está destinado a ofrecer una pequeña visión de la asombrosa diversidad de vida que habita en los rincones más profundos de nuestro planeta. Su propósito es enseñar criaturas fascinantes que prosperan en la oscuridad total, permitiéndote descubrir la belleza de un ecosistema tan vital como desconocido.</p>
                 </div>
 
                 <div class="flex flex-col items-center gap-6 relative z-10">
-                    <button id="modal-start-btn" class="px-12 bg-cyan-500/5 border border-cyan-400/30 py-3 text-cyan-400 text-[11px] tracking-[0.4em] font-bold uppercase hover:bg-cyan-400 hover:text-black hover:scale-105 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                    <button id="modal-start-btn" class="px-12 bg-cyan-500/5 border border-cyan-400/30 py-3 text-cyan-400 text-[11px] tracking-[0.4em] font-bold uppercase hover:bg-cyan-400 hover:text-black hover:scale-105 transition-all duration-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]" data-i18n="splash_start_btn">
                         COMENZAR
                     </button>
-                    <span class="text-[9px] text-cyan-500/30 tracking-[0.3em] uppercase">Creado por IMC89</span>
+                    <span class="text-[9px] text-cyan-500/30 tracking-[0.3em] uppercase" data-i18n="splash_created">Creado por IMC89</span>
                 </div>
             </div>
         `;
@@ -67,7 +67,10 @@ class SplashScreen {
             }
         };
 
-        setTimeout(() => this.container.appendChild(startPortal), 50);
+        setTimeout(() => {
+            this.container.appendChild(startPortal);
+            if (window.i18n) window.i18n.updateDOM();
+        }, 50);
     }
 
     _closeStartPortal() {
@@ -122,15 +125,14 @@ class SplashScreen {
                 </button>
             </div>
 
-            <!-- Capa Decorativa de Datos (HUD Readout) -->
             <div class="absolute inset-0 pointer-events-none p-10 font-mono text-[7px] text-cyan-500/40 hidden md:block">
                 <div class="flex flex-col gap-1 animate-[fadeIn_2s_ease-out]">
-                    <span>COORD: 11.3483° N, 142.2000° E</span>
-                    <span>PRESSURE: 108.6 MPa</span>
-                    <span>DEPTH: 10,935M</span>
+                    <span><span data-i18n="splash_coord_label">COORD:</span> 11.3483° N, 142.2000° E</span>
+                    <span><span data-i18n="splash_pressure_label">PRESSURE:</span> 108.6 MPa</span>
+                    <span><span data-i18n="splash_depth_label">DEPTH:</span> 10,935M</span>
                     <div class="mt-2 flex gap-1">
                         <div class="w-8 h-[1px] bg-cyan-500/20"></div>
-                        <span>STATUS: READY</span>
+                        <span><span data-i18n="splash_status_label">STATUS:</span> <span data-i18n="splash_ready_label">READY</span></span>
                     </div>
                 </div>
             </div>
@@ -149,7 +151,7 @@ class SplashScreen {
                     <!-- Decoración Superior HUD -->
                     <div class="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-4 whitespace-nowrap">
                         <div class="h-[1px] w-6 bg-cyan-500/30"></div>
-                        <span class="text-cyan-400 text-[8px] uppercase tracking-[0.6em] font-bold">Deep Sea Exploration</span>
+                        <span class="text-cyan-400 text-[8px] uppercase tracking-[0.6em] font-bold" data-i18n="splash_sub_title">Deep Sea Exploration</span>
                         <div class="h-[1px] w-6 bg-cyan-500/30"></div>
                     </div>
 
@@ -178,7 +180,7 @@ class SplashScreen {
                             
                             <div class="flex items-center justify-center gap-3">
                                 <i data-lucide="power" class="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform duration-500 mb-0.5"></i>
-                                <span class="text-white font-bold uppercase tracking-[0.2em] -mr-[0.2em] text-sm leading-none">Iniciar Inmersión</span>
+                                <span class="text-white font-bold uppercase tracking-[0.2em] -mr-[0.2em] text-sm leading-none" data-i18n="splash_dive">Iniciar Inmersión</span>
                                 <span class="px-1.5 py-0.5 rounded border border-cyan-500/20 bg-cyan-500/5 text-[7px] text-cyan-400/80 font-mono leading-none shadow-[0_0_10px_rgba(6,182,212,0.1)]">ENTER</span>
                             </div>
                         </button>
@@ -192,19 +194,19 @@ class SplashScreen {
             
             <!-- Marca de Agua / Versión Inferior -->
             <div class="absolute bottom-8 right-10 opacity-20 pointer-events-none">
-                <span class="text-[7px] text-white uppercase tracking-widest">© 2026 Abyss Corp. // All Rights Reserved.</span>
+                <span class="text-[7px] text-white uppercase tracking-widest" data-i18n="splash_rights">© 2026 Abyss Corp. // All Rights Reserved.</span>
             </div>
         `;
 
         document.body.appendChild(this.container);
         this.injectStyles();
+        if (window.lucide) window.lucide.createIcons();
+        if (window.i18n) window.i18n.updateDOM();
 
         // Generar capas de partículas con diferentes densidades y velocidades
         this.createParticles('splash-particles-far', 60, 0.4, 1.5);
         this.createParticles('splash-particles-mid', 40, 1.0, 3);
         this.createParticles('splash-particles-near', 25, 2.2, 5);
-
-        if (window.lucide) window.lucide.createIcons();
 
         const btn = document.getElementById('start-mission-btn');
         if (btn) btn.addEventListener('click', () => this.hide());
