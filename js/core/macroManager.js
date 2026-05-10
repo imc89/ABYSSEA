@@ -32,10 +32,10 @@ class MacroManager {
      * Tabla de subtítulos legibles por bioma (clave → texto mostrado en HUD).
      */
     static BIOME_LABELS = {
-        'fumarolas_hidrotermales': 'Fumarolas Hidrotermales',
-        'llanura_abisal': 'Llanura Abisal',
-        'mar_abierto': 'Mar Abierto',
-        'rocas': 'Suelo Rocoso'
+        'fumarolas_hidrotermales': 'biome_fumarolas',
+        'llanura_abisal': 'biome_llanura',
+        'mar_abierto': 'biome_mar',
+        'rocas': 'biome_rocas'
     };
 
     /**
@@ -137,12 +137,14 @@ class MacroManager {
         const sId = this.currentSpecieId || null;
         const macroData = sId && window.MACRO_CATALOG ? window.MACRO_CATALOG[sId] : null;
         const biomeKey = (macroData && macroData.subtitle) ? macroData.subtitle : this.currentBiome;
-        const subtitle = MacroManager.BIOME_LABELS[biomeKey] || 'Entorno Abisal';
+        const labelKey = MacroManager.BIOME_LABELS[biomeKey] || 'biome_default';
+        const subtitle = window.i18n ? window.i18n.t(labelKey) : labelKey;
+        
         return {
-            title: "DETECCIÓN MACRO",
+            title: window.i18n ? window.i18n.t("macro_title") : "DETECCIÓN MACRO",
             subtitle,
-            status: "ENTORNO ANALIZABLE",
-            prompt: "PULSA [ENTER] PARA ZOOM"
+            status: window.i18n ? window.i18n.t("macro_status") : "ENTORNO ANALIZABLE",
+            prompt: window.i18n ? window.i18n.t("macro_prompt") : "PULSA [ENTER] PARA ZOOM"
         };
     }
 
@@ -334,8 +336,14 @@ class MacroManager {
         // --- ACTUALIZAR UI DE OBJETIVO ---
         const mTargetName = document.getElementById('macro-target-name');
         const mTargetGenus = document.getElementById('macro-target-genus');
-        if (mTargetName) mTargetName.innerText = macroData.nombre || "Desconocido";
-        if (mTargetGenus) mTargetGenus.innerText = macroData.cientifico || "Incertae sedis";
+        if (mTargetName) {
+            const nameKey = macroData.nombreKey || macroData.nombre;
+            mTargetName.innerText = window.i18n ? window.i18n.t(nameKey) : nameKey;
+        }
+        if (mTargetGenus) {
+            const sciKey = macroData.cientificoKey || macroData.cientifico;
+            mTargetGenus.innerText = window.i18n ? window.i18n.t(sciKey) : sciKey;
+        }
 
         this.state.lastTime = 0;
         this.state.crosshairX = this.state.canvas.width / 2;
@@ -1538,9 +1546,18 @@ class MacroManager {
 
                     // Para GIFs: asignar src directamente; el <img> del panel SÍ reproduce GIFs animados
                     if (mImg) mImg.src = macroData.imagen;
-                    if (mTitle) mTitle.innerText = macroData.nombre;
-                    if (mGenus) mGenus.innerText = macroData.cientifico;
-                    if (mDesc) mDesc.innerText = macroData.descripcion;
+                    if (mTitle) {
+                        const nameKey = macroData.nombreKey || macroData.nombre;
+                        mTitle.innerText = window.i18n ? window.i18n.t(nameKey) : nameKey;
+                    }
+                    if (mGenus) {
+                        const sciKey = macroData.cientificoKey || macroData.cientifico;
+                        mGenus.innerText = window.i18n ? window.i18n.t(sciKey) : sciKey;
+                    }
+                    if (mDesc) {
+                        const descKey = macroData.descripcionKey || macroData.descripcion;
+                        mDesc.innerText = window.i18n ? window.i18n.t(descKey) : descKey;
+                    }
 
                     // Almacenaje real en la base de muestras del laboratorio
                     if (typeof window.addSampleToLab === 'function') {

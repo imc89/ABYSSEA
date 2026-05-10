@@ -294,6 +294,10 @@ function setupEventHandlers() {
         }
 
         if (e.code === 'Escape' || e.code === 'KeyP') {
+            // [ES] No permitir el menú de configuración si el Splash está activo (ya tiene su propia config)
+            // [EN] Do not allow settings menu if Splash is active (it already has its own config)
+            if (document.getElementById('splash-screen')) return;
+
             e.preventDefault(); // Priorizar siempre el manejo interno (menú) sobre el comportamiento del navegador
             if (typeof uiManager !== 'undefined' && uiManager && uiManager.isScanModalOpen) {
                 uiManager.toggleScanModal();
@@ -384,7 +388,10 @@ function setControls(mode) {
     controlScheme = mode;
     document.getElementById('ctrl-wasd').classList.toggle('control-active', mode === 'WASD');
     document.getElementById('ctrl-arrows').classList.toggle('control-active', mode === 'ARROWS');
-    document.getElementById('hint-move').innerText = mode === 'WASD' ? 'WASD' : '←↑↓→';
+    const hint = document.getElementById('hint-move');
+    if (hint) {
+        hint.innerText = mode === 'WASD' ? 'WASD' : '←↑↓→';
+    }
 }
 
 /**
@@ -546,21 +553,21 @@ function update(dtMult = 1.0) {
             alarmBanner.classList.add('active');
 
             if (isHyperAlarm && !isTempFixing) {
-                const secsLeft = Math.max(0, 10 - tempMgr.hyperTimer).toFixed(1);
-                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPERTERMIA';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+                const secsLeft = Math.max(0, 20 - tempMgr.hyperTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_hyper") : '⚠ ALARMA — HIPERTERMIA';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${tempMgr.internalTemp.toFixed(1)}°C · ${window.i18n ? window.i18n.t("alarm_game_over_in") : "GAME OVER EN"} ${secsLeft}s`;
             } else if (isHypoAlarm && !isTempFixing) {
-                const secsLeft = Math.max(0, 10 - tempMgr.hypoTimer).toFixed(1);
-                if (alarmLabel) alarmLabel.textContent = '⚠ ALARMA — HIPOTERMIA';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${tempMgr.internalTemp.toFixed(1)}°C · GAME OVER EN ${secsLeft}s`;
+                const secsLeft = Math.max(0, 60 - tempMgr.hypoTimer).toFixed(1);
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_hypo") : '⚠ ALARMA — HIPOTERMIA';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${tempMgr.internalTemp.toFixed(1)}°C · ${window.i18n ? window.i18n.t("alarm_game_over_in") : "GAME OVER EN"} ${secsLeft}s`;
             } else if (isAnoxiaAlarm && !isO2Fixing && isCo2Alarm && !isCo2Fixing) {
-                if (alarmLabel) alarmLabel.textContent = 'O₂ CRÍTICO · CO₂ CRÍTICO';
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_o2_co2") : 'O₂ CRÍTICO · CO₂ CRÍTICO';
                 if (alarmValue) alarmValue.textContent = `O₂ ${(oxygenManager.cabinOxygen).toFixed(1)}%  ·  CO₂ ${(player.co2).toFixed(1)}%`;
             } else if (isAnoxiaAlarm && !isO2Fixing) {
-                if (alarmLabel) alarmLabel.textContent = 'ALARMA — OXÍGENO BAJO';
-                if (alarmValue) alarmValue.textContent = `CABINA: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_o2_low") : 'ALARMA — OXÍGENO BAJO';
+                if (alarmValue) alarmValue.textContent = `${window.i18n ? window.i18n.t("alarm_cabin") : "CABINA"}: ${(oxygenManager.cabinOxygen).toFixed(1)}%`;
             } else {
-                if (alarmLabel) alarmLabel.textContent = 'ALARMA — CO₂ ELEVADO';
+                if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_co2_high") : 'ALARMA — CO₂ ELEVADO';
                 if (alarmValue) alarmValue.textContent = `CO₂: ${(player.co2).toFixed(1)}%`;
             }
         }
@@ -772,7 +779,7 @@ function draw() {
         ctx.fillStyle = `rgba(0, 255, 255, ${pulse})`;
         ctx.font = 'bold 16px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
-        const prompt = 'PULSA [S] PARA COMENZAR EL DESCENSO';
+        const prompt = window.i18n ? window.i18n.t("splash_press_s") : 'PULSA [S] PARA COMENZAR EL DESCENSO';
         ctx.fillText(prompt, canvas.width / 2, canvas.height / 2 + 100);
         ctx.restore();
     }
@@ -937,12 +944,12 @@ function draw() {
         hydrothermalManager.draw(ctx, camera, player, ambientAlpha);
     }
 
-    // Dibujar luz del jugador
-    player.drawLight(ctx, camera);
-
     // Dibujar jugador
     const playerImage = imageCache.get('player');
     player.draw(ctx, camera, playerImage, ambientAlpha, canvas);
+
+    // Dibujar luz del jugador (ahora con mayor Z-index)
+    player.drawLight(ctx, camera);
 
     // --- EFECTO SCHLIEREN (Distorsión por calor de fumarolas) ---
     // Renderizado al final para que afecte a la luz del foco, al submarino y al fondo profundo
@@ -1108,23 +1115,68 @@ function updateSettingsUI() {
     if (mDot) mDot.classList.toggle('bg-white', active);
     if (mDot) mDot.classList.toggle('bg-white/40', !active);
 
+    // Splash Music Toggle & Visuals
+    const sMusicDot = document.getElementById('splash-music-dot');
+    const sMusicBars = document.getElementById('splash-audio-bars');
+    const sMusicBtn = document.getElementById('splash-music-btn');
+    
+    if (sMusicDot) {
+        sMusicDot.style.left = active ? 'calc(100% - 14px)' : '4px';
+        sMusicDot.classList.toggle('bg-cyan-400', active);
+        sMusicDot.classList.toggle('bg-white/20', !active);
+        sMusicDot.classList.toggle('shadow-[0_0_10px_rgba(6,182,212,0.8)]', active);
+    }
+    if (sMusicBars) {
+        sMusicBars.style.opacity = active ? '1' : '0.3';
+        sMusicBars.classList.toggle('animated', active);
+    }
+    if (sMusicBtn) {
+        sMusicBtn.classList.toggle('bg-cyan-500/10', active);
+        sMusicBtn.classList.toggle('border-cyan-500/30', active);
+        sMusicBtn.classList.toggle('bg-white/5', !active);
+        sMusicBtn.classList.toggle('border-white/10', !active);
+    }
+
     // Actualizar visual de Calidad Gráfica
     const btnLow = document.getElementById('q-btn-low');
     const btnMed = document.getElementById('q-btn-med');
     const btnHigh = document.getElementById('q-btn-high');
 
-    if (btnLow && btnMed && btnHigh) {
-        // Reset all
-        const inactiveClass = "flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white";
-        btnLow.className = inactiveClass;
-        btnMed.className = inactiveClass;
-        btnHigh.className = inactiveClass;
+    // Splash Quality
+    const sqLow = document.getElementById('sq-low');
+    const sqMed = document.getElementById('sq-med');
+    const sqHigh = document.getElementById('sq-high');
 
-        // Set active
-        const activeClass = "flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400";
-        if (window.GRAPHICS_QUALITY === 'LOW') btnLow.className = activeClass;
-        if (window.GRAPHICS_QUALITY === 'MED') btnMed.className = activeClass;
-        if (window.GRAPHICS_QUALITY === 'HIGH') btnHigh.className = activeClass;
+    const updateQualityButtons = (low, med, high, activeCls, inactiveCls) => {
+        if (low && med && high) {
+            low.className = inactiveCls;
+            med.className = inactiveCls;
+            high.className = inactiveCls;
+            if (window.GRAPHICS_QUALITY === 'LOW') low.className = activeCls;
+            if (window.GRAPHICS_QUALITY === 'MED') med.className = activeCls;
+            if (window.GRAPHICS_QUALITY === 'HIGH') high.className = activeCls;
+        }
+    };
+
+    const mainInactive = "flex-1 py-2 rounded-lg bg-white/5 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-colors border border-white/10 hover:text-white";
+    const mainActive = "flex-1 py-2 rounded-lg bg-cyan-500/80 text-white text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-400 transition-colors border border-cyan-400";
+    updateQualityButtons(btnLow, btnMed, btnHigh, mainActive, mainInactive);
+
+    const splashInactive = "px-2.5 py-0.5 rounded border border-white/5 text-[7px] font-black transition-all hover:border-cyan-500/50 text-white/30";
+    const splashActive = "px-2.5 py-0.5 rounded border border-cyan-500/50 text-[7px] font-black transition-all bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]";
+    updateQualityButtons(sqLow, sqMed, sqHigh, splashActive, splashInactive);
+
+    // Actualizar visual de Idioma (Splash Premium)
+    const langEs = document.getElementById('splash-lang-es');
+    const langEn = document.getElementById('splash-lang-en');
+    const currentLang = window.i18n ? window.i18n.currentLang : 'es';
+
+    if (langEs && langEn) {
+        const activeLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.6)] border border-cyan-400";
+        const inactiveLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 text-white/20 hover:bg-cyan-500/40 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]";
+        
+        langEs.className = (currentLang === 'es') ? activeLangCls : inactiveLangCls;
+        langEn.className = (currentLang === 'en') ? activeLangCls : inactiveLangCls;
     }
 }
 

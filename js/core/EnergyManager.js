@@ -204,18 +204,18 @@ class EnergyManager {
             const th = window.ENERGY_CONFIG.efficiencyThresholds;
             let effColor = 'bg-emerald-500';
             let textColor = 'text-emerald-400';
-            let effStr = 'ESTABLE';
+            let effStr = window.i18n ? window.i18n.t("energy_status_stable") : 'ESTABLE';
             let dropShadow = 'drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]';
 
             if (cTotal > th.yellow) {
                 effColor = 'bg-red-500';
                 textColor = 'text-red-400';
-                effStr = 'CRÍTICO';
+                effStr = window.i18n ? window.i18n.t("energy_status_critical") : 'CRÍTICO';
                 dropShadow = 'drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]';
             } else if (cTotal > th.green) {
                 effColor = 'bg-amber-500';
                 textColor = 'text-amber-400';
-                effStr = 'SOBRECARGA';
+                effStr = window.i18n ? window.i18n.t("energy_status_overload") : 'SOBRECARGA';
                 dropShadow = 'drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]';
             }
 
@@ -276,8 +276,8 @@ class EnergyManager {
                                 <i data-lucide="battery" class="w-3.5 h-3.5 ${isReadyToSwap ? 'text-cyan-300' : 'text-emerald-400'}"></i>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[7px] ${isReadyToSwap ? 'text-white drop-shadow-md' : 'text-emerald-500/60'} uppercase font-black tracking-widest leading-none">${isReadyToSwap ? 'SWAP READY' : 'Status'}</span>
-                                <span class="text-[9px] ${isReadyToSwap ? 'text-cyan-300 font-black drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-emerald-400 font-bold'} uppercase tracking-tight">${isReadyToSwap ? 'CLICK TO SWAP' : 'READY'}</span>
+                                <span class="text-[7px] ${isReadyToSwap ? 'text-white drop-shadow-md' : 'text-emerald-500/60'} uppercase font-black tracking-widest leading-none">${isReadyToSwap ? (window.i18n ? window.i18n.t("energy_swap_ready") : 'SWAP READY') : (window.i18n ? window.i18n.t("energy_status_label") : 'Status')}</span>
+                                <span class="text-[9px] ${isReadyToSwap ? 'text-cyan-300 font-black drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]' : 'text-emerald-400 font-bold'} uppercase tracking-tight">${isReadyToSwap ? (window.i18n ? window.i18n.t("energy_click_swap") : 'CLICK TO SWAP') : (window.i18n ? window.i18n.t("status_ready") : 'READY')}</span>
                             </div>
                         </div>
 
@@ -301,7 +301,7 @@ class EnergyManager {
                                 <i data-lucide="zap" class="w-3.5 h-3.5 text-cyan-400 animate-bounce"></i>
                             </div>
                             <div class="flex flex-col">
-                                <span class="text-[7px] text-cyan-200/80 uppercase font-black tracking-widest leading-none drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] animate-pulse">Power Up</span>
+                                <span class="text-[7px] text-cyan-200/80 uppercase font-black tracking-widest leading-none drop-shadow-[0_0_5px_rgba(34,211,238,0.8)] animate-pulse">${window.i18n ? window.i18n.t("energy_power_up") : "Power Up"}</span>
                                 <span id="cell-prog-text-${index}" class="text-[10px] text-white font-mono font-black drop-shadow-[0_0_8px_rgba(255,255,255,1)]">${Math.floor(prog)}%</span>
                             </div>
                         </div>

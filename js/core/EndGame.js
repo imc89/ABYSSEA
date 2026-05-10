@@ -34,7 +34,7 @@ class EndGame {
             gridColor = "rgba(6,182,212,0.05)";
             cTheme = "cyan";
             logTitle = "ASPHYXIATION_ALERT";
-            logText = "La saturación de oxígeno en cabina ha caído por debajo del umbral mínimo biológico. El personal ha perdido la consciencia debido a una anoxia cerebral masiva. Los sistemas automatizados han cesado su actividad.";
+            logText = window.i18n ? window.i18n.t("end_log_anoxia") : "Oxygen deprivation detected.";
             textColor = "text-cyan-100/70";
         } else if (isHypo) {
             primaryColor = "#3b82f6"; 
@@ -45,7 +45,7 @@ class EndGame {
             gridColor = "rgba(59,130,246,0.05)";
             cTheme = "blue";
             logTitle = "HYPOTHERMIA_ALERT";
-            logText = "La temperatura interna ha caído por debajo del umbral de supervivencia. El metabolismo del piloto se ha detenido debido a una hipotermia severa y congelación. Los sistemas vitales han cesado su actividad.";
+            logText = window.i18n ? window.i18n.t("end_log_hypo") : "Lethal hypothermia detected.";
             textColor = "text-blue-100/70";
         } else if (isHyper) {
             primaryColor = "#f97316"; 
@@ -56,7 +56,7 @@ class EndGame {
             gridColor = "rgba(249,115,22,0.05)";
             cTheme = "orange";
             logTitle = "HYPERTHERMIA_ALERT";
-            logText = "La temperatura interna ha excedido el límite biológico soportable por más de 20 segundos. El personal ha sufrido un golpe de calor letal por hipertermia y deshidratación severa. Fallo catastrófico de soporte vital.";
+            logText = window.i18n ? window.i18n.t("end_log_hyper") : "Lethal hyperthermia detected.";
             textColor = "text-orange-100/70";
         } else {
             primaryColor = "#ef4444";
@@ -67,7 +67,7 @@ class EndGame {
             gridColor = "rgba(239,68,68,0.05)";
             cTheme = "red";
             logTitle = "TOXICITY_ALERT";
-            logText = "Los sistemas de soporte vital han colapsado irremediablemente. La deficiencia en el purgado de toxinas ha resultado en niveles letales de la atmósfera interna.";
+            logText = window.i18n ? window.i18n.t("end_log_co2") : "Lethal atmosphere toxicity detected.";
             textColor = "text-red-100/70";
         }
         
@@ -99,10 +99,10 @@ class EndGame {
                 <div class="flex flex-col items-center w-full mb-10">
                     <div class="w-full flex items-center justify-center gap-6 mb-3 relative">
                         <div class="absolute left-0 w-[40%] h-[1px] bg-gradient-to-r from-transparent via-${cTheme}-500/20 to-${cTheme}-500/80"></div>
-                        <h1 class="${accentColor} text-6xl md:text-7xl font-black uppercase tracking-[0.25em] drop-shadow-[0_0_30px_${glowColor}] leading-[1.1] z-10" style="font-family: 'Arial Black', Impact, sans-serif;">FIN DEL VIAJE</h1>
+                        <h1 class="${accentColor} text-6xl md:text-7xl font-black uppercase tracking-[0.25em] drop-shadow-[0_0_30px_${glowColor}] leading-[1.1] z-10" style="font-family: 'Arial Black', Impact, sans-serif;">${window.i18n ? window.i18n.t("end_title") : "END OF MISSION"}</h1>
                         <div class="absolute right-0 w-[40%] h-[1px] bg-gradient-to-l from-transparent via-${cTheme}-500/20 to-${cTheme}-500/80"></div>
                     </div>
-                    <h2 class="text-white text-xl md:text-2xl font-bold tracking-[0.6em] uppercase mt-2 opacity-90 drop-shadow-[0_4px_4px_rgba(0,0,0,1)] text-[${primaryColor}]">${reason}</h2>
+                    <h2 class="text-white text-xl md:text-2xl font-bold tracking-[0.6em] uppercase mt-2 opacity-90 drop-shadow-[0_4px_4px_rgba(0,0,0,1)] text-[${primaryColor}]">${window.i18n ? window.i18n.t(this.getReasonKey(reason)) : reason}</h2>
                 </div>
 
                 <!-- Mensaje de Lore Style Terminal -->
@@ -116,8 +116,8 @@ class EndGame {
                     
                     <p class="${textColor} text-sm font-mono leading-relaxed text-left pl-3 tracking-wide">
                         ${logText}<br><br>
-                        <strong>PROTOCOLOS DE REANIMACIÓN: NO DISPONIBLES.</strong><br>
-                        <span class="${accentColor} font-bold block mt-3">> ESTADO DE LA MISIÓN: PERDIDA_ <span class="animate-pulse">|</span></span>
+                        <strong>${window.i18n ? window.i18n.t("end_protocol") : "REANIMATION PROTOCOLS: UNAVAILABLE."}</strong><br>
+                        <span class="${accentColor} font-bold block mt-3">> ${window.i18n ? window.i18n.t("end_status") : "MISSION STATUS: LOST"}_ <span class="animate-pulse">|</span></span>
                     </p>
                 </div>
 
@@ -127,7 +127,7 @@ class EndGame {
                     <div class="absolute inset-x-0 bottom-0 h-0 bg-${cTheme}-600 group-hover:h-full transition-all duration-300 ease-out pointer-events-none z-0"></div>
                     <span class="relative z-10 flex items-center justify-center gap-3 text-sm md:text-base group-hover:text-black transition-colors duration-300">
                         <i data-lucide="rotate-ccw" class="w-5 h-5 ${accentColor} group-hover:text-black transition-colors duration-300"></i>
-                        INICIAR SECUENCIA DE REINICIO
+                        ${window.i18n ? window.i18n.t("end_restart") : "INITIATE RESTART SEQUENCE"}
                     </span>
                     <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-${cTheme}-500 group-hover:bg-black transition-colors z-10"></div>
                     <div class="absolute right-0 top-0 bottom-0 w-1.5 bg-${cTheme}-500 group-hover:bg-black transition-colors z-10"></div>
@@ -201,6 +201,14 @@ class EndGame {
             }
         `;
         document.head.appendChild(style);
+    }
+    getReasonKey(reason) {
+        if (reason === "HIPOTERMIA") return "end_reason_hypo";
+        if (reason === "HIPERTERMIA") return "end_reason_hyper";
+        if (reason === "ANOXIA") return "end_reason_anoxia";
+        if (reason === "INTOXICACIÓN POR CO2") return "end_reason_co2";
+        if (reason === "FALLO DE SISTEMAS") return "end_reason_generic";
+        return "end_reason_generic";
     }
 }
 

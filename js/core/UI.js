@@ -159,11 +159,11 @@ class UIManager {
                     atmosStatus.innerText = "";
                 }
                 else if (co2Level === 1) {
-                    atmosStatus.innerText = "ATM: WARNING";
+                    atmosStatus.innerText = window.i18n ? window.i18n.t("hud_atm_warn") : "ATM: WARNING";
                     atmosStatus.className = "text-[7px] text-amber-500 font-bold uppercase tracking-widest font-mono";
                 }
                 else {
-                    atmosStatus.innerText = "ATM: CRITICAL";
+                    atmosStatus.innerText = window.i18n ? window.i18n.t("hud_atm_crit") : "ATM: CRITICAL";
                     atmosStatus.className = "text-[7px] text-red-500 font-bold uppercase tracking-widest font-mono animate-pulse";
                 }
                 atmosStatus.dataset.last = String(co2Level);
@@ -191,7 +191,7 @@ class UIManager {
                     tankBar.dataset.last = rTankStr;
                 }
                 if (tankVal && tankVal.dataset.last !== rTankStr + isActive) {
-                    tankVal.textContent = tank.isRefilling ? 'RECARG...' : `${Math.floor(tank.percentage)}%`;
+                    tankVal.textContent = tank.isRefilling ? (window.i18n ? window.i18n.t("hud_recarging") : 'RECARG...') : `${Math.floor(tank.percentage)}%`;
                     tankVal.className = tank.percentage <= 20
                         ? 'text-[10px] text-red-400 font-mono font-bold'
                         : tank.percentage <= 50
@@ -318,6 +318,16 @@ class UIManager {
             humExt.textContent = "100%";
             humExt.dataset.last = '100';
         }
+
+        // Temperatura Exterior
+        const tempExt = document.getElementById('hud-temp-ext');
+        if (tempExt) {
+            const etVal = temperatureManager.externalTemp.toFixed(1);
+            if (tempExt.dataset.last !== etVal) {
+                tempExt.textContent = `${etVal}°C`;
+                tempExt.dataset.last = etVal;
+            }
+        }
     }
 
     updateDepthDisplay(player) {
@@ -340,14 +350,16 @@ class UIManager {
 
     updateZoneDisplay(player) {
         const depthMeters = player.y / WORLD.depthScale;
-        let zone = WORLD.zones[0].name;
-        for (let i = WORLD.zones.length - 1; i >= 0; i--) if (depthMeters >= WORLD.zones[i].depth) { zone = WORLD.zones[i].name; break; }
-        if (this.currentZoneName !== zone) {
+        const currentZone = WORLD.zones.slice().reverse().find(z => depthMeters >= z.depth) || WORLD.zones[0];
+        if (this.currentZoneName !== currentZone.name) {
             const zd = document.getElementById('zone-display');
             if (zd) {
                 zd.classList.add('zone-change');
-                setTimeout(() => { zd.innerText = zone; zd.classList.remove('zone-change'); }, 800);
-                this.currentZoneName = zone;
+                setTimeout(() => { 
+                    zd.innerText = window.i18n ? window.i18n.t(currentZone.name) : currentZone.name; 
+                    zd.classList.remove('zone-change'); 
+                }, 800);
+                this.currentZoneName = currentZone.name;
             }
         }
     }
@@ -384,17 +396,17 @@ class UIManager {
                     batteryLed.style.background = '#ef4444';
                     batteryLed.style.boxShadow = '0 0 6px #ef4444';
                     batteryLed.style.animation = 'pulse-alert 0.4s infinite alternate';
-                    if (lightLabel) { lightLabel.textContent = 'BAJA'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-red-400 animate-pulse'; }
+                    if (lightLabel) { lightLabel.textContent = window.i18n ? window.i18n.t("hud_batt_low") : 'BAJA'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-red-400 animate-pulse'; }
                 } else if (player.lightOn) {
                     batteryLed.style.background = '#eab308';
                     batteryLed.style.boxShadow = '0 0 8px #eab308';
                     batteryLed.style.animation = 'none';
-                    if (lightLabel) { lightLabel.textContent = 'ON'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-yellow-400'; }
+                    if (lightLabel) { lightLabel.textContent = window.i18n ? window.i18n.t("hud_on") : 'ON'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-yellow-400'; }
                 } else {
                     batteryLed.style.background = 'rgba(255,255,255,0.08)';
                     batteryLed.style.boxShadow = 'none';
                     batteryLed.style.animation = 'none';
-                    if (lightLabel) { lightLabel.textContent = 'OFF'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-white/20'; }
+                    if (lightLabel) { lightLabel.textContent = window.i18n ? window.i18n.t("hud_off") : 'OFF'; lightLabel.className = 'text-[8px] font-bold uppercase tracking-widest text-white/20'; }
                 }
                 batteryLed.dataset.last = ledState;
             }
@@ -415,18 +427,18 @@ class UIManager {
             if (progressRing.dataset.last !== stateHash) {
                 const circumference = 150.8;
                 if (player.sonarActive) {
-                    progressRing.style.strokeDashoffset = 0; statusText.innerText = "PING...";
+                    progressRing.style.strokeDashoffset = 0; statusText.innerText = window.i18n ? window.i18n.t("sonar_ping") : "PING...";
                     statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-emerald-400";
                     statusDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse";
                 } else if (player.sonarCharging) {
                     const progress = 1 - (player.sonarCooldown / player.sonarMaxCooldown);
                     const offset = circumference * (1 - progress);
                     progressRing.style.strokeDashoffset = offset;
-                    statusText.innerText = `Cargando ${Math.ceil(player.sonarCooldown)}s`;
+                    statusText.innerText = `${window.i18n ? window.i18n.t("sonar_charging") : "Cargando"} ${Math.ceil(player.sonarCooldown)}s`;
                     statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-white/50";
                     statusDot.className = "w-1.5 h-1.5 rounded-full bg-yellow-500";
                 } else {
-                    progressRing.style.strokeDashoffset = 0; statusText.innerText = "READY";
+                    progressRing.style.strokeDashoffset = 0; statusText.innerText = window.i18n ? window.i18n.t("sonar_ready") : "READY";
                     statusText.className = "text-[7px] font-bold uppercase tracking-widest font-mono mr-1.5 text-white/50";
                     statusDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]";
                 }
@@ -452,13 +464,26 @@ class UIManager {
         }
         if (scannableTarget && scannerUI) {
             scannerUI.style.opacity = "1"; scannerUI.style.transform = "translateX(0)";
-            if (indicator) { indicator.innerText = "PULSA [ENTER] ANALIZAR"; indicator.style.display = 'block'; }
+            if (indicator) { indicator.innerText = window.i18n ? window.i18n.t("scan_analyze_prompt") : "PULSA [ENTER] ANALIZAR"; indicator.style.display = 'block'; }
 
             const cfg = scannableTarget.config;
-            const scanName = document.getElementById('scan-name'); if (scanName) scanName.innerText = cfg.nombre;
-            const scanGenus = document.getElementById('scan-genus'); if (scanGenus) scanGenus.innerText = cfg.cientifico;
-            const scanRange = document.getElementById('scan-range'); if (scanRange) scanRange.innerText = `${cfg.minProf}m - ${cfg.maxProf}m`;
-            const scanBehavior = document.getElementById('scan-behavior'); if (scanBehavior) scanBehavior.innerText = cfg.esCardumen ? "Cardumen" : "Solitario";
+            const scanName = document.getElementById('scan-name'); 
+            if (scanName) {
+                const name = window.i18n ? (window.i18n.t(cfg.nombreKey) || cfg.nombre) : (cfg.nombre || cfg.nombreKey);
+                scanName.innerText = name;
+            }
+            
+            const scanGenus = document.getElementById('scan-genus'); 
+            if (scanGenus) {
+                const sciName = window.i18n ? (window.i18n.t(cfg.cientificoKey) || cfg.cientifico) : (cfg.cientifico || cfg.cientificoKey);
+                scanGenus.innerText = sciName;
+            }
+            
+            const scanRange = document.getElementById('scan-range'); 
+            if (scanRange) scanRange.innerText = `${cfg.minProf}m - ${cfg.maxProf}m`;
+            
+            const scanBehavior = document.getElementById('scan-behavior'); 
+            if (scanBehavior) scanBehavior.innerText = cfg.esCardumen ? (window.i18n ? window.i18n.t("scanner_school") : "Cardumen") : (window.i18n ? window.i18n.t("scanner_solitary") : "Solitario");
 
         } else if (scannerUI) {
             scannerUI.style.opacity = "0"; scannerUI.style.transform = "translateX(20px)";
@@ -480,12 +505,22 @@ class UIManager {
             const mDesc = document.getElementById('modal-scan-description');
             const mDepth = document.getElementById('modal-scan-depth');
             const mBehav = document.getElementById('modal-scan-behavior');
+            
             if (mImg) mImg.src = target.config.imagen;
-            if (mName) mName.innerText = target.config.nombre;
-            if (mSci) mSci.innerText = target.config.cientifico;
-            if (mDesc) mDesc.innerText = target.config.descripcion || "No hay datos descriptivos.";
+            if (mName) {
+                const name = window.i18n ? (window.i18n.t(target.config.nombreKey) || target.config.nombre) : (target.config.nombre || target.config.nombreKey);
+                mName.innerText = name;
+            }
+            if (mSci) {
+                const sciName = window.i18n ? (window.i18n.t(target.config.cientificoKey) || target.config.cientifico) : (target.config.cientifico || target.config.cientificoKey);
+                mSci.innerText = sciName;
+            }
+            if (mDesc) {
+                const desc = window.i18n ? (window.i18n.t(target.config.descripcionKey) || target.config.descripcion) : (target.config.descripcion || target.config.descripcionKey || "No hay datos descriptivos.");
+                mDesc.innerText = desc;
+            }
             if (mDepth) mDepth.innerText = `${target.config.minProf}m - ${target.config.maxProf}m`;
-            if (mBehav) mBehav.innerText = target.config.esCardumen ? "Cardumen" : "Solitario";
+            if (mBehav) mBehav.innerText = target.config.esCardumen ? (window.i18n ? window.i18n.t("scanner_school") : "Cardumen") : (window.i18n ? window.i18n.t("scanner_solitary") : "Solitario");
             if (modal) modal.classList.add('active');
 
             // Backup de registro al abrir el modal (por si falló el avistamiento)
@@ -506,10 +541,10 @@ class UIManager {
         if (!indicatorContainer) return;
         const nearbySpecies = fishCatalog.filter(fish => currentDepth >= (fish.minProf * window.WORLD?.depthScale) && currentDepth <= (fish.maxProf * window.WORLD?.depthScale));
         if (nearbySpecies.length > 0) {
-            indicatorContainer.innerHTML = nearbySpecies.map(fish => `<span class="species-tag">${fish.nombre}</span>`).join('');
+            indicatorContainer.innerHTML = nearbySpecies.map(fish => `<span class="species-tag">${window.i18n ? (window.i18n.t(fish.nombreKey) || fish.nombre) : fish.nombre}</span>`).join('');
             indicatorContainer.style.opacity = "1";
         } else {
-            indicatorContainer.style.opacity = "0.3"; indicatorContainer.innerHTML = '<span class="text-white/30">Sin especies</span>';
+            indicatorContainer.style.opacity = "0.3"; indicatorContainer.innerHTML = `<span class="text-white/30">${window.i18n ? window.i18n.t("scanner_no_species") : "Sin especies"}</span>`;
         }
     }
 

@@ -80,6 +80,11 @@ class SubManagementManager {
             energyManager.isOpen = (subTabManager.currentTab === 'energia');
             if (energyManager.isOpen) energyManager.forceUIDraw();
         }
+
+        // Iniciar tutorial exhaustivo si es la primera vez
+        if (window.managementTutorial) {
+            setTimeout(() => window.managementTutorial.init(), 300); // Dar un poco de tiempo para que se abra el modal
+        }
     }
 
     close() {
@@ -146,11 +151,11 @@ class SubManagementManager {
         if (this.dom.atmoLed && this.dom.atmoText && this._lastAtmoState !== isEmergency) {
             if (isEmergency) {
                 this.dom.atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-red-500 shadow-[0_0_12px_#ef4444]";
-                this.dom.atmoText.innerText = "ATMÓSFERA CRÍTICA";
+                this.dom.atmoText.innerText = window.i18n ? window.i18n.t("mgmt_atmo_critical") : "ATMÓSFERA CRÍTICA";
                 this.dom.atmoText.className = "text-red-500 text-[9px] uppercase tracking-widest font-black transition-colors duration-300 drop-shadow-[0_0_5px_rgba(239,68,68,0.8)]";
             } else {
                 this.dom.atmoLed.className = "w-2 h-2 rounded-full animate-pulse transition-colors duration-300 bg-emerald-500 shadow-[0_0_8px_#10b981]";
-                this.dom.atmoText.innerText = "ATMÓSFERA ESTABLE";
+                this.dom.atmoText.innerText = window.i18n ? window.i18n.t("mgmt_atmo_stable") : "ATMÓSFERA ESTABLE";
                 this.dom.atmoText.className = "text-white/40 text-[9px] uppercase tracking-widest font-bold transition-colors duration-300";
             }
             this._lastAtmoState = isEmergency;
@@ -235,7 +240,7 @@ class SubManagementManager {
                             leds[0].className = "w-1 h-3 bg-amber-500 rounded-sm";
                             leds[1].className = "w-1 h-3 bg-amber-500 rounded-sm shadow-[0_0_5px_#f59e0b]";
                             leds[2].className = "w-1 h-3 bg-amber-500/10 rounded-sm";
-                            this.dom.co2Status.innerText = "Warning";
+                            this.dom.co2Status.innerText = window.i18n ? window.i18n.t("status_warning") : "Warning";
                             this.dom.co2Status.className = "text-[7px] text-amber-500 font-bold uppercase text-center";
 
                             // Color dinámico del texto de CO2
@@ -245,14 +250,14 @@ class SubManagementManager {
                                 this.dom.cabinCo2Display.className = "text-amber-400 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]";
                             }
                             if (this.dom.cabinCo2Status) {
-                                this.dom.cabinCo2Status.innerText = "WARNING";
+                                this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_warning") : "WARNING";
                                 this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30";
                             }
                         } else {
                             leds[0].className = "w-1 h-3 bg-red-500 rounded-sm";
                             leds[1].className = "w-1 h-3 bg-red-500 rounded-sm";
                             leds[2].className = "w-1 h-3 bg-red-500 rounded-sm shadow-[0_0_8px_#ef4444] animate-pulse";
-                            this.dom.co2Status.innerText = "Critical";
+                            this.dom.co2Status.innerText = window.i18n ? window.i18n.t("status_critical") : "Critical";
                             this.dom.co2Status.className = "text-[7px] text-red-500 font-bold uppercase text-center";
 
                             // Color dinámico del texto de CO2
@@ -262,7 +267,7 @@ class SubManagementManager {
                                 this.dom.cabinCo2Display.className = "text-red-500 font-mono text-xl tracking-tighter drop-shadow-[0_0_10px_rgba(239,68,68,0.3)] animate-pulse";
                             }
                             if (this.dom.cabinCo2Status) {
-                                this.dom.cabinCo2Status.innerText = "CRITICAL";
+                                this.dom.cabinCo2Status.innerText = window.i18n ? window.i18n.t("status_critical") : "CRITICAL";
                                 this.dom.cabinCo2Status.className = "mt-1 text-[7px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-500 border border-red-500/30 animate-pulse";
                             }
                         }
@@ -357,16 +362,16 @@ class SubManagementManager {
             const stateKey = `${player.activeScrubberIndex === i}_${s.percentage <= 0}_${s.needsReplacement && s.replacementTimer > 0}`;
             if (dom.statusText && dom._lastStateKey !== stateKey) {
                 if (player.activeScrubberIndex === i) {
-                    dom.statusText.innerText = "ACTIVO [OK]";
+                    dom.statusText.innerText = window.i18n ? window.i18n.t("mgmt_scrub_active") : "ACTIVO [OK]";
                     dom.statusText.className = "text-emerald-500 text-[10px] font-bold uppercase mb-2";
                 } else if (s.percentage <= 0) {
-                    dom.statusText.innerText = "AGOTADO [FAIL]";
+                    dom.statusText.innerText = window.i18n ? window.i18n.t("mgmt_scrub_failed") : "AGOTADO [FAIL]";
                     dom.statusText.className = "text-red-500 text-[10px] font-bold uppercase mb-2";
                 } else if (s.needsReplacement && s.replacementTimer > 0) {
-                    dom.statusText.innerText = "MANTENIMIENTO";
+                    dom.statusText.innerText = window.i18n ? window.i18n.t("mgmt_scrub_maintenance") : "MANTENIMIENTO";
                     dom.statusText.className = "text-amber-500/60 text-[10px] font-bold uppercase mb-2";
                 } else {
-                    dom.statusText.innerText = "INACTIVO";
+                    dom.statusText.innerText = window.i18n ? window.i18n.t("mgmt_scrub_inactive") : "INACTIVO";
                     dom.statusText.className = "text-white/30 text-[10px] font-bold uppercase mb-2";
                 }
                 dom._lastStateKey = stateKey;
@@ -381,11 +386,13 @@ class SubManagementManager {
                     const timeLeft = (s.percentage / 100) * FILTER_CONFIG.scrubberDuration * 60;
                     const mins = Math.floor(timeLeft / 60);
                     const secs = Math.floor(timeLeft % 60);
-                    timerText = `CARGA: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    const label = window.i18n ? window.i18n.t("mgmt_scrub_charge") : "CARGA:";
+                    timerText = `${label} ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 } else if (s.percentage < 100 && s.needsReplacement && s.replacementTimer > 0) {
                     const mins = Math.floor(s.replacementTimer / 60);
                     const secs = Math.floor(s.replacementTimer % 60);
-                    timerText = `READY IN: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                    const label = window.i18n ? window.i18n.t("mgmt_scrub_ready") : "READY IN:";
+                    timerText = `${label} ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
                 } else {
                     isHidden = true;
                 }
