@@ -130,6 +130,13 @@ class SplashScreen {
                 </div>
             </div>
 
+            <!-- Botón Web Oficial -->
+            <a href="https://imc89.github.io/ABYSSEA-GAME-WEB/" target="_blank" 
+               class="fixed top-5 right-6 z-[600] flex items-center gap-3 px-4 py-2 bg-black/60 hover:bg-cyan-400/10 border border-white/10 hover:border-cyan-400/60 rounded-xl backdrop-blur-xl transition-all duration-300 group/web cursor-pointer hover:shadow-[0_0_30px_rgba(6,182,212,0.25)]">
+                <img src="img/icon/favicon.svg" class="w-12 h-12 drop-shadow-[0_0_8px_rgba(255,255,255,0.2)]" alt="Logo">
+                <span class="text-white group-hover/web:text-cyan-400 text-[11px] font-bold tracking-[0.3em] uppercase transition-colors" style="font-family: 'Glech', sans-serif;">Web Oficial</span>
+            </a>
+
             <!-- Interfaz Principal (HUD) -->
             <div class="relative z-10 flex flex-col items-center w-full max-w-4xl px-8">
                 
@@ -364,6 +371,10 @@ class SplashScreen {
                 background-size: 200% 200%;
                 animation: caustics 40s linear infinite;
                 mask-image: radial-gradient(circle at 50% 50%, black, transparent);
+            }
+            #splash-screen .cursor-pointer:hover,
+            #splash-screen .cursor-pointer:hover * {
+                cursor: url('./img/cursor/cursor_hover.cur'), pointer !important;
             }
         `;
         document.head.appendChild(style);
