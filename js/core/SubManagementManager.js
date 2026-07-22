@@ -302,7 +302,7 @@ class SubManagementManager {
                 const ch = dom.canvas.clientHeight;
 
                 if (cw > 0 && ch > 0) {
-                    const rPerc = Math.round(s.percentage * 5) / 5; // Redibujar solo cada 0.2%
+                    const rPerc = Math.round(s.percentage); // OPTIMIZACIÓN: Redibujar solo cada 1.0% de cambio de estado
                     const needsRedraw = this._lastScrubPerc?.[i] !== rPerc || this._lastWidth?.[i] !== cw;
                     if (needsRedraw) {
                         if (this._lastWidth && this._lastWidth[i] !== cw && this.particleCache) {

@@ -39,8 +39,15 @@ class Base {
         const sy = this.y - camera.y;
         const time = Date.now() * 0.001;
 
+        // Culling completo: si la base está fuera de la pantalla, saltamos TODO
+        const cw = ctx.canvas.width;
+        const ch = ctx.canvas.height;
+        if (sy > ch + 300 || sy + this.h < -300 || sx > cw + 200 || sx + this.w < -200) {
+            return;
+        }
+
         if (player && !player.isLocked) {
-            this.clampProgress = Math.min(1, this.clampProgress + 0.02); // Apertura suave de las pinzas
+            this.clampProgress = Math.min(1, this.clampProgress + 0.02);
         }
 
         ctx.save();
@@ -185,14 +192,21 @@ class Base {
                 ctx.fillRect(lx - 20, ly - 5, 40, 10);
                 ctx.fillStyle = '#e0f2fe';
                 ctx.fillRect(lx - 15, ly - 2, 30, 4); // Emisor discreto
-
-                // Brillo contenido
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = '#e0f2fe';
-                ctx.fillRect(lx - 15, ly - 2, 30, 4);
-                ctx.shadowBlur = 0;
             }
         });
+
+        // Brillo de emisores — un único shadowBlur para todos (1 render pass GPU en vez de 6)
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#e0f2fe';
+        lightOffsets.forEach(offset => {
+            const lx = bayCenter + offset;
+            const ly = pipeY - 5;
+            if (lx > sx && lx < sx + this.w) {
+                ctx.fillStyle = '#e0f2fe';
+                ctx.fillRect(lx - 15, ly - 2, 30, 4);
+            }
+        });
+        ctx.shadowBlur = 0;
 
         // 3. Marcas de Alta Presión (Mínimas y Simétricas)
         // Posicionaremos marcas de peligro en los huecos intermedios
@@ -219,68 +233,86 @@ class Base {
      */
     drawSpotlightDust(ctx, camera, time) {
         // Partículas de polvo ancladas al mundo bajo cada foco de la base.
-        // Son completamente independientes del submarino y no tienen parallax.
+        // OPTIMIZADO: sin createRadialGradient por partícula. Se usa fillStyle plano
+        // y un único shadowBlur compartido por batch para imitar el brillo suave.
 
-        const PARTICLES_PER_SPOTLIGHT = window.WORLD.spotlightParticles || 80;   // Dinámico según calidad
-        const SPOTLIGHT_RANGE = 600;   // Alcance vertical del haz
-        const CONE_WIDTH_AT_BOTTOM = 130; // Anchura del cono en el extremo inferior
-        const PARTICLE_SPEED = 20;     // Ciclo en segundos para subir todo el haz
+        const PARTICLES_PER_SPOTLIGHT = window.WORLD.spotlightParticles || 80;
+        const SPOTLIGHT_RANGE = 600;
+        const CONE_WIDTH_AT_BOTTOM = 130;
+        const PARTICLE_SPEED = 20;
 
-        // La Y del foco en espacio de mundo
-        const worldSpotY = this.y + this.h + 35;
+        // Caché de constantes por-seed (no cambian nunca) – se inicializa una vez
+        if (!this._dustCache || this._dustCache.length !== PARTICLES_PER_SPOTLIGHT * 6) {
+            const len = PARTICLES_PER_SPOTLIGHT * 6;
+            this._dustCache = new Float32Array(len);
+            let idx = 0;
+            for (let s = 0; s < 6; s++) {
+                for (let i = 0; i < PARTICLES_PER_SPOTLIGHT; i++) {
+                    const seed = s * 1000 + i;
+                    // [0] phase offset, [1] sinSeed2399 (posición X normalizada),
+                    // [2] radius, [3] centerFade (fijo), [4-5] reservados
+                    this._dustCache[idx++] = (seed * 0.0371) % 1;
+                    const sx = Math.sin(seed * 2.399);
+                    this._dustCache[idx++] = sx * 2 - 1; // rango [-1, 1]
+                    const baseRad = PARTICLES_PER_SPOTLIGHT <= 40 ? 0.8 : 0.4;
+                    const mulRad  = PARTICLES_PER_SPOTLIGHT <= 40 ? 2.0 : 1.2;
+                    this._dustCache[idx++] = baseRad + Math.abs(Math.sin(seed * 1.618)) * mulRad;
+                    this._dustCache[idx++] = 1 - Math.abs(sx * 2 - 1); // centerFade
+                    idx += 2; // reservados
+                }
+            }
+        }
 
-        // Las X de los focos en mundo (desde el centro del mundo, que coincide con x=0 de la cámara en inicio)
+        const worldSpotY  = this.y + this.h + 35;
         const worldCenterX = ctx.canvas.width / 2;
         const lightOffsets = [-1200, -800, -400, 400, 800, 1200];
+        const cw = ctx.canvas.width;
+        const ch = ctx.canvas.height;
+        const timeNorm = time / PARTICLE_SPEED;
+
+        // Un único beginPath + fill por partícula (sin gradientes, sin save/restore)
+        // Agrupamos en batches por alpha cuantizado para reducir cambios de fillStyle
+        const ALPHA_BUCKETS = 8;
+        // Acumular paths por bucket
+        const buckets = new Array(ALPHA_BUCKETS);
+        for (let b = 0; b < ALPHA_BUCKETS; b++) buckets[b] = [];
 
         for (let s = 0; s < lightOffsets.length; s++) {
             const worldSpotX = worldCenterX + lightOffsets[s];
+            const base = s * PARTICLES_PER_SPOTLIGHT * 6;
 
             for (let i = 0; i < PARTICLES_PER_SPOTLIGHT; i++) {
-                // Posición determinista: cada partícula tiene un "seed" único por foco+índice
-                const seed = s * 1000 + i;
-
-                // Desplazamiento horizontal dentro del cono (en espacio de pantalla ya que el cono se dibuja así)
-                // A profundidad d, el cono tiene anchura d/SPOTLIGHT_RANGE * CONE_WIDTH_AT_BOTTOM
-                // Vida de la partícula: cicla de 0 a 1 (abajo → arriba)
-                const phase = ((time / PARTICLE_SPEED) + (seed * 0.0371)) % 1;
-                // La profundidad va de fondo del cono hacia arriba (phase=0 → abajo, phase=1 → foco)
-                const depthFraction = 1 - phase; // 0 = justo en el foco, 1 = en el extremo inferior
+                const off = base + i * 6;
+                const phase = (timeNorm + this._dustCache[off]) % 1;
+                const depthFraction = 1 - phase;
 
                 const particleWorldY = worldSpotY + depthFraction * SPOTLIGHT_RANGE;
-                const particleWorldX = worldSpotX +
-                    (Math.sin(seed * 2.399) * 2 - 1) *  // Posición X relativa normalizada [-1, 1]
-                    (depthFraction * CONE_WIDTH_AT_BOTTOM);
-
-                // Convertir de espacio mundo → espacio pantalla
-                const px = particleWorldX - camera.x;
+                const px = worldSpotX + this._dustCache[off + 1] * (depthFraction * CONE_WIDTH_AT_BOTTOM) - camera.x;
                 const py = particleWorldY - camera.y;
 
-                // Culling — solo dibujar si está en pantalla
-                if (px < -10 || px > ctx.canvas.width + 10 ||
-                    py < -10 || py > ctx.canvas.height + 10) continue;
+                if (px < -10 || px > cw + 10 || py < -10 || py > ch + 10) continue;
 
-                // Alpha: más brillante en el centro del haz, fade en los extremos de profundidad
-                const centerFade = 1 - Math.abs((Math.sin(seed * 2.399) * 2 - 1)); // 0=bordes, 1=centro
-                const depthFade = Math.sin(depthFraction * Math.PI); // seno → fade suave arriba y abajo
-                const alpha = centerFade * depthFade * 0.9;
+                const depthFade = Math.sin(depthFraction * Math.PI);
+                const alpha = this._dustCache[off + 3] * depthFade * 0.85;
+                if (alpha < 0.015) continue;
 
-                if (alpha < 0.01) continue;
-
-                // Aumentar el tamaño base para compensar visualmente si hay pocas partículas (LOW quality)
-                const baseRad = PARTICLES_PER_SPOTLIGHT <= 40 ? 0.8 : 0.4;
-                const mulRad = PARTICLES_PER_SPOTLIGHT <= 40 ? 2.0 : 1.2;
-                const radius = baseRad + Math.abs(Math.sin(seed * 1.618)) * mulRad;
-
-                const dustGrad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-                dustGrad.addColorStop(0, `rgba(240, 248, 255, ${alpha})`);
-                dustGrad.addColorStop(1, `rgba(180, 220, 255, 0)`);
-
-                ctx.beginPath();
-                ctx.arc(px, py, radius, 0, Math.PI * 2);
-                ctx.fillStyle = dustGrad;
-                ctx.fill();
+                const bucketIdx = Math.min(ALPHA_BUCKETS - 1, (alpha * ALPHA_BUCKETS) | 0);
+                buckets[bucketIdx].push(px, py, this._dustCache[off + 2]);
             }
+        }
+
+        // Dibujar cada bucket con un único fillStyle
+        for (let b = 0; b < ALPHA_BUCKETS; b++) {
+            const pts = buckets[b];
+            if (pts.length === 0) continue;
+            const a = ((b + 0.5) / ALPHA_BUCKETS).toFixed(2);
+            ctx.fillStyle = `rgba(210, 235, 255, ${a})`;
+            ctx.beginPath();
+            for (let j = 0; j < pts.length; j += 3) {
+                ctx.moveTo(pts[j] + pts[j + 2], pts[j + 1]);
+                ctx.arc(pts[j], pts[j + 1], pts[j + 2], 0, 6.2832);
+            }
+            ctx.fill();
         }
     }
 

@@ -8,7 +8,26 @@ class Bubble {
     // Cache estático para burbujas pre-renderizadas por tamaño (radio entero)
     static renderCache = {};
 
+    static pool = [];
+
+    static get(x, y, vx, vy, isEngine = true) {
+        if (Bubble.pool.length > 0) {
+            const b = Bubble.pool.pop();
+            b.init(x, y, vx, vy, isEngine);
+            return b;
+        }
+        return new Bubble(x, y, vx, vy, isEngine);
+    }
+
+    static release(bubble) {
+        Bubble.pool.push(bubble);
+    }
+
     constructor(x, y, vx, vy, isEngine = true) {
+        this.init(x, y, vx, vy, isEngine);
+    }
+
+    init(x, y, vx, vy, isEngine = true) {
         this.x = x;
         this.y = y;
         this.vx = vx + (Math.random() - 0.5) * 0.8;
@@ -62,22 +81,30 @@ class Bubble {
         }
 
         let visibility = ambientAlpha;
-        const distToPlayerSq = distanceSq(this.x, this.y, player.x, player.y);
+        const dx = this.x - player.x;
+        const dy = this.y - player.y;
+        const distToPlayerSq = dx * dx + dy * dy;
         const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
-        if (player.lightOn && mainBattery > 0) {
-            if (distToPlayerSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
-                const distToPlayer = Math.sqrt(distToPlayerSq);
-                const angToBubble = Math.atan2(this.y - player.y, this.x - player.x);
-                const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
-                const angleDiff = clampAngleDelta(angToBubble, lookDir);
 
-                if (angleDiff < WORLD.lightAngle) {
+        if (player.lightOn && mainBattery > 0) {
+            const spotRangeSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
+            const glowRangeSq = WORLD.lightGlowRange * WORLD.lightGlowRange;
+
+            if (distToPlayerSq < spotRangeSq) {
+                const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+                const cosAngle = Math.cos(lookDir);
+                const sinAngle = Math.sin(lookDir);
+                const dot = dx * cosAngle + dy * sinAngle;
+                const cosLightAngle = Math.cos(WORLD.lightAngle);
+
+                if (dot > 0 && (dot * dot) > (cosLightAngle * cosLightAngle * distToPlayerSq)) {
+                    const distToPlayer = Math.sqrt(distToPlayerSq);
                     visibility = Math.max(visibility,
                         player.lightFlickerIntensity * (1 - distToPlayer / WORLD.lightSpotRange));
                 }
             }
             // Halo mínimo para burbujas en el área inmediata del submarino
-            if (distToPlayerSq < WORLD.lightGlowRange * WORLD.lightGlowRange) {
+            if (distToPlayerSq < glowRangeSq) {
                 const distToPlayer = Math.sqrt(distToPlayerSq);
                 const halo = (1 - distToPlayer / WORLD.lightGlowRange) * 0.5;
                 visibility = Math.max(visibility, halo);
@@ -95,14 +122,14 @@ class Bubble {
         if (window.WORLD.useGradients) {
             // CACHING: Pre-renderizar modelo de burbuja rotunda en offscreen canvas por tamaño (r redondeado x 2 para resolución)
             const rKey = Math.ceil(this.size * 2) / 2; // Key con precision 0.5 para no tener cache infinita
-            
+
             if (!Bubble.renderCache[rKey]) {
                 const offC = document.createElement('canvas');
                 const padding = 2; // Extra padding
                 offC.width = rKey * 2 + padding * 2;
                 offC.height = rKey * 2 + padding * 2;
                 const oCtx = offC.getContext('2d');
-                
+
                 // Centramos cordenadas en off-canvas
                 const cx = rKey + padding;
                 const cy = rKey + padding;
@@ -135,7 +162,7 @@ class Bubble {
                 const highlight = oCtx.createRadialGradient(hlX, hlY, 0, hlX, hlY, hlR);
                 highlight.addColorStop(0, `rgba(255, 255, 255, 0.85)`);
                 highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
-                
+
                 oCtx.beginPath();
                 oCtx.arc(hlX, hlY, hlR, 0, Math.PI * 2);
                 oCtx.fillStyle = highlight;

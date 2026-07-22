@@ -28,10 +28,10 @@ const FISH_CATALOG = [
         esCardumen: true,
         huyeDelJugador: true,
         distanciaCardumen: 0,
-        minProf: 0,      // 0 metros
+        minProf: 45,     // Ajustado: Mínimo 45 metros para despejar el área de atraque y la estación
         maxProf: 100,    // 100 metros
-        cantidadGrupos: 6,
-        pecesPorGrupo: 40,
+        cantidadGrupos: 2,
+        pecesPorGrupo: 240,
         ancho: 25,
         alto: 10,
         velocidadBase: 2,

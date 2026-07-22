@@ -121,7 +121,7 @@ class TemperatureManager {
         if (this.emergencyActive) {
             // Coste: Solo consume O2 si el submarino ya está desanclado
             const isUnlocked = (typeof player !== 'undefined' && player && !player.isLocked)
-                             || (typeof window.player !== 'undefined' && window.player && !window.player.isLocked);
+                || (typeof window.player !== 'undefined' && window.player && !window.player.isLocked);
 
             if (isUnlocked && typeof window.oxygenManager !== 'undefined') {
                 const om = window.oxygenManager;

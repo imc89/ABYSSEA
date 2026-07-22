@@ -333,7 +333,7 @@ class OxygenManager {
 
         // ==== PURGE BOTON ====
         const purgeText = document.getElementById('btn-purge-text');
-        
+
         // Deshabilitar visualmente si está anclado
         if (isLocked) {
             this.dom.btnPurge.classList.add('cursor-not-allowed', 'opacity-50', 'grayscale-[0.5]');
@@ -439,13 +439,13 @@ class OxygenManager {
                 timEl.classList.remove('opacity-0');
                 const m = Math.floor(tank.timer / 60);
                 const s = Math.floor(tank.timer % 60).toString().padStart(2, '0');
-                
+
                 const timeStr = `${m}:${s}`;
                 if (timEl._lastText !== timeStr) {
                     timEl.innerText = timeStr;
                     timEl._lastText = timeStr;
                 }
-                
+
                 if (statEl._lastText !== "REFILL") {
                     statEl.innerText = window.i18n ? window.i18n.t("oxy_refilling") : "Rellenando";
                     statEl.className = "text-orange-400 text-[10px] font-bold uppercase animate-pulse";

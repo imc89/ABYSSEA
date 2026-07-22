@@ -14,13 +14,16 @@ class Camera {
      * [ES] Actualiza la posición de la cámara centrada en el jugador, aplicando interpolación para un movimiento fluido y limitando el scroll solo al eje vertical.
      * [EN] Updates the camera position centered on the player, applying interpolation for smooth movement and restricting scroll to the vertical axis only.
      */
-    update(player, canvas) {
+    update(player, canvas, dtMult = 1.0) {
         // NO SCROLL HORIZONTAL - el mundo es exactamente igual al lienzo en nuestra resolución lógica
         this.x = 0;
 
         // SCROLL VERTICAL SOLAMENTE - seguir al jugador en profundidad
         const targetY = player.y - canvas.height / 2;
-        this.y += (targetY - this.y) * CAMERA_CONFIG.smoothing;
+        
+        // Ajustar el factor de suavizado por el delta time para evitar tirones
+        const smoothingFactor = 1 - Math.pow(1 - CAMERA_CONFIG.smoothing, dtMult);
+        this.y += (targetY - this.y) * smoothingFactor;
     }
 
     /**

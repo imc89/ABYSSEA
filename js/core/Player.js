@@ -112,23 +112,23 @@ class Player {
         let moving = false;
 
         if (this.isKeyPressed('left', keys, controlScheme)) {
-            this.vx -= currentSpeed * horizontalSpeedReduction;
+            this.vx -= currentSpeed * horizontalSpeedReduction * dtMult;
             this.dir = -1;
             this.targetAngle = -0.1;
             moving = true;
         }
         if (this.isKeyPressed('right', keys, controlScheme)) {
-            this.vx += currentSpeed * horizontalSpeedReduction;
+            this.vx += currentSpeed * horizontalSpeedReduction * dtMult;
             this.dir = 1;
             this.targetAngle = 0.1;
             moving = true;
         }
         if (this.isKeyPressed('up', keys, controlScheme)) {
-            this.vy -= currentSpeed;
+            this.vy -= currentSpeed * dtMult;
             moving = true;
         }
         if (this.isKeyPressed('down', keys, controlScheme)) {
-            this.vy += currentSpeed;
+            this.vy += currentSpeed * dtMult;
             moving = true;
         }
 
@@ -484,7 +484,8 @@ class Player {
      */
     draw(ctx, camera, playerImage, ambientAlpha, canvas) {
         ctx.save();
-        ctx.translate(this.x - camera.x, this.y - camera.y);
+        // OPTIMIZACIÓN: Truncar coordenadas a enteros con bitwise OR elimina anti-aliasing subpixel
+        ctx.translate((this.x - camera.x) | 0, (this.y - camera.y) | 0);
         ctx.rotate(this.angle);
 
         if (this.dir === -1) {
@@ -522,33 +523,57 @@ class Player {
         const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
         if (!this.lightOn || mainBattery <= 0) return;
 
-        const px = this.x - camera.x + (WORLD.lightOffsetX * this.dir);
-        const py = this.y - camera.y + WORLD.lightOffsetY;
+        // Calcular factor de oscuridad basado en la profundidad (la luz destaca más en la oscuridad)
+        const depthMeters = this.y / WORLD.depthScale;
+        // Superficie (0-100m) hay mucha luz natural, el foco casi no se nota (0.15 de su poder).
+        // Hacia los 600m ya es oscuridad total, el foco brilla al 100% (1.0).
+        const darknessFactor = Math.min(1, Math.max(0.15, (depthMeters - 100) / 500));
+
+        // OPTIMIZACIÓN: Coordenadas enteras
+        const cx = (this.x - camera.x) | 0;
+        const cy = (this.y - camera.y) | 0;
 
         ctx.save();
-        ctx.translate(px, py);
+        // 1. Halo radial: Centrado en el cuerpo del submarino
+        ctx.translate(cx, cy);
         ctx.rotate(this.angle);
 
-        const lightDir = this.dir === 1 ? 0 : Math.PI;
+        // Halo radial con caída de luz (falloff) muy suave y ambiental
+        const glowRange = WORLD.lightGlowRange * 0.75; // Radio muy ceñido al casco del submarino
+        const glowInt = WORLD.lightGlowIntensity * this.lightFlickerIntensity * darknessFactor;
 
-        // Halo radial configurable desde WORLD.lightGlowRange / lightGlowIntensity
-        const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, WORLD.lightGlowRange);
-        glowGrad.addColorStop(0, `rgba(255, 255, 220, ${WORLD.lightGlowIntensity * this.lightFlickerIntensity})`);
+        const glowGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, glowRange);
+
+        // Núcleo suave y natural, sin llegar al blanco puro
+        glowGrad.addColorStop(0, `rgba(180, 230, 245, ${glowInt})`);
+        // Medio tono muy disperso y acuático
+        glowGrad.addColorStop(0.4, `rgba(80, 190, 220, ${glowInt * 0.5})`);
+        // Desvanecimiento sutil hacia la oscuridad
+        glowGrad.addColorStop(0.8, `rgba(20, 120, 180, ${glowInt * 0.15})`);
         glowGrad.addColorStop(1, 'transparent');
+
         ctx.fillStyle = glowGrad;
         ctx.beginPath();
-        ctx.arc(0, 0, WORLD.lightGlowRange, 0, Math.PI * 2);
+        ctx.arc(0, 0, glowRange, 0, Math.PI * 2);
         ctx.fill();
+
+        // 2. Foco direccional: Desplazado hacia el morro del submarino (offset)
+        ctx.translate(WORLD.lightOffsetX * this.dir, WORLD.lightOffsetY);
+
+        const lightDir = this.dir === 1 ? 0 : Math.PI;
 
         // Foco direccional: Trapecio Isósceles
         const halfStartW = WORLD.lightStartWidth / 2;
         const endW = WORLD.lightStartWidth + (2 * WORLD.lightSpotRange * Math.tan(WORLD.lightAngle));
         const halfEndW = endW / 2;
 
+        const spotInt1 = 0.45 * this.lightFlickerIntensity * darknessFactor;
+        const spotInt2 = 0.25 * this.lightFlickerIntensity * darknessFactor;
+
         const spotlightGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, WORLD.lightSpotRange);
         spotlightGrad.addColorStop(0, `rgba(255, 255, 250, 0)`);
-        spotlightGrad.addColorStop(0.08, `rgba(255, 255, 250, ${0.45 * this.lightFlickerIntensity})`);
-        spotlightGrad.addColorStop(0.5, `rgba(255, 255, 240, ${0.25 * this.lightFlickerIntensity})`);
+        spotlightGrad.addColorStop(0.08, `rgba(255, 255, 250, ${spotInt1})`);
+        spotlightGrad.addColorStop(0.5, `rgba(255, 255, 240, ${spotInt2})`);
         spotlightGrad.addColorStop(1, 'transparent');
 
         ctx.save();

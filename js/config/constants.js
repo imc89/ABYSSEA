@@ -26,28 +26,37 @@ if (typeof window !== 'undefined') {
  */
 const QUALITY_PROFILES = {
     LOW: {
-        particleCount: 80,             // Océano más vacío, ultra rápido
-        spotlightParticles: 20,
-        aiThrottleRate: 0.2,           // IA al 20%
+        particleCount: 150,            // Océano más vacío, ultra rápido
+        spotlightParticles: 35,
+        aiThrottleRate: 0.12,          // IA al 12%
         useGradients: false,
-        bubbleSpawnRate: 0.15,         // Muy pocas burbujas
-        drawFishGlows: false           // Sin aura de neón en los peces (ahorro masivo)
+        bubbleSpawnRate: 0.12,         // Muy pocas burbujas
+        drawFishGlows: false,          // Sin aura de neón en los peces (ahorro masivo)
+        simDistance: 900,              // Distancia de simulación reducida para IA
+        useSchlieren: false,           // Desactivado en LOW
+        schlierenSliceH: 32            // No se usa, pero por coherencia
     },
     MED: {
-        particleCount: 200,            // Océano normal
-        spotlightParticles: 60,
-        aiThrottleRate: 0.5,           // IA al 50%
+        particleCount: 350,            // Océano normal
+        spotlightParticles: 80,
+        aiThrottleRate: 0.30,          // IA al 30%
         useGradients: false,
-        bubbleSpawnRate: 0.35,         // Burbujas normales
-        drawFishGlows: true            // Con aura de neón cacheados
+        bubbleSpawnRate: 0.30,         // Burbujas normales
+        drawFishGlows: true,           // Con aura de neón cacheados
+        simDistance: 1200,             // Distancia de simulación intermedia
+        useSchlieren: true,            // Activado en MED
+        schlierenSliceH: 24            // Rodajas más grandes para mayor rendimiento
     },
     HIGH: {
-        particleCount: 450,            // Océano denso
-        spotlightParticles: 120,
-        aiThrottleRate: 1.0,           // IA en tiempo real 
+        particleCount: 500,            // Denso pero alcanzable a 60fps
+        spotlightParticles: 120,       // Batching por alpha — coste muy bajo ahora
+        aiThrottleRate: 0.50,          // IA al 50%
         useGradients: true,            // Degradados HD en burbujas y nieve
-        bubbleSpawnRate: 0.70,         // Estela densa de burbujas
-        drawFishGlows: true            // Aura de neón
+        bubbleSpawnRate: 0.60,         // Estela densa de burbujas
+        drawFishGlows: true,           // Aura de neón
+        simDistance: 1400,             // Distancia de simulación completa
+        useSchlieren: true,            // Activado en HIGH
+        schlierenSliceH: 16            // Rodajas de alta calidad
     }
 };
 
@@ -67,6 +76,9 @@ const WORLD = {
     useGradients: QUALITY_PROFILES[GRAPHICS_QUALITY].useGradients,
     bubbleSpawnRate: QUALITY_PROFILES[GRAPHICS_QUALITY].bubbleSpawnRate,
     drawFishGlows: QUALITY_PROFILES[GRAPHICS_QUALITY].drawFishGlows,
+    simDistance: QUALITY_PROFILES[GRAPHICS_QUALITY].simDistance,
+    useSchlieren: QUALITY_PROFILES[GRAPHICS_QUALITY].useSchlieren,
+    schlierenSliceH: QUALITY_PROFILES[GRAPHICS_QUALITY].schlierenSliceH,
     lightSpotRange: 275,     // Longitud del foco direccional (cono)
     lightGlowRange: 250,     // Radio del halo radial alrededor del submarino
     lightGlowIntensity: 0.24, // Opacidad máxima del halo radial (0.0 a 1.0)
@@ -125,7 +137,7 @@ const PLAYER_CONFIG = {
  * [EN] Game camera settings. Defines tracking smoothness to prevent motion sickness for the player.
  */
 const CAMERA_CONFIG = {
-    smoothing: 0.05  // Factor de interpolación para seguimiento suave
+    smoothing: 0.08  // Factor de interpolación aumentado para un seguimiento más firme y fluido
 };
 
 /**

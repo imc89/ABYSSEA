@@ -26,6 +26,7 @@ class HydrothermalVent {
         this.particles = [];
         this.emitTimer = 0;
         this.active = true;
+        this.currentIllumination = 0.0; // Para el desvanecimiento suave (fade) en el tiempo
     }
 
     update(dtMult, camera, canvas) {
@@ -73,7 +74,7 @@ class HydrothermalVent {
                     life: 1.0,
                     size: 0.8 + Math.random() * 2.2,  // Partículas finas
                     maxLife: Math.random() * 180 + 120, // Duran un poco más para caer
-                    baseXRatio: this.xRatio              
+                    baseXRatio: this.xRatio
                 });
             }
         }
@@ -85,12 +86,12 @@ class HydrothermalVent {
             // Posición X
             p.x += p.vx * dtMult;
             p.y += p.vy * dtMult;
-            
+
             if (p.type === 'smoke' || !p.type) {
                 const targetX = p.baseXRatio * canvas.width;
                 // Anclaje al centro para que el humo mantenga la forma de la columna
                 p.x += (targetX - p.x) * 0.1 * dtMult;
-                
+
                 p.vx += (Math.random() * 0.2 - 0.1) * dtMult;
                 p.vx *= 0.98;
 
@@ -133,39 +134,61 @@ class HydrothermalVent {
 
         const currentX = this.xRatio * ctx.canvas.width;
 
-        // "No se verán por partes, se veran totalmente o no se verán dependiendo si les da un minimo de luz o no"
-        let isIlluminated = false;
+        let targetIllumination = 0.0;
 
         if (ambientAlpha > 0.05) {
-            isIlluminated = true; // Superficie / aguas iluminadas
+            targetIllumination = 1.0; // Superficie / aguas iluminadas
         } else {
             const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
             if (player.lightOn && mainBattery > 0) {
-                // Iteramos sobre las partículas. Si la luz roza a AL MENOS UNA, iluminamos TODO el chorro.
-                // Esto permite que apuntes a la punta de la columna de humo y se vea entera hacia abajo.
+                // Iteramos sobre las partículas para encontrar la máxima intensidad lumínica que recibe el chorro
                 for (let p of this.particles) {
-                    // El foco emana desde una posición desplazada (OffsetX y OffsetY)
+                    let pLight = 0;
+
+                    // 1. Halo radial
+                    const dSqHalo = distanceSq(p.x, p.y, player.x, player.y);
+                    if (dSqHalo < WORLD.lightGlowRange * WORLD.lightGlowRange) {
+                        const dist = Math.sqrt(dSqHalo);
+                        // Atenuación suave hacia el borde del halo
+                        pLight = Math.max(pLight, (1 - dist / WORLD.lightGlowRange) * WORLD.lightGlowIntensity);
+                    }
+
+                    // 2. Foco direccional
                     const spotX = player.x + (WORLD.lightOffsetX * player.dir);
                     const spotY = player.y + WORLD.lightOffsetY;
-                    const dSq = distanceSq(p.x, p.y, spotX, spotY);
+                    const dSqSpot = distanceSq(p.x, p.y, spotX, spotY);
 
-                    if (dSq < WORLD.lightSpotRange * WORLD.lightSpotRange) {
+                    if (dSqSpot < WORLD.lightSpotRange * WORLD.lightSpotRange) {
                         const angToParticle = Math.atan2(p.y - spotY, p.x - spotX);
                         const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
                         const MathAngleDelta = clampAngleDelta(angToParticle, lookDir);
 
-                        // Solo el foco direccional (cono/trapecio) influye, no el halo radial
                         if (MathAngleDelta < WORLD.lightAngle) {
-                            isIlluminated = true;
-                            break;
+                            const dist = Math.sqrt(dSqSpot);
+                            // Difuminado suave en los bordes del cono
+                            const edgeFade = Math.max(0, 1 - (MathAngleDelta / WORLD.lightAngle - 0.8) / 0.2);
+                            const spotInt = (1 - dist / WORLD.lightSpotRange) * edgeFade;
+                            pLight = Math.max(pLight, spotInt);
                         }
                     }
+
+                    targetIllumination = Math.max(targetIllumination, pLight);
+                    if (targetIllumination >= 1.0) break; // Optimización
                 }
+
+                // Amplificamos la curva de luz usando un Easing no lineal (cuadrático)
+                // Esto hace que la atenuación espacial sea más suave y cinematográfica
+                targetIllumination = Math.min(1.0, Math.pow(targetIllumination * 2.0, 1.5));
             }
         }
 
-        // Si no recibe un mínimo de luz, no dibujamos ninguna partícula de este chorro
-        if (!isIlluminated) return;
+        // Interpolar suavemente en el tiempo hacia la intensidad objetivo (fade-in y fade-out)
+        this.currentIllumination += (targetIllumination - this.currentIllumination) * 0.03;
+
+        // Si no recibe nada de luz y terminó el fundido a negro, no la dibujamos
+        if (this.currentIllumination <= 0.005) return;
+
+        const maxIllumination = this.currentIllumination;
 
         // Dibujamos primero las cenizas minerales sólidas (Source-Over normal)
         ctx.globalCompositeOperation = 'source-over';
@@ -173,16 +196,16 @@ class HydrothermalVent {
             if (p.type === 'ash') {
                 const pScreenX = p.x - camera.x;
                 const pScreenY = p.y - camera.y;
-                
+
                 // Las cenizas tienen un ciclo de vida térmico muy corto y luego caen como escoria fría
                 let ashAlpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 8));
-                
+
                 if (ashAlpha > 0.01) {
                     // Parpadeo (Scintillation) simulando que la escama rota y refleja la luz
                     const twinkle = 0.6 + 0.4 * Math.sin(p.life * 40 + p.x);
-                    const alpha = (ashAlpha * twinkle).toFixed(3);
-                    const softAlpha = (ashAlpha * twinkle * 0.4).toFixed(3);
-                    
+                    const alpha = (ashAlpha * twinkle * maxIllumination).toFixed(3);
+                    const softAlpha = (ashAlpha * twinkle * 0.4 * maxIllumination).toFixed(3);
+
                     let r, g, b;
                     if (p.life > 0.85) {
                         const heat = (p.life - 0.85) / 0.15;
@@ -193,15 +216,15 @@ class HydrothermalVent {
                         r = 130;
                         g = 140;
                         b = 150;
-                        const darkening = p.life / 0.85; 
+                        const darkening = p.life / 0.85;
                         r = Math.floor(r * darkening);
                         g = Math.floor(g * darkening);
                         b = Math.floor(b * darkening);
                     }
-                    
+
                     // Las cenizas son escamas irregulares: simulamos rotación 3D modificando su alto visual
                     const apparentSizeY = p.size * (0.3 + 0.7 * Math.abs(Math.sin(p.life * 18 + p.y)));
-                    
+
                     // Núcleo sólido
                     ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
                     ctx.beginPath();
@@ -227,21 +250,17 @@ class HydrothermalVent {
             const pScreenX = p.x - camera.x;
             const pScreenY = p.y - camera.y;
 
-            // Transición suave de opacidad ligada únicamente a la vida de la partícula (ya está 100% iluminada globalmente)
-            const alpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 5) * baseAlpha);
+            // Transición suave basada en vida de partícula y atenuada por la luz recibida
+            const alpha = Math.max(0, p.life * Math.min(1, (1 - p.life) * 5) * baseAlpha) * maxIllumination;
 
             if (alpha > 0.01) {
                 ctx.globalAlpha = alpha;
-
-                ctx.translate(pScreenX, pScreenY);
 
                 // Efecto de rastro de fluido (Streak)
                 const width = p.size;
                 const height = p.size * p.stretch;
 
-                ctx.drawImage(smokeCanvas, -width / 2, -height, width, height);
-
-                ctx.translate(-pScreenX, -pScreenY);
+                ctx.drawImage(smokeCanvas, pScreenX - width / 2, pScreenY - height, width, height);
             }
         }
 

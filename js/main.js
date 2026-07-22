@@ -10,6 +10,7 @@ let camera;
 let player;
 let uiManager;
 let uiTelemetry;
+let debugHitbox = false; // Toggle con tecla '+' (requiere panel de telemetría activo)
 let endGame;
 let imageCache;
 let splashScreen;
@@ -27,6 +28,7 @@ let lowBatteryAudio = null;
 let alarmAudio = null;
 let isMusicMuted = false;
 let isMenuOpen = false;
+let eventManager;
 
 // Telemetría / Culling
 let telemetryData = {
@@ -35,6 +37,7 @@ let telemetryData = {
     particles: 0,
     bubbles: 0
 };
+
 
 // Puntos de interés (Mini-descubrimientos)
 let discoveryPoints = [];
@@ -135,6 +138,7 @@ function setupGameCore() {
     endGame = new EndGame();
     uiTelemetry = new UITelemetry();
     imageCache = new ImageCache();
+    eventManager = new EventManager();
 
     // Inicializar audio
     bubblesAudio = new Audio('audio/bubbles.mp3');
@@ -167,8 +171,11 @@ function setupGameCore() {
     imageCache.load('floor', 'img/floor/floor.png');
 
     // Generar partículas de nieve marina (ahora en espacio de pantalla)
-    for (let i = 0; i < WORLD.particleCount; i++) {
-        marineSnow.push(new Particle());
+    // Nos aseguramos de no duplicarlas si resize() ya las generó durante el splash
+    if (marineSnow.length === 0) {
+        for (let i = 0; i < WORLD.particleCount; i++) {
+            marineSnow.push(new Particle());
+        }
     }
 
     // Generar peces
@@ -231,9 +238,19 @@ function setupGameCore() {
     // setupEventHandlers(); // Movido a init() para responder desde el splash
 
     // Caching global DOM elements para evitar consultar en cada loop (optimizacion rendimiento CPU 60fps)
-    domCache.alarmOverlay = document.getElementById('general-alarm-overlay');
-    domCache.alarmBanner = document.getElementById('alarm-hud-banner');
-    domCache.fishLayer = document.getElementById('fish-layer');
+    domCache = {
+        alarmOverlay: document.getElementById('general-alarm-overlay'),
+        alarmBanner: document.getElementById('alarm-hud-banner'),
+        alarmLabel: document.getElementById('alarm-hud-label'),
+        alarmValue: document.getElementById('alarm-hud-value'),
+        fishLayer: document.getElementById('fish-layer'),
+        uiLayer: document.getElementById('ui-layer'),
+        gameCanvas: document.getElementById('gameCanvas'),
+        co2Overlay: document.getElementById('co2-poison-overlay'),
+        o2Overlay: document.getElementById('o2-anoxia-overlay'),
+        hyperOverlay: document.getElementById('hyperthermia-overlay'),
+        hypoOverlay: document.getElementById('hypothermia-overlay')
+    };
 }
 
 /**
@@ -272,6 +289,14 @@ function setupEventHandlers() {
 
         if (e.key === '<') {
             if (typeof uiTelemetry !== 'undefined' && uiTelemetry) uiTelemetry.toggle();
+            // Apagar hitbox debug si se cierra el panel
+            if (!uiTelemetry.isVisible) debugHitbox = false;
+        }
+
+        if (e.key === '+' || e.key === '=') {
+            if (typeof uiTelemetry !== 'undefined' && uiTelemetry && uiTelemetry.isVisible) {
+                debugHitbox = !debugHitbox;
+            }
         }
 
         if (e.code === 'KeyE') {
@@ -399,9 +424,13 @@ function setControls(mode) {
  * [EN] Native recursive loop handled by requestAnimationFrame at a constant 60FPS.
  */
 let lastTime = 0;
+const targetFPS = 60;
+const frameDuration = 1000 / targetFPS;
+
 function loop(timestamp) {
     if (!lastTime) lastTime = timestamp;
     let dt = timestamp - lastTime;
+
     lastTime = timestamp;
 
     // Limit dt to prevent massive jumps (e.g., when switching tabs)
@@ -430,12 +459,23 @@ function loop(timestamp) {
 
     if (typeof oxygenManager !== 'undefined' && oxygenManager) {
         // Le pasamos dtMult modificado a segundos y player
-        // dtMult * (16.666/1000) nos da segundos para que encaje con la configuración de filtros
         oxygenManager.update(dt / 1000, player);
     }
 
     if (typeof temperatureManager !== 'undefined' && temperatureManager) {
         temperatureManager.update(dt / 1000, player);
+    }
+
+    // UI Telemetry: Throttle updates to improve performance
+    if (typeof telemetryThrottle === 'undefined') window.telemetryThrottle = 0;
+    window.telemetryThrottle++;
+    if (window.telemetryThrottle % 15 === 0 && typeof uiTelemetry !== 'undefined' && uiTelemetry) {
+        uiTelemetry.update(
+            telemetryData.activeFishes,
+            telemetryData.renderedFishes,
+            telemetryData.particles,
+            telemetryData.bubbles
+        );
     }
 
     draw();
@@ -455,10 +495,77 @@ function update(dtMult = 1.0) {
         return;
     }
 
-    // Calcular altura del suelo para límites físicos dinámicos
-    const floorImg = imageCache.get('floor');
-    const floorHeight = floorImg ? (floorImg.naturalHeight * (canvas.width / floorImg.naturalWidth)) : 0;
-    const moving = player.update(keys, controlScheme, WORLD, canvas, dtMult, floorHeight);
+    // Calcular altura del suelo para límites físicos dinámicos (Caché por frame para ahorrar divisiones)
+    if (typeof this._lastFloorW === 'undefined' || this._lastFloorW !== canvas.width) {
+        const floorImg = imageCache.get('floor');
+        this._floorHeight = floorImg ? (floorImg.naturalHeight * (canvas.width / floorImg.naturalWidth)) : 0;
+        this._lastFloorW = canvas.width;
+    }
+    const floorHeight = this._floorHeight;
+
+    // Sub-stepping logic for smooth physics and movement under any framerate
+    const maxSubStep = 1.0;
+    let remaining = dtMult;
+    let moving = false;
+    let stepCount = 0;
+
+    while (remaining > 0) {
+        const step = Math.min(remaining, maxSubStep);
+        const isFirstStep = (stepCount === 0);
+        stepCount++;
+
+        // 1. Físicas del jugador
+        moving = player.update(keys, controlScheme, WORLD, canvas, step, floorHeight) || moving;
+
+        // 2. Cámara
+        camera.update(player, canvas, step);
+
+        // 3. Peces (pasar canvas para límites dinámicos) y CULLING DE IA
+        if (isFirstStep) {
+            telemetryData.activeFishes = 0;
+        }
+        for (const f of fishes) {
+            // Culling vertical basado en simDistance
+            f.isSimulated = true;
+            if (f.y !== undefined) {
+                f.isSimulated = Math.abs(f.y - player.y) < (window.WORLD.simDistance || 1500);
+            }
+
+            // Si es el evento activo, DEBE simularse siempre para poder terminar su ruta y liberarse.
+            if (typeof eventManager !== 'undefined' && eventManager.activeEvent === f) {
+                f.isSimulated = true;
+            }
+
+            if (f.isSimulated) {
+                if (isFirstStep) {
+                    telemetryData.activeFishes++;
+                }
+                // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
+                f.update(globalBoidsGroups[f.groupId], player, canvas, step);
+            }
+        }
+
+        // 4. Eventos aleatorios
+        if (typeof eventManager !== 'undefined' && eventManager) {
+            eventManager.update(step, player, fishes);
+        }
+
+        // 5. Burbujas
+        for (let i = 0; i < bubbles.length; i++) {
+            bubbles[i].update(step);
+        }
+
+        remaining -= step;
+    }
+
+    // Partículas visuales: se actualizan UNA VEZ por frame con el dtMult total.
+    // No necesitan sub-stepping — son efectos visuales, no física de juego.
+    for (const p of marineSnow) {
+        p.update(player, canvas, camera, dtMult);
+    }
+    if (typeof hydrothermalManager !== 'undefined') {
+        hydrothermalManager.update(dtMult, camera, canvas);
+    }
 
     // Lógica de desenganche de la base (S en WASD o ArrowDown)
     if (player.isLocked) {
@@ -477,18 +584,15 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // Actualizar cámara
-    camera.update(player, canvas);
-
     // Generar burbujas y audio si el jugador se mueve
     if (moving) {
         if (Math.random() < window.WORLD.bubbleSpawnRate) {
-            bubbles.push(new Bubble(player.x, player.y, -player.vx, -player.vy));
+            bubbles.push(Bubble.get(player.x, player.y, -player.vx, -player.vy));
         }
 
         // Reproducir audio de burbujas (loop)
         if (bubblesAudio && bubblesAudio.paused) {
-            bubblesAudio.play().catch(e => { });
+            bubblesAudio.play().catch(() => { });
         }
     } else {
         // Pausar audio de burbujas si no hay movimiento
@@ -497,7 +601,7 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // [ES] Lógica de audio para batería baja de la RESERVA PRINCIPAL (< 10%)
+    // Lógica de audio para batería baja de la RESERVA PRINCIPAL (< 10%)
     if (typeof energyManager !== 'undefined' && energyManager.battery < 10 && energyManager.battery > 0) {
         if (lowBatteryAudio && lowBatteryAudio.paused) {
             lowBatteryAudio.play().catch(e => { });
@@ -509,7 +613,7 @@ function update(dtMult = 1.0) {
         }
     }
 
-    // [ES] Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2/Temperatura)
+    // Lógica de ALARMA GENERAL para soporte vital (Oxígeno/CO2/Temperatura)
     const isAnoxiaAlarm = (typeof oxygenManager !== 'undefined' && oxygenManager.cabinOxygen < 15.0);
     const isCo2Alarm = (typeof player !== 'undefined' && player.co2 >= 10.0);
 
@@ -534,12 +638,12 @@ function update(dtMult = 1.0) {
 
     const alarmOverlay = domCache.alarmOverlay;
     const alarmBanner = domCache.alarmBanner;
-    const alarmLabel = document.getElementById('alarm-hud-label');
-    const alarmValue = document.getElementById('alarm-hud-value');
+    const alarmLabel = domCache.alarmLabel;
+    const alarmValue = domCache.alarmValue;
 
     if (isAlarmActive) {
         if (alarmAudio && alarmAudio.paused) {
-            alarmAudio.play().catch(e => { });
+            alarmAudio.play().catch(() => { });
         }
 
         // Pulso visual del borde de alarma
@@ -548,10 +652,12 @@ function update(dtMult = 1.0) {
             alarmOverlay.style.opacity = pulse.toString();
         }
 
-        // Banner superior: mostrar con texto específico según prioridad de alarma
-        if (alarmBanner) {
+        // Banner superior
+        if (alarmBanner && !alarmBanner.classList.contains('active')) {
             alarmBanner.classList.add('active');
+        }
 
+        if (alarmBanner) {
             if (isHyperAlarm && !isTempFixing) {
                 const secsLeft = Math.max(0, 20 - tempMgr.hyperTimer).toFixed(1);
                 if (alarmLabel) alarmLabel.textContent = window.i18n ? window.i18n.t("alarm_hyper") : '⚠ ALARMA — HIPERTERMIA';
@@ -577,40 +683,44 @@ function update(dtMult = 1.0) {
             alarmAudio.currentTime = 0;
         }
 
-        if (alarmOverlay) {
+        if (alarmOverlay && alarmOverlay.style.opacity !== '0') {
             alarmOverlay.style.opacity = '0';
         }
 
-        // Ocultar banner
-        if (alarmBanner) {
+        if (alarmBanner && alarmBanner.classList.contains('active')) {
             alarmBanner.classList.remove('active');
         }
     }
 
-    // Actualizar burbujas y filtrar las muertas in-place para no alocar arreglos por frame
-    for (let i = bubbles.length - 1; i >= 0; i--) {
+    // Actualizar burbujas y filtrar las muertas usando Swap-and-Pop (O(1) para evitar Garbage Collection stutters)
+    for (let i = 0; i < bubbles.length; i++) {
         if (bubbles[i].life <= 0) {
-            bubbles.splice(i, 1);
-        } else {
-            bubbles[i].update(dtMult);
+            Bubble.release(bubbles[i]);
+            bubbles[i] = bubbles[bubbles.length - 1];
+            bubbles.pop();
+            i--; // Re-evaluar el índice actual ya que contiene un elemento nuevo
         }
     }
 
     // Verificar proximidad e iluminación a Puntos de Descubrimiento (POIs)
     nearPOI = null;
-    discoveryPoints.forEach(poi => {
+    const lightRangeSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
+    const lightOriginY = player.y + WORLD.lightOffsetY;
+    const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+    const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
+
+    for (const poi of discoveryPoints) {
         // [ES] Obligatorio resetear el estado de iluminación en cada frame para evitar falsos positivos
         poi.isLit = false;
 
-        // Primero: Proximidad básica (para optimizar)
-        const dist = Math.hypot(player.x - poi.x, player.y - poi.y);
+        // Primero: Proximidad básica (para optimizar) - Usamos distancia al cuadrado
+        const dx = player.x - poi.x;
+        const dy = player.y - poi.y;
+        const distSq = dx * dx + dy * dy;
 
         // Segundo: Verificación de cono de luz
-        const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
-        if (player.lightOn && mainBattery > 0 && dist < WORLD.lightSpotRange) {
-            const angTo = Math.atan2(poi.y - (player.y + WORLD.lightOffsetY), poi.x - player.x);
-            const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
-
+        if (player.lightOn && mainBattery > 0 && distSq < lightRangeSq) {
+            const angTo = Math.atan2(poi.y - lightOriginY, poi.x - player.x);
             const diff = clampAngleDelta(angTo, lookDir);
 
             if (diff < WORLD.lightAngle) {
@@ -626,31 +736,15 @@ function update(dtMult = 1.0) {
             // Reset suave del pulso o simplemente mantenerlo estático
             poi.pulse = 0;
         }
-    });
-
-    // Actualizar partículas (ahora son world-space y necesitan la cámara para culling)
-    marineSnow.forEach(p => p.update(player, canvas, camera, dtMult));
-
-    if (typeof hydrothermalManager !== 'undefined') {
-        hydrothermalManager.update(dtMult, camera, canvas);
     }
 
-    // Actualizar peces (pasar canvas para límites dinámicos) y CULLING DE IA
-    telemetryData.activeFishes = 0;
-
-    fishes.forEach(f => {
-        // Culling vertical (+- 1500 unidades para dar margen de aparición visual y comportamiento realista fuera de camara)
-        f.isSimulated = Math.abs(f.y - player.y) < 1500;
-
-        if (f.isSimulated) {
-            telemetryData.activeFishes++;
-            // Solo actualizar IA y Posiciones locales pasándole estrictamente su sub-grupo aislado
-            f.update(globalBoidsGroups[f.groupId], player, canvas, dtMult);
-        }
-    });
-
     // Encontrar objetivo escaneable (pez en el cono de luz)
-    scannableTarget = findScannableTarget();
+    // Actualizar objetivo de escaneo (prioridad: Cachalote > Otros) - Throttled a cada 5 frames para ahorro CPU
+    if (typeof window._scanThrottle === 'undefined') window._scanThrottle = 0;
+    window._scanThrottle++;
+    if (window._scanThrottle % 5 === 0) {
+        scannableTarget = findScannableTarget();
+    }
 
     // Actualizar UI
     uiManager.update(player, scannableTarget, FISH_CATALOG, nearPOI);
@@ -662,27 +756,85 @@ function update(dtMult = 1.0) {
  */
 function findScannableTarget() {
     const mainBattery = (typeof energyManager !== 'undefined') ? energyManager.battery : 100;
-    if (!player.lightOn || mainBattery <= 0) return null;
+    if (!player.lightOn || mainBattery <= 0) {
+        scannableTarget = null;
+        return null;
+    }
 
     let minDistSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
     let target = null;
 
-    fishes.forEach(f => {
-        if (!f.isSimulated) return; // Optimizando iteración solo a peces renderizados
-        const dSq = distanceSq(f.x, f.y, player.x, player.y + WORLD.lightOffsetY);
+    const lightOriginY = player.y + WORLD.lightOffsetY;
+    const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+    const lightRangeSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
 
-        if (dSq < minDistSq) {
-            const angTo = Math.atan2(f.y - (player.y + WORLD.lightOffsetY), f.x - player.x);
-            const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+    for (const f of fishes) {
+        if (!f.isSimulated) continue;
 
-            const diff = clampAngleDelta(angTo, lookDir);
+        const sizeRadius = (f.width ? f.width / 2 : 0) * 0.9;
+        const isGiant = sizeRadius > WORLD.lightSpotRange * 0.5;
 
-            if (diff < WORLD.lightAngle) {
-                minDistSq = dSq;
+        if (isGiant) {
+            // HITBOX RECTANGULAR ROTADA: muestrear 7x3 puntos alineados con el cuerpo
+            const halfW = sizeRadius;
+            const halfH = (f.height ? f.height / 2 : sizeRadius) * 0.6;
+            const localYOffset = (f.height ? f.height * -0.15 : 0);
+            const steps = 7;
+            // Usar exactamente el ángulo de desplazamiento (movimiento) de la criatura
+            const angleRad = (f.angleDeg !== undefined ? f.angleDeg : Math.atan2(f.vy || 0, f.vx || -1) * (180 / Math.PI)) * (Math.PI / 180);
+            const cos = Math.cos(angleRad);
+            const sin = Math.sin(angleRad);
+
+            let closestDistSq = Infinity;
+            let hit = false;
+
+            for (let s = 0; s < steps; s++) {
+                const t = s / (steps - 1);
+                const lx = -halfW + t * halfW * 2;
+                for (const ly of [-halfH + localYOffset, localYOffset, halfH + localYOffset]) {
+                    // Rotar el punto local al espacio del mundo
+                    const px = f.x + lx * cos - ly * sin;
+                    const py = f.y + lx * sin + ly * cos;
+
+                    const pDSq = distanceSq(px, py, player.x, lightOriginY);
+                    if (pDSq > lightRangeSq) continue;
+
+                    const angTo = Math.atan2(py - lightOriginY, px - player.x);
+                    const diff = clampAngleDelta(angTo, lookDir);
+
+                    if (diff < WORLD.lightAngle) {
+                        hit = true;
+                        if (pDSq < closestDistSq) closestDistSq = pDSq;
+                    }
+                }
+            }
+
+            if (hit && closestDistSq < minDistSq) {
+                minDistSq = closestDistSq;
                 target = f;
             }
+
+        } else {
+            // DETECCION PUNTUAL para peces normales
+            const dSq = distanceSq(f.x, f.y, player.x, lightOriginY);
+            const allowedDist = WORLD.lightSpotRange + sizeRadius;
+            if (dSq >= allowedDist * allowedDist) continue;
+
+            const dist = Math.sqrt(dSq);
+            const angTo = Math.atan2(f.y - lightOriginY, f.x - player.x);
+            const diff = clampAngleDelta(angTo, lookDir);
+            const angularRadius = sizeRadius / Math.max(1, dist);
+
+            if (diff - angularRadius < WORLD.lightAngle) {
+                const relativeDist = Math.max(0, dist - sizeRadius);
+                const relativeDistSq = relativeDist * relativeDist;
+                if (relativeDistSq < minDistSq) {
+                    minDistSq = relativeDistSq;
+                    target = f;
+                }
+            }
         }
-    });
+    }
 
     return target;
 }
@@ -741,33 +893,43 @@ function draw() {
         ambientAlpha = 0;
     }
 
-    // Dibujar partículas de nieve marina y contar solo las que realmente se renderizaron (alpha > 0.01)
+    // Dibujar partículas (Skip if menu open for performance)
     telemetryData.particles = 0;
-    marineSnow.forEach(p => {
-        const drawn = p.draw(ctx, player, camera, ambientAlpha, canvas);
-        if (drawn) telemetryData.particles++;
-    });
+    if (!(isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen)) {
+        const spotScreenX = player.x - camera.x;
+        const spotScreenY = player.y - camera.y + WORLD.lightOffsetY;
+        const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+        const cosAngle = Math.cos(lookDir);
+        const sinAngle = Math.sin(lookDir);
+        const cosLightAngle = Math.cos(WORLD.lightAngle);
+        const cosLightAngleSq = cosLightAngle * cosLightAngle;
+
+        for (const p of marineSnow) {
+            const drawn = p.draw(ctx, player, camera, ambientAlpha, canvas, spotScreenX, spotScreenY, cosAngle, sinAngle, cosLightAngleSq);
+            if (drawn) telemetryData.particles++;
+        }
+    }
 
     // Dibujar Puntos de Descubrimiento (POIs)
-    discoveryPoints.forEach(poi => {
+    for (const poi of discoveryPoints) {
         const sx = poi.x - camera.x;
         const sy = poi.y - camera.y;
 
         // Solo si está en pantalla
-        if (sx < -100 || sx > canvas.width + 100 || sy < -100 || sy > canvas.height + 100) return;
+        if (sx < -100 || sx > canvas.width + 100 || sy < -100 || sy > canvas.height + 100) continue;
 
         ctx.save();
 
         // Círculo concéntrico brillante ajustable desde MacroManager
         MacroManager.drawPOI(ctx, sx, sy, poi.pulse, poi.isLit);
-    });
+    }
 
     // Dibujar burbujas (visibilidad via luz del submarino o luz ambiental superficial)
     telemetryData.bubbles = 0;
-    bubbles.forEach(b => {
+    for (const b of bubbles) {
         const rendered = b.draw(ctx, camera, ambientAlpha, player, canvas);
         if (rendered) telemetryData.bubbles++;
-    });
+    }
 
     // Dibujar base de inicio (ahora le pasamos el player para las pinzas)
     startingBase.draw(ctx, camera, player);
@@ -787,21 +949,219 @@ function draw() {
     // Dibujar onda del sónar
     player.drawSonar(ctx, camera);
 
-    // Dibujar peces (solo los simulados renderizaran al DOM para lazy loading)
+    // Dibujar peces: CAPA FONDO (Skip if menu open for performance)
     telemetryData.renderedFishes = 0;
-    fishes.forEach(f => {
-        // Aprovechamos este flag del update para saltarse el draw si están muy lejanos
-        // Retornan true si dibujaron algo
-        if (f.isSimulated) {
-            const rendered = f.draw(ctx, camera, imageCache, player, canvas);
-            if (rendered) telemetryData.renderedFishes++;
-        } else {
-            // Aseguramos esconder DOM si dejaron de simularse
-            f.hideDOM();
+    if (!(isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen)) {
+        for (const f of fishes) {
+            if (f.isSimulated && !f.isForeground) {
+                const rendered = f.draw(ctx, camera, imageCache, player, canvas);
+                if (rendered) telemetryData.renderedFishes++;
+            }
         }
-    });
+    }
+    // --- DEBUG HITBOX / ADVANCED TELEMETRY VISUALIZATION ---
+    // Activo con panel telemetria + tecla +
+    if (uiTelemetry.isVisible && debugHitbox) {
+        const lightOriginY = player.y + WORLD.lightOffsetY;
+        const lookDir = player.dir === 1 ? player.angle : Math.PI + player.angle;
+        const lightRangeSq = WORLD.lightSpotRange * WORLD.lightSpotRange;
 
-    // Actualizar UI de telemetría (si está activa)
+        // 1. Dibujar el CONO DE DETECCIÓN EXACTO del sistema de escaneo
+        ctx.save();
+        const px = player.x - camera.x;
+        const py = player.y - camera.y + WORLD.lightOffsetY;
+        ctx.translate(px, py);
+        ctx.rotate(lookDir);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, WORLD.lightSpotRange, -WORLD.lightAngle, WORLD.lightAngle);
+        ctx.lineTo(0, 0);
+        ctx.fillStyle = 'rgba(0, 255, 200, 0.05)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 255, 200, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5, 2, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Dibujar límite exterior del Halo
+        ctx.beginPath();
+        ctx.arc(0, 0, WORLD.lightGlowRange, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 200, 255, 0.15)';
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. Iterar peces y dibujar marcadores HUD avanzados
+        fishes.forEach(f => {
+            if (!f.isSimulated) return;
+            const sizeRadius = (f.width ? f.width / 2 : 0) * 0.9;
+            const isGiant = sizeRadius > WORLD.lightSpotRange * 0.5;
+
+            const sx = f.x - camera.x;
+            const sy = f.y - camera.y;
+
+            ctx.save();
+
+            if (isGiant) {
+                // --- RECTÁNGULO ROTADO HUD (Criaturas Gigantes) ---
+                const halfW = sizeRadius;
+                const halfH = (f.height ? f.height / 2 : sizeRadius) * 0.6;
+                const localYOffset = (f.height ? f.height * -0.15 : 0);
+                const steps = 7;
+                const angleRad = (f.angleDeg !== undefined
+                    ? f.angleDeg
+                    : Math.atan2(f.vy || 0, f.vx || -1) * (180 / Math.PI)) * (Math.PI / 180);
+                const cos = Math.cos(angleRad);
+                const sin = Math.sin(angleRad);
+
+                const rotatePoint = (lx, ly) => ({
+                    x: f.x + lx * cos - ly * sin,
+                    y: f.y + lx * sin + ly * cos
+                });
+
+                // Borde del rectangulo
+                const corners = [
+                    rotatePoint(-halfW, -halfH + localYOffset), rotatePoint(halfW, -halfH + localYOffset),
+                    rotatePoint(halfW, halfH + localYOffset), rotatePoint(-halfW, halfH + localYOffset)
+                ];
+
+                // Comprobar si está impactado por el escáner
+                let anyHit = false;
+                for (let s = 0; s < steps; s++) {
+                    const t = s / (steps - 1);
+                    const lx = -halfW + t * halfW * 2;
+                    for (const ly of [-halfH + localYOffset, localYOffset, halfH + localYOffset]) {
+                        const wp = rotatePoint(lx, ly);
+                        const pDSq = distanceSq(wp.x, wp.y, player.x, lightOriginY);
+                        if (pDSq <= lightRangeSq) {
+                            const angTo = Math.atan2(wp.y - lightOriginY, wp.x - player.x);
+                            const diff = clampAngleDelta(angTo, lookDir);
+                            if (diff < WORLD.lightAngle) anyHit = true;
+                        }
+                    }
+                }
+
+                ctx.strokeStyle = anyHit ? 'rgba(0, 255, 150, 0.9)' : 'rgba(0, 150, 255, 0.4)';
+                ctx.lineWidth = anyHit ? 2 : 1;
+                ctx.beginPath();
+                ctx.moveTo(corners[0].x - camera.x, corners[0].y - camera.y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(corners[i].x - camera.x, corners[i].y - camera.y);
+                ctx.closePath();
+                ctx.stroke();
+
+                // Puntos de muestreo cruzados tipo matriz táctica
+                for (let s = 0; s < steps; s++) {
+                    const t = s / (steps - 1);
+                    const lx = -halfW + t * halfW * 2;
+                    for (const ly of [-halfH + localYOffset, localYOffset, halfH + localYOffset]) {
+                        const wp = rotatePoint(lx, ly);
+                        const pDSq = distanceSq(wp.x, wp.y, player.x, lightOriginY);
+                        const inRange = pDSq <= lightRangeSq;
+                        const angTo = Math.atan2(wp.y - lightOriginY, wp.x - player.x);
+                        const diff = clampAngleDelta(angTo, lookDir);
+                        const inCone = diff < WORLD.lightAngle;
+
+                        const pX = wp.x - camera.x;
+                        const pY = wp.y - camera.y;
+
+                        ctx.beginPath();
+                        ctx.moveTo(pX - 3, pY); ctx.lineTo(pX + 3, pY);
+                        ctx.moveTo(pX, pY - 3); ctx.lineTo(pX, pY + 3);
+                        ctx.strokeStyle = (inRange && inCone) ? 'rgba(0, 255, 100, 1)'
+                            : inRange ? 'rgba(255, 200, 0, 0.8)'
+                                : 'rgba(255, 50, 50, 0.4)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                }
+
+                // Datos del HUD
+                ctx.fillStyle = anyHit ? 'rgba(0, 255, 150, 1)' : 'rgba(0, 150, 255, 0.8)';
+                ctx.font = '10px "JetBrains Mono", monospace';
+                const fId = f.config?.id || 'GIANT_ENTITY';
+                ctx.fillText(`CLASS: ${fId.toUpperCase()}`, corners[3].x - camera.x, corners[3].y - camera.y + 15);
+                ctx.fillText(`TRG: ${anyHit ? 'LOCKED' : 'SEARCHING'}`, corners[3].x - camera.x, corners[3].y - camera.y + 27);
+
+            } else {
+                // --- TARGETING BRACKETS (Peces Normales) ---
+                const dSq = distanceSq(f.x, f.y, player.x, lightOriginY);
+                const dist = Math.sqrt(dSq);
+                const inRange = dSq <= (WORLD.lightSpotRange + sizeRadius) ** 2;
+                const angTo = Math.atan2(f.y - lightOriginY, f.x - player.x);
+                const diff = clampAngleDelta(angTo, lookDir);
+                const angularRadius = sizeRadius / Math.max(1, dist);
+                const inCone = (diff - angularRadius) < WORLD.lightAngle;
+
+                const isLocked = scannableTarget === f;
+
+                const sColor = isLocked ? 'rgba(0, 255, 100, 1)'
+                    : (inRange && inCone) ? 'rgba(0, 255, 150, 0.8)'
+                        : inRange ? 'rgba(255, 200, 0, 0.5)'
+                            : 'rgba(0, 150, 255, 0.2)';
+
+                ctx.strokeStyle = sColor;
+                ctx.lineWidth = isLocked ? 2 : 1;
+
+                // Dibujar corchetes de retícula
+                const b = sizeRadius || 20;
+                const cLen = Math.max(4, b * 0.3); // Tamaño de las esquinas
+
+                ctx.beginPath();
+                // Superior-Izquierda
+                ctx.moveTo(sx - b, sy - b + cLen); ctx.lineTo(sx - b, sy - b); ctx.lineTo(sx - b + cLen, sy - b);
+                // Superior-Derecha
+                ctx.moveTo(sx + b - cLen, sy - b); ctx.lineTo(sx + b, sy - b); ctx.lineTo(sx + b, sy - b + cLen);
+                // Inferior-Izquierda
+                ctx.moveTo(sx - b, sy + b - cLen); ctx.lineTo(sx - b, sy + b); ctx.lineTo(sx - b + cLen, sy + b);
+                // Inferior-Derecha
+                ctx.moveTo(sx + b - cLen, sy + b); ctx.lineTo(sx + b, sy + b); ctx.lineTo(sx + b, sy + b - cLen);
+                ctx.stroke();
+
+                // Fondo semi-transparente interno si está en rango
+                if (inRange && inCone) {
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, b, 0, Math.PI * 2);
+                    ctx.fillStyle = isLocked ? 'rgba(0, 255, 100, 0.15)' : 'rgba(0, 255, 150, 0.05)';
+                    ctx.fill();
+                }
+
+                // Cruz central pequeña
+                ctx.beginPath();
+                ctx.moveTo(sx - 3, sy); ctx.lineTo(sx + 3, sy);
+                ctx.moveTo(sx, sy - 3); ctx.lineTo(sx, sy + 3);
+                ctx.strokeStyle = sColor;
+                ctx.stroke();
+
+                // Texto de telemetría adyacente (Solo si está cerca o enfocado para no saturar)
+                if (inRange || isLocked) {
+                    ctx.fillStyle = sColor;
+                    ctx.font = '9px "JetBrains Mono", monospace';
+                    const safeDist = Math.round(dist);
+                    const safeDiff = diff.toFixed(2);
+                    ctx.fillText(`DST:${safeDist}m`, sx + b + 4, sy - 4);
+                    ctx.fillText(`ANG:${safeDiff}r`, sx + b + 4, sy + 6);
+                    if (isLocked) ctx.fillText(`[LOCKED]`, sx + b + 4, sy + 16);
+                }
+            }
+
+            // --- LÍNEA DE TRAZADO TÁCTICO AL OBJETIVO ---
+            if (scannableTarget === f) {
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(sx, sy);
+                ctx.strokeStyle = 'rgba(0, 255, 100, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([10, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.restore();
+        });
+    }
+
+
+
     uiTelemetry.update(
         telemetryData.activeFishes,
         telemetryData.renderedFishes,
@@ -951,51 +1311,67 @@ function draw() {
     // Dibujar luz del jugador (ahora con mayor Z-index)
     player.drawLight(ctx, camera);
 
-    // --- EFECTO SCHLIEREN (Distorsión por calor de fumarolas) ---
-    // Renderizado al final para que afecte a la luz del foco, al submarino y al fondo profundo
-    const hazeBottom = 115000;
-    const hazeTop = 109000;
-    const hazeScreenBottom = hazeBottom - camera.y;
-    const hazeScreenTop = hazeTop - camera.y;
-
-    if (hazeScreenBottom > 0 && hazeScreenTop < canvas.height) {
-        ctx.save();
-        const startY = Math.max(0, Math.floor(hazeScreenTop));
-        const endY = Math.min(canvas.height, Math.ceil(hazeScreenBottom));
-        const height = endY - startY;
-
-        if (height > 0) {
-            if (!window.hazeCanvas) {
-                window.hazeCanvas = document.createElement('canvas');
-                window.hazeCtx = window.hazeCanvas.getContext('2d');
-            }
-            window.hazeCanvas.width = canvas.width;
-            window.hazeCanvas.height = height;
-            // Capturar la imagen completa (incluyendo submarino)
-            window.hazeCtx.drawImage(canvas, 0, startY, canvas.width, height, 0, 0, canvas.width, height);
-
-            // Limpiar el fondo
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, startY, canvas.width, height);
-
-            const time = Date.now() * 0.003; // Velocidad suave
-            const sliceH = 4;
-            for (let i = 0; i < height; i += sliceH) {
-                const wave = Math.sin(time + i * 0.04) * 3.5 +
-                    Math.sin(time * 0.6 + i * 0.1) * 1.5;
-
-                const distToTop = i;
-                const distToBottom = height - i;
-                const edgeDist = Math.min(distToTop, distToBottom);
-                const intensity = Math.min(1.0, edgeDist / 100);
-
-                const finalOffset = wave * intensity;
-
-                ctx.globalAlpha = 1.0;
-                ctx.drawImage(window.hazeCanvas, 0, i, canvas.width, sliceH, finalOffset - 6, startY + i, canvas.width + 12, sliceH);
+    // Dibujar peces: CAPA FRENTE (Z-index sobre el submarino)
+    if (!(isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen)) {
+        for (const f of fishes) {
+            if (f.isSimulated && f.isForeground) {
+                const rendered = f.draw(ctx, camera, imageCache, player, canvas);
+                if (rendered) telemetryData.renderedFishes++;
             }
         }
-        ctx.restore();
+    }
+
+    // --- EFECTO SCHLIEREN (Skip if menu open) ---
+    if (window.WORLD.useSchlieren && !(isMenuOpen || uiManager.isScanModalOpen || uiManager.isDiscoveryModalOpen || uiManager.isSubManagementOpen)) {
+        const hazeBottom = 115000;
+        const hazeTop = 109000;
+        const hazeScreenBottom = hazeBottom - camera.y;
+        const hazeScreenTop = hazeTop - camera.y;
+
+        if (hazeScreenBottom > 0 && hazeScreenTop < canvas.height) {
+            ctx.save();
+            const startY = Math.max(0, Math.floor(hazeScreenTop));
+            const endY = Math.min(canvas.height, Math.ceil(hazeScreenBottom));
+            const height = endY - startY;
+
+            if (height > 0) {
+                if (!window.hazeCanvas) {
+                    window.hazeCanvas = document.createElement('canvas');
+                    window.hazeCtx = window.hazeCanvas.getContext('2d');
+                }
+                // Evitar redimensionamiento agresivo que causa lag
+                if (window.hazeCanvas.width !== canvas.width || window.hazeCanvas.height < height) {
+                    window.hazeCanvas.width = canvas.width;
+                    window.hazeCanvas.height = Math.max(height, 500);
+                }
+                // Capturar la imagen completa (incluyendo submarino)
+                window.hazeCtx.drawImage(canvas, 0, startY, canvas.width, height, 0, 0, canvas.width, height);
+
+                // Limpiar el fondo
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, startY, canvas.width, height);
+
+                const time = Date.now() * 0.003; // Velocidad suave
+                const sliceH = window.WORLD.schlierenSliceH || 12;
+                ctx.imageSmoothingEnabled = true;
+
+                for (let i = 0; i < height; i += sliceH) {
+                    const wave = Math.sin(time + i * 0.03) * 4.5 +
+                        Math.sin(time * 0.6 + i * 0.08) * 1.5;
+
+                    const distToTop = i;
+                    const distToBottom = height - i;
+                    const edgeDist = Math.min(distToTop, distToBottom);
+                    const intensity = Math.min(1.0, edgeDist / 100);
+
+                    const finalOffset = wave * intensity;
+
+                    ctx.globalAlpha = 1.0;
+                    ctx.drawImage(window.hazeCanvas, 0, i, canvas.width, sliceH, finalOffset - 6, startY + i, canvas.width + 12, sliceH);
+                }
+            }
+            ctx.restore();
+        }
     }
 }
 
@@ -1119,7 +1495,7 @@ function updateSettingsUI() {
     const sMusicDot = document.getElementById('splash-music-dot');
     const sMusicBars = document.getElementById('splash-audio-bars');
     const sMusicBtn = document.getElementById('splash-music-btn');
-    
+
     if (sMusicDot) {
         sMusicDot.style.left = active ? 'calc(100% - 14px)' : '4px';
         sMusicDot.classList.toggle('bg-cyan-400', active);
@@ -1174,7 +1550,7 @@ function updateSettingsUI() {
     if (langEs && langEn) {
         const activeLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.6)] border border-cyan-400";
         const inactiveLangCls = "px-3 py-1 rounded-md text-[9px] font-black transition-all duration-300 text-white/20 hover:bg-cyan-500/40 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.6)]";
-        
+
         langEs.className = (currentLang === 'es') ? activeLangCls : inactiveLangCls;
         langEn.className = (currentLang === 'en') ? activeLangCls : inactiveLangCls;
     }
@@ -1204,6 +1580,9 @@ function setQuality(level) {
     window.WORLD.useGradients = profile.useGradients;
     window.WORLD.bubbleSpawnRate = profile.bubbleSpawnRate;
     window.WORLD.drawFishGlows = profile.drawFishGlows;
+    window.WORLD.simDistance = profile.simDistance;
+    window.WORLD.useSchlieren = profile.useSchlieren;
+    window.WORLD.schlierenSliceH = profile.schlierenSliceH;
 
     // Ajustar partículas activas (marine snow)
     if (marineSnow.length > window.WORLD.particleCount) {

@@ -251,6 +251,10 @@ window.TRANSLATIONS = {
         "fish_malacosteus_name": "MALACOSTEUS",
         "fish_malacosteus_desc": "Un depredador abisal capaz de detectar luz roja, invisible para la mayoría de las criaturas de las profundidades.",
 
+        "event_cachalote_name": "CACHALOTE",
+        "event_cachalote_sci": "Physeter macrocephalus",
+        "event_cachalote_desc": "El cachalote es el depredador dentado más grande del mundo, capaz de sumergirse a profundidades abisales para cazar calamares gigantes.",
+
         "scan_loading": "Cargando datos del espécimen...",
         "scan_analyze_prompt": "PULSA [ENTER] ANALIZAR",
         "scanner_school": "Cardumen",
@@ -626,6 +630,10 @@ window.TRANSLATIONS = {
         "fish_melanocetus_desc": "Attracts its prey with a bioluminescent lure in total darkness.",
         "fish_malacosteus_name": "STOPLIGHT LOOSEJAW",
         "fish_malacosteus_desc": "A deep-sea predator capable of detecting red light, invisible to most deep-sea creatures.",
+
+        "event_cachalote_name": "SPERM WHALE",
+        "event_cachalote_sci": "Physeter macrocephalus",
+        "event_cachalote_desc": "The sperm whale is the largest toothed predator in the world, capable of diving to abyssal depths to hunt giant squids.",
 
         "scan_loading": "Loading specimen data...",
         "scan_analyze_prompt": "PRESS [ENTER] TO ANALYZE",
